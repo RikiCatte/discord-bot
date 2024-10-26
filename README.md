@@ -11,7 +11,7 @@ to test if the bot is working you can use '/ping' command on a discord text base
 
 To report a bug or suggest improvements:
   -) Write me on discord: RikiCatte
-  -) Open an issue ob GitHub
+  -) Open an issue on GitHub
 
 This project is released under the GPL-3.0 license - see the [LICENSE.md](LICENSE) file for details.
 
