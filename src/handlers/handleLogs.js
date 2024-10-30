@@ -1005,7 +1005,7 @@ module.exports = (client) => {
 
     // Emitted whenever a guild becomes unavailable, likely due to a server outage.
     client.on(Events.GuildUnavailable, async (guild) => {
-        const embed = new EmbedBuilder
+        const embed = new EmbedBuilder()
             .setTitle(`\`🔴\` Server ${guild.name} is unavailable (probably due to discord API issues)`)
             .setColor("Red")
             .addFields({ name: "Risk", value: msgConfig.error, inline: false })
