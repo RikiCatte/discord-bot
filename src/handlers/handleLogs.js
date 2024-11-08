@@ -1,54 +1,75 @@
-const { EmbedBuilder, Events, AuditLogEvent, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require("discord.js");
+const { EmbedBuilder, Events, AuditLogEvent, ActionRowBuilder, ButtonBuilder, ButtonStyle, DMChannel, GuildChannel, AutoModerationActionExecution } = require("discord.js");
 const msgConfig = require("../messageConfig.json");
 const serverStatsCategoryId = msgConfig.serverStats_Category;
 const riskyLogsSchema = require("../schemas/riskyLogs");
 const susUserSchema = require("../schemas/suspiciousUserJoin");
 
 // Function to get differences between 2 objects
-function getDifferences(obj1, obj2) {
+// function getDifferences(obj1, obj2) {
+//     const differences = {};
+
+//     // Populate array with old and new properties
+//     for (const key in obj1) {
+//         if (obj1[key] !== obj2[key]) {
+//             if (key === 'permissions') {
+//                 const oldPermissions = obj1[key].toArray();
+//                 const newPermissions = obj2[key].toArray();
+//                 if (oldPermissions.join(',') !== newPermissions.join(',')) { // Won't log useless formatting chars
+//                     differences[key] = {
+//                         oldValue: oldPermissions,
+//                         newValue: newPermissions
+//                     };
+//                 }
+//             } else if (key === 'flags') {
+//                 const oldFlags = obj1[key].toArray();
+//                 const newFlags = obj2[key].toArray();
+//                 if (oldFlags.join(',') !== newFlags.join(',')) {
+//                     differences[key] = {
+//                         oldValue: oldFlags,
+//                         newValue: newFlags
+//                     };
+//                 }
+//             } else {
+//                 differences[key] = {
+//                     oldValue: obj1[key],
+//                     newValue: obj2[key]
+//                 };
+//             }
+//         }
+//     }
+
+//     // Find differences between obj1 and obj2
+//     for (const key in obj2) {
+//         if (!(key in obj1)) {
+//             differences[key] = {
+//                 oldValue: undefined,
+//                 newValue: obj2[key]
+//             };
+//         }
+//     }
+
+//     return differences; // Array that contains ONLY the differences between 2 objects
+// }
+
+function getDifferences(oldObj, newObj) {
     const differences = {};
 
-    // Populate array with old and new properties
-    for (const key in obj1) {
-        if (obj1[key] !== obj2[key]) {
-            if (key === 'permissions') {
-                const oldPermissions = obj1[key].toArray();
-                const newPermissions = obj2[key].toArray();
-                if (oldPermissions.join(',') !== newPermissions.join(',')) { // Won't log useless formatting chars
-                    differences[key] = {
-                        oldValue: oldPermissions,
-                        newValue: newPermissions
-                    };
-                }
-            } else if (key === 'flags') {
-                const oldFlags = obj1[key].toArray();
-                const newFlags = obj2[key].toArray();
-                if (oldFlags.join(',') !== newFlags.join(',')) {
-                    differences[key] = {
-                        oldValue: oldFlags,
-                        newValue: newFlags
-                    };
-                }
-            } else {
+    if (!oldObj || !newObj) {
+        return differences;
+    }
+
+    for (const key in newObj) {
+        if (newObj.hasOwnProperty(key)) {
+            if (newObj[key] !== oldObj[key]) {
                 differences[key] = {
-                    oldValue: obj1[key],
-                    newValue: obj2[key]
+                    oldValue: oldObj[key] !== undefined ? oldObj[key] : "N/A",
+                    newValue: newObj[key] !== undefined ? newObj[key] : "N/A"
                 };
             }
         }
     }
 
-    // Find differences between obj1 and obj2
-    for (const key in obj2) {
-        if (!(key in obj1)) {
-            differences[key] = {
-                oldValue: undefined,
-                newValue: obj2[key]
-            };
-        }
-    }
-
-    return differences; // Array that contains ONLY the differences between 2 objects
+    return differences;
 }
 
 module.exports = (client) => {
@@ -60,14 +81,26 @@ module.exports = (client) => {
         if (!LogChannel || !staffChannel)
             return console.log("[LOGGING SYSTEM][ERROR] Error with ChannelID, check .json file!".red);
 
+        if (embed === "apiError") {
+            const embed = new EmbedBuilder()
+                .setTitle(msgConfig.discordApiError)
+                .setColor("NotQuiteBlack")
+                .addFields({ name: "Error", value: `Discord API failure occurred while trying to retrieve event data of \`${raidRisk}\`. Consider to manually check what happened.` })
+                .addFields({ name: "Risk", value: msgConfig.discordApiError })
+                .setFooter({ text: "Mod Logging System by RikiCatte", iconURL: msgConfig.footer_iconURL })
+                .setTimestamp()
+            try {
+                return await LogChannel.send({ embeds: [embed] });
+            } catch {
+                return console.log("[LOGGING SYSTEM][ERROR] Error with sending API Error message!".red);
+            }
+        }
+
         embed.setFooter({ text: "Mod Logging System by RikiCatte", iconURL: msgConfig.footer_iconURL });
         embed.setTimestamp();
 
         try {
             await LogChannel.send({ embeds: [embed] });
-
-            const date = new Date();
-            const formattedDate = `${date.getDate()}/${date.getMonth() + 1}/${date.getFullYear()} - ${date.getHours()}:${date.getMinutes()}`;
 
             if (raidRisk) {
                 const button = new ActionRowBuilder()
@@ -79,6 +112,9 @@ module.exports = (client) => {
                     )
 
                 let msg = await staffChannel.send({ content: `@here Please pay attention!`, embeds: [embed], components: [button] });
+
+                const date = new Date();
+                const formattedDate = `${date.getDate()}/${date.getMonth() + 1}/${date.getFullYear()} - ${date.getHours()}:${date.getMinutes()}`;
 
                 await riskyLogsSchema.create({
                     RiskyLogID: msg.id,
@@ -97,105 +133,169 @@ module.exports = (client) => {
         }
     }
 
-    /* 
-    Emitted whenever permissions for an application command in a guild were updated. 
-    This includes permission updates for other applications in addition to the logged in client,
-    check data.applicationId to verify which application the update is for
-    */
+    /**
+     * Emitted whenever permissions for an application command in a guild were updated. 
+     * This includes permission updates for other applications in addition to the logged in client,
+     * check data.applicationId to verify which application the update is for
+     * @param {ApplicationCommandPermissionsUpdateData} data
+     */
     client.on(Events.ApplicationCommandPermissionsUpdate, (data) => {
         const embed = new EmbedBuilder()
             .setColor("Yellow")
             .setTitle("\`🟡\` Permissions for an application command has been updated")
             .addFields({ name: "Application ID", value: `${data.applicationId}`, inline: true })
             .addFields({ name: "Updated Command / Global Entity ID", value: `${data.id}`, inline: true })
-            .addFields({ name: "Role / USer / Channel ID [Has Permission]", value: `${data.permissions.id} [${data.permissions.permission}]`, inline: false })
+            .addFields({ name: "Role / User / Channel ID [Has Permission]", value: `${data.permissions.id} [${data.permissions.permission}]`, inline: false })
             .addFields({ name: "Type", value: `Permission is for ${data.permissions.type}`, inline: true })
             .addFields({ name: "Risk", value: msgConfig.moderateRisk })
 
         return sendLog(embed);
     })
 
-    // Emitted whenever an auto moderation rule is triggered. This event requires the PermissionFlagsBits permission.
+    /**
+     * Emitted whenever an auto moderation rule is triggered. This event requires the PermissionFlagsBits permission.
+     * @param {AutoModerationActionExecution} automodAction
+     */
     client.on(Events.AutoModerationActionExecution, (automodAction) => {
         let title = "\`🟣\` AutoModeration Action Triggered"
+
+        const fields = [
+            { name: "Channel", value: `${automodAction.channel} (${automodAction.channelId})`, inline: false },
+            { name: "Content", value: `${automodAction.content}`, inline: true },
+            { name: "Matched Content", value: `${automodAction.matchedContent}`, inline: true },
+            { name: "Matched Keyword", value: `${automodAction.matchedKeyword}`, inline: true },
+            { name: "Triggered By", value: `${automodAction.member} (${automodAction.member.id})`, inline: false },
+            { name: "Message ID", value: `${automodAction.messageId}`, inline: true },
+            { name: "Rule ID", value: `${automodAction.ruleId}`, inline: true },
+            { name: "Rule Trigger Type", value: `${automodAction.ruleTriggerType}`, inline: true },
+            { name: "User", value: `${automodAction.user} (${automodAction.userId})`, inline: false },
+            { name: "Risk", value: msgConfig.raidRisk }
+        ];
+
+        automodRule.actions.forEach((action, index) => {
+            fields.splice(3, 0, { name: `Action Type ${index + 1}`, value: `${action.type}`, inline: true });
+        });
 
         const embed = new EmbedBuilder()
             .setColor("Purple")
             .setTitle(title)
-            .addFields({ name: "Action Type", value: `${automodRule.actions[0].type}`, inline: true })
-            .addFields({ name: "Channel", value: `${automodAction.channel} (${automodAction.channelId})`, inline: false })
-            .addFields({ name: "Content", value: `${automodAction.content}`, inline: true })
-            .addFields({ name: "Matched Content", value: `${automodAction.matchedContent}`, inline: true })
-            .addFields({ name: "Matched Keyword", value: `${automodAction.matchedKeyword}`, inline: true })
-            .addFields({ name: "Triggered By", value: `${automodAction.member} (${automodAction.member.id})`, inline: false })
-            .addFields({ name: "Message ID", value: `${automodAction.messageId}`, inline: true })
-            .addFields({ name: "Rule ID", value: `${automodAction.ruleId}`, inline: true })
-            .addFields({ name: "Rule Trigger Type", value: `${automodAction.ruleTriggerType}`, inline: true })
-            .addFields({ name: "User", value: `${automodAction.user} (${automodAction.userId})`, inline: false })
-            .addFields({ name: "Risk", value: msgConfig.raidRisk })
+            .addFields(fields)
 
         return sendLog(embed, true, automodAction.channelId, title);
     })
 
 
-    // Emitted whenever an auto moderation rule is created. This event requires the PermissionFlagsBits permission.
+    /**
+     * Emitted whenever an auto moderation rule is created. This event requires the PermissionFlagsBits permission.
+     * @param {AutoModerationRule} automodRule
+     */
     client.on(Events.AutoModerationRuleCreate, (automodRule) => {
+        let actTypes = automodRule.actions.map(action => {
+            switch (action.type) {
+                case 1: return "Block Message";
+                case 2: return "Send Alert Message";
+                case 3: return "Member Timeout";
+                default: return "Unknown Action";
+            }
+        }).join(", ");
+
+        evType = automodRule.eventType;
+        if (evType == 1) evType = "Message Send";
+        if (evType == 2) evType = "Member Update";
+
+        const fields = [
+            { name: "Name", value: `${automodRule.name}`, inline: false },
+            { name: "Rule ID", value: `${automodRule.id}`, inline: false },
+            { name: "Created By", value: `<@${automodRule.creatorId}> (${automodRule.creatorId})`, inline: false },
+            { name: "Enabled?", value: `\`${automodRule.enabled}\``, inline: false },
+            { name: "Event Type", value: `${evType}`, inline: false },
+            { name: "Keyword Filter", value: `${automodRule.triggerMetadata.keywordFilter}` || "None", inline: false },
+            { name: "Mention Raid Protection?", value: `\`${automodRule.triggerMetadata.mentionRaidProtectionEnabled}\``, inline: false },
+            { name: "Risk", value: msgConfig.lowRisk }
+        ];
+
+        if (automodRule.triggerMetadata.mentionTotalLimit !== null) {
+            fields.splice(7, 0, { name: "Total Mention Limit", value: `${automodRule.triggerMetadata.mentionTotalLimit}`, inline: false });
+        }
+
+        fields.splice(3, 0, { name: "Action Type", value: `${actTypes}`, inline: false });
+
         const embed = new EmbedBuilder()
             .setColor("Green")
             .setTitle("\`🟢\` New AutoMod Rule Created")
-            .addFields({ name: "Name", value: `${automodRule.name}`, inline: false })
-            .addFields({ name: "Rule ID", value: `${automodRule.id}`, inline: false })
-            .addFields({ name: "Created By", value: `<@${automodRule.creatorId}> (${automodRule.creatorId})`, inline: false })
-            .addFields({ name: "Action Type", value: `${automodRule.actions[0].type} (1: BlockMsg, 2: SendAlertMsg, 3: MemberTimeout)`, inline: false })
-            .addFields({ name: "Enabled?", value: `\`${automodRule.enabled}\``, inline: false })
-            .addFields({ name: "Event Type", value: `${automodRule.eventType} (1: MessageSend)`, inline: false })
-            .addFields({ name: "Keyword Filter", value: `${automodRule.triggerMetadata.keywordFilter}` || "None", inline: false })
-            .addFields({ name: "Mention Raid Protection?", value: `\`${automodRule.triggerMetadata.mentionRaidProtectionEnabled}\``, inline: false })
-            .addFields({ name: "Total Mention Limit", value: `${automodRule.triggerMetadata.mentionTotalLimit}`, inline: false })
-            .addFields({ name: "Risk", value: msgConfig.lowRisk })
+            .addFields(fields);
 
         return sendLog(embed);
     })
 
-    // Emitted whenever an auto moderation rule is deleted. This event requires the PermissionFlagsBits permission. //Fixare errore console
+    /**
+     * Emitted whenever an auto moderation rule is deleted. This event requires the PermissionFlagsBits permission.
+     * @param {AutoModerationRule} automodRule
+     */
     client.on(Events.AutoModerationRuleDelete, (automodRule) => {
+        let actTypes = automodRule.actions.map(action => {
+            switch (action.type) {
+                case 1: return "Block Message";
+                case 2: return "Send Alert Message";
+                case 3: return "Member Timeout";
+                default: return "Unknown Action";
+            }
+        }).join(", ");
+
+        evType = automodRule.eventType;
+        if (evType == 1) evType = "Message Send";
+        if (evType == 2) evType = "Member Update";
+
+        const fields = [
+            { name: "Name", value: `${automodRule.name}`, inline: false },
+            { name: "Rule ID", value: `${automodRule.id}`, inline: false },
+            { name: "Created By", value: `<@${automodRule.creatorId}> (${automodRule.creatorId})`, inline: false },
+            { name: "Enabled?", value: `\`${automodRule.enabled}\``, inline: false },
+            { name: "Event Type", value: `${evType}`, inline: false },
+            { name: "Keyword Filter", value: `${automodRule.triggerMetadata.keywordFilter}` || "None", inline: false },
+            { name: "Mention Raid Protection?", value: `\`${automodRule.triggerMetadata.mentionRaidProtectionEnabled}\``, inline: false },
+            { name: "Risk", value: msgConfig.highRisk }
+        ];
+
+        if (automodRule.triggerMetadata.mentionTotalLimit !== null) {
+            fields.push({ name: "Total Mention Limit", value: `${automodRule.triggerMetadata.mentionTotalLimit}`, inline: false });
+        }
+
+        fields.splice(3, 0, { name: "Action Type", value: `${actTypes}`, inline: false });
+
         const embed = new EmbedBuilder()
             .setColor("Red")
             .setTitle("\`🔴\` AutoMod Rule Deleted")
-            .addFields({ name: "Name", value: `${automodRule.name}`, inline: false })
-            .addFields({ name: "Rule ID", value: `${automodRule.id}`, inline: false })
-            .addFields({ name: "Created By", value: `<@${automodRule.creatorId}> (${automodRule.creatorId})`, inline: false })
-            .addFields({ name: "Action Type", value: `${automodRule.actions.type} (1: BlockMsg, 2: SendAlertMsg, 3: MemberTimeout)`, inline: false })
-            .addFields({ name: "Enabled?", value: `\`${automodRule.enabled}\``, inline: false })
-            .addFields({ name: "Event Type", value: `${automodRule.eventType} (1: MessageSend)`, inline: false })
-            .addFields({ name: "Keyword Filter", value: `${automodRule.triggerMetadata.keywordFilter}` || "None", inline: false })
-            .addFields({ name: "Mention Raid Protection?", value: `\`${automodRule.triggerMetadata.mentionRaidProtectionEnabled}\``, inline: false })
-            .addFields({ name: "Total Mention Limit", value: `${automodRule.triggerMetadata.mentionTotalLimit}`, inline: false })
-            .addFields({ name: "Risk", value: msgConfig.highRisk })
+            .addFields(fields);
 
         return sendLog(embed)
     })
 
-    // Emitted whenever an auto moderation rule gets updated. This event requires the PermissionFlagsBits permission. //Fixare errore console
+    /**
+     * Emitted whenever an auto moderation rule gets updated. This event requires the PermissionFlagsBits permission.
+     * @param {AutoModerationRule} oldAutoModRule
+     * @param {AutoModerationRule} newAutoModRule
+     * On discord.js v 14.16.3 the event is not working properly, oldAutoModRule seems to be always null
+     */
     client.on(Events.AutoModerationRuleUpdate, (oldAutoModRule, newAutoModRule) => {
-        // Get Differences between roles using function at the top of file     
+        if (!oldAutoModRule)
+            return sendLog("apiError", "autoModerationRuleUpdate");
+
         const differences = getDifferences(oldAutoModRule, newAutoModRule);
 
-        // Building the embed
         const embed = new EmbedBuilder()
             .setTitle(`\`🟡\` Automod rule ${newAutoModRule.name} has been modified`)
             .setDescription("The following changes have been made to automod rule:")
             .setColor("Yellow")
             .addFields({ name: "ID", value: newAutoModRule.id, inline: true })
-            .addFields({ name: "Name", value: `<@${newAutoModRule.id}> (${newAutoModRule.name})`, inline: true })
+            .addFields({ name: "Name", value: `<@${newAutoModRule.id}> (${newAutoModRule.name})`, inline: true });
 
         for (const key in differences) {
             const { oldValue, newValue } = differences[key];
-            //if (key != "_roles") // Won't log useless changes
             embed.addFields({ name: key, value: `Before: ${oldValue}\nAfter: ${newValue}`, inline: false });
         }
 
-        embed.addFields({ name: "Risk", value: msgConfig.moderateRisk, inline: false })
+        embed.addFields({ name: "Risk", value: msgConfig.moderateRisk, inline: false });
         return sendLog(embed);
     })
 
@@ -214,9 +314,6 @@ module.exports = (client) => {
             .fetchAuditLogs({ type: AuditLogEvent.ChannelCreate })
             .then(async (audit) => {
                 const { executor } = audit.entries.first();
-
-                const name = channel.name;
-                const id = channel.id;
                 let type = channel.type;
 
                 if (type == 0) type = "Text";
@@ -229,10 +326,13 @@ module.exports = (client) => {
                 const embed = new EmbedBuilder()
                     .setTitle("\`🟢\` Channel has been Created")
                     .setColor("Green")
-                    .addFields({ name: "Channel Name", value: `${name} (<#${id}>)`, inline: false, })
-                    .addFields({ name: "Channel Type", value: `${type}`, inline: false })
-                    .addFields({ name: "Channel ID", value: `${id}`, inline: false })
-                    .addFields({ name: "Created By", value: `<@${executor.id}> (${executor.tag})`, inline: false })
+                    .addFields({ name: "Channel Name", value: `${channel.name} (<#${id}>)`, inline: true, })
+                    .addFields({ name: "Channel Type", value: `${type}`, inline: true })
+                    .addFields({ name: "Channel ID", value: `${channel.id}`, inline: false })
+                    .addFields({ name: "Created By", value: `<@${executor.id}> (${executor.tag})`, inline: true })
+                    .addFields({ name: "Parent Category ID", value: `${channel.parentId}`, inline: false })
+                    .addFields({ name: "NSFW?", value: `\`${channel.nsfw}\``, inline: true })
+                    .addFields({ name: "Rate Limit Per User", value: `${channel.rateLimitPerUser}`, inline: false })
                     .addFields({ name: "Risk", value: msgConfig.lowRisk })
 
                 return sendLog(embed);
@@ -246,9 +346,6 @@ module.exports = (client) => {
             .fetchAuditLogs({ type: AuditLogEvent.ChannelDelete })
             .then(async (audit) => {
                 const { executor } = audit.entries.first();
-
-                const name = channel.name;
-                const id = channel.id;
                 let type = channel.type;
 
                 if (type == 0) type = "Text";
@@ -261,9 +358,9 @@ module.exports = (client) => {
                 const embed = new EmbedBuilder()
                     .setTitle("\`🟡\` Channel Deleted")
                     .setColor("Yellow")
-                    .addFields({ name: "Channel Name", value: `${name}`, inline: false })
+                    .addFields({ name: "Channel Name", value: `${channel.name}`, inline: false })
                     .addFields({ name: "Channel Type", value: `${type}`, inline: false })
-                    .addFields({ name: "Channel ID", value: `${id}`, inline: false })
+                    .addFields({ name: "Channel ID", value: `${channel.id}`, inline: false })
                     .addFields({ name: "Deleted By", value: `<@${executor.id}> (${executor.tag})`, inline: false })
                     .addFields({ name: "Risk", value: msgConfig.moderateRisk })
 
@@ -285,6 +382,10 @@ module.exports = (client) => {
     })
 
     // Emitted whenever a channel is updated - e.g. name change, topic change, channel type change.
+    /**
+     * @param {DMChannel | GuildChannel} oldChannel The channel before the update
+     * @param {DMChannel | GuildChannel} newChannel The channel after the update
+     */
     client.on(Events.ChannelUpdate, async (oldChannel, newChannel) => {
         // Check if channel is under server stats category (we don't want these channels be logged when modified)
         if (serverStatsCategoryId && newChannel.parent?.id === serverStatsCategoryId) return;
