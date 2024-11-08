@@ -40,6 +40,18 @@ process.on('uncaughtExceptionMonitor', (err, origin) => {
 });
 // Exceptions Handling
 
+const EventEmitter = require('events');
+
+// Set a maximum number of listeners to identify when the limit is exceeded
+EventEmitter.defaultMaxListeners = 15; // Temporarily increase the limit per test
+
+process.on('warning', (warning) => {
+  if (warning.name === 'MaxListenersExceededWarning') {
+    console.warn(`Warning: ${warning.message}`);
+    console.trace(); // Shows stack trace to identify where listeners are added
+  }
+});
+
 // Music Handling
 const { DisTube } = require("distube");
 const { SpotifyPlugin } = require('@distube/spotify');
