@@ -1,4 +1,4 @@
-const { EmbedBuilder, Events, AuditLogEvent, ActionRowBuilder, ButtonBuilder, ButtonStyle, DMChannel, GuildChannel, AutoModerationActionExecution } = require("discord.js");
+const { EmbedBuilder, Events, AuditLogEvent, ActionRowBuilder, ButtonBuilder, ButtonStyle, DMChannel, GuildChannel, AutoModerationActionExecution, GuildAuditLogsEntry } = require("discord.js");
 const msgConfig = require("../messageConfig.json");
 const serverStatsCategoryId = msgConfig.serverStats_Category;
 const riskyLogsSchema = require("../schemas/riskyLogs");
@@ -311,7 +311,10 @@ module.exports = (client) => {
         return sendLog(embed);
     })
 
-    // Cache Sweep
+    /**
+     * Cache Sweep
+     * @param {String} message
+     */
     // client.on(Events.CacheSweep, (message) => {
     //     const embed = new EmbedBuilder()
     //         .setColor("Yellow")
@@ -456,7 +459,24 @@ module.exports = (client) => {
             })
     })
 
-    // Emitted for general debugging information.
+    /**
+     * Emitted when the client becomes ready to start working.
+     * @param {Client} client
+     */
+    // client.on(Events.ClientReady, async (client) => {
+    //     const embed = new EmbedBuilder()
+    //         .setColor("Green")
+    //         .setTitle("\`🟢\` Client is ready to start working")
+    //         .addFields({ name: "Risk", value: msgConfig.info })
+
+    //     return sendLog(embed);
+    // })
+
+
+    /**
+     * Emitted for general debugging information.
+     * @param {String} debug
+     */
     // client.on(Events.Debug, async (debug) => {
     //     const embed = new EmbedBuilder()
     //         .setColor("Blue")
@@ -467,17 +487,27 @@ module.exports = (client) => {
     //     return sendLog(embed);
     // })
 
-    // client.on(Events.Error, async (error) => {
-    //     const embed = new EmbedBuilder()
-    //         .setColor("Blue")
-    //         .setTitle("🔵 ERROR")
-    //         .addFields({ name: "Text", value: error, inline: false })
-    //         .addFields({ name: "Risk", value: msgConfig.info, inline: false })
+    /**
+     * Emitted when the client encounters an error. Errors thrown within this event do not have a catch handler,
+     * it is recommended to not use async functions as error event handlers. See the 
+     * [Node.js docs](https://nodejs.org/api/events.html#capture-rejections-of-promises) for details.
+     * @param {Error} error
+     */
+    client.on(Events.Error, async (error) => {
+        const embed = new EmbedBuilder()
+            .setColor("Blue")
+            .setTitle("🔵 ERROR")
+            .addFields({ name: "Text", value: error, inline: false })
+            .addFields({ name: "Risk", value: msgConfig.info, inline: false })
 
-    //     return sendLog(embed);
-    // })
+        return sendLog(embed);
+    })
 
-    // Emitted whenever a guild audit log entry is created.
+    /**
+     * Emitted whenever a guild audit log entry is created.
+     * @param {GuildAuditLogsEntry} auditLogEntry
+     * @param {Guild} guild
+     */
     client.on(Events.GuildAuditLogEntryCreate, async (auditLogEntry, guild) => {
         if (!auditLogEntry || auditLogEntry.action) return;
 
@@ -493,15 +523,30 @@ module.exports = (client) => {
             .addFields({ name: "Action", value: auditLogEntry.action, inline: true })
             .addFields({ name: "Action Type", value: auditLogEntry.actionType, inline: true })
             .addFields({ name: "Does Entry Already Exist?", value: `\`${changed}\``, inline: false })
-
+            .addFields({ name: "Risk", value: msgConfig.info, inline: false })
 
         return sendLog(embed);
     })
 
-    // Emitted whenever a member is banned from a guild.
-    client.on(Events.GuildBanAdd, async (guildBan) => {
-        console.log("guildBan: ", guildBan);
+    /**
+     * Emitted whenever a guild becomes available.
+     * @param {Guild} guild
+     */
+    // client.on(Events.GuildAvailable, async(guild) => {
+    //     const embed = new EmbedBuilder()
+    //         .setColor("Blue")
+    //         .setTitle("\`🔵\` Guild is now available")
+    //         .addFields({ name: "Guild Name", value: `${guild.name} (${guild.id})`, inline: false })
+    //         .addFields({ name: "Risk", value: msgConfig.info, inline: false })
 
+    //     return sendLog(embed);
+    // })
+
+    /**
+     * Emitted whenever a member is banned from a guild.
+     * @param {GuildBan} guildBan
+     */
+    client.on(Events.GuildBanAdd, async (guildBan) => {
         guildBan.guild
             .fetchAuditLogs({ type: AuditLogEvent.GuildBanAdd })
             .then(async (audit) => {
@@ -523,7 +568,10 @@ module.exports = (client) => {
             });
     });
 
-    // Emitted whenever a member is unbanned from a guild.
+    /**
+     * Emitted whenever a member is unbanned from a guild.
+     * @param {GuildBan} guildBan
+     */
     client.on(Events.GuildBanRemove, async (guildBan) => {
         guildBan.guild
             .fetchAuditLogs({ type: AuditLogEvent.GuildBanRemove })
@@ -546,7 +594,38 @@ module.exports = (client) => {
             });
     });
 
-    // Emitted whenever a new emoji is created from a guild.
+    /**
+     * Emitted whenever the client joins a guild.
+     * @param {Guild} guild
+     */
+    client.on(Events.GuildCreate, async (guild) => {
+        const embed = new EmbedBuilder()
+            .setColor("Blue")
+            .setTitle("\`🔵\` Client has joined a Guild")
+            .addFields({ name: "Guild Name", value: `${guild.name} (${guild.id})`, inline: false })
+            .addFields({ name: "Risk", value: msgConfig.info, inline: false })
+
+        return sendLog(embed);
+    });
+
+    /**
+     * Emitted whenever a guild kicks the client or the guild is deleted/left.
+     * @param {Guild} guild
+     */
+    client.on(Events.GuildDelete, async (guild) => {
+        const embed = new EmbedBuilder()
+            .setColor("Blue")
+            .setTitle("\`🔵\` Client has been kicked from a Guild")
+            .addFields({ name: "Guild Name", value: `${guild.name} (${guild.id})`, inline: false })
+            .addFields({ name: "Risk", value: msgConfig.info, inline: false })
+
+        return sendLog(embed);
+    });
+
+    /**
+     * Emitted whenever a new emoji is created from a guild.
+     * @param {GuildEmoji} emoji
+     */
     client.on(Events.GuildEmojiCreate, async (createdEmoji) => {
         const options = { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false };
 
@@ -560,7 +639,7 @@ module.exports = (client) => {
             .addFields({ name: "Animated?", value: `\`${createdEmoji.animated}\``, inline: true })
             .addFields({ name: "Available?", value: `\`${createdEmoji.available}\``, inline: true })
             .addFields({ name: "Author", value: `<@${author.id}> (${author.id})` || `\`Unknown\``, inline: true })
-            .addFields({ name: "Client", value: (`<@${createdEmoji.client.user.id}> ${(createdEmoji.client.user.id)}`) || `\`Unknown\``, inline: true })
+            .addFields({ name: "Client", value: (`<@${createdEmoji.client.user.id}> (${createdEmoji.client.user.id})`) || `\`Unknown\``, inline: true })
             .addFields({ name: "Created At", value: formattedCreatedAt, inline: false })
             .addFields({ name: "Deletable?", value: `\`${createdEmoji.deletable}\``, inline: true })
             .addFields({ name: "Managed by Ext. Service?", value: `\`${createdEmoji.managed}\``, inline: true })
@@ -574,7 +653,10 @@ module.exports = (client) => {
         return sendLog(embed);
     });
 
-    // Emitted whenever a emoji is deleted from a guild.
+    /**
+     * Emitted whenever a custom emoji is deleted from a guild.
+     * @param {GuildEmoji} emoji
+     */
     client.on(Events.GuildEmojiDelete, async (deletedEmoji) => {
         const options = { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false };
 
@@ -583,24 +665,25 @@ module.exports = (client) => {
         const embed = new EmbedBuilder()
             .setColor("Blue")
             .setTitle(`\`🔵\` Server Emoji Deleted: ${deletedEmoji.name}`)
-            .addFields({ name: "Client", value: (`<@${deletedEmoji.client.user.id}> ${(deletedEmoji.client.user.id)}`) || `\`Unknown\``, inline: true })
+            .addFields({ name: "Client", value: (`<@${deletedEmoji.client.user.id}> (${deletedEmoji.client.user.id})`) || `\`Unknown\``, inline: true })
             .addFields({ name: "Created At", value: formattedCreatedAt, inline: false })
             .addFields({ name: "Emoji's Server", value: `${deletedEmoji.guild} (${deletedEmoji.guild.id})`, inline: false })
             .addFields({ name: "Emoji ID", value: deletedEmoji.identifier, inline: true })
             .addFields({ name: "Emoji Name", value: deletedEmoji.name, inline: true })
             .addFields({ name: "Emoji URL", value: deletedEmoji.imageURL(), inline: true })
-            .addFields({ name: "Emoji Preview", value: deletedEmoji.toString(), inline: true })
             .addFields({ name: "Risk", value: msgConfig.info })
 
         return sendLog(embed);
     })
 
-    // Emitted whenever a existing emoji is modified from a guild.
+    /**
+     * Emitted whenever a existing emoji is modified from a guild.
+     * @param {GuildEmoji} oldEmoji
+     * @param {GuildEmoji} newEmoji
+     */
     client.on(Events.GuildEmojiUpdate, async (oldEmoji, newEmoji) => {
-        // Get Differences between roles using function at the top of file     
         const differences = getDifferences(oldEmoji, newEmoji);
 
-        // Building the embed
         const embed = new EmbedBuilder()
             .setTitle(`\`🔵\` Emoji ${newEmoji.name} has been modified`)
             .setDescription("The following changes have been made to emoji:")
@@ -618,7 +701,10 @@ module.exports = (client) => {
         return sendLog(embed);
     })
 
-    // Emitted whenever guild integrations are updated
+    /**
+     * Emitted whenever guild integrations are updated.
+     * @param {Guild} guild
+     */
     client.on(Events.GuildIntegrationsUpdate, async (guild) => {
         const embed = new EmbedBuilder()
             .setColor("Blue")
