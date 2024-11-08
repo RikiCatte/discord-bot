@@ -62,5 +62,5 @@
   "highRisk": "🔴 High Risk",
   "raidRisk": "🟣 Raid / Spam Risk",
   "info": "🔵 No Risk, Just Info",
-  "error": "🔴 Discord API Error"
+  "discordApiError": "⚫ Discord API Error"
 }
