@@ -5,71 +5,83 @@ const riskyLogsSchema = require("../schemas/riskyLogs");
 const susUserSchema = require("../schemas/suspiciousUserJoin");
 
 // Function to get differences between 2 objects
-// function getDifferences(obj1, obj2) {
-//     const differences = {};
-
-//     // Populate array with old and new properties
-//     for (const key in obj1) {
-//         if (obj1[key] !== obj2[key]) {
-//             if (key === 'permissions') {
-//                 const oldPermissions = obj1[key].toArray();
-//                 const newPermissions = obj2[key].toArray();
-//                 if (oldPermissions.join(',') !== newPermissions.join(',')) { // Won't log useless formatting chars
-//                     differences[key] = {
-//                         oldValue: oldPermissions,
-//                         newValue: newPermissions
-//                     };
-//                 }
-//             } else if (key === 'flags') {
-//                 const oldFlags = obj1[key].toArray();
-//                 const newFlags = obj2[key].toArray();
-//                 if (oldFlags.join(',') !== newFlags.join(',')) {
-//                     differences[key] = {
-//                         oldValue: oldFlags,
-//                         newValue: newFlags
-//                     };
-//                 }
-//             } else {
-//                 differences[key] = {
-//                     oldValue: obj1[key],
-//                     newValue: obj2[key]
-//                 };
-//             }
-//         }
-//     }
-
-//     // Find differences between obj1 and obj2
-//     for (const key in obj2) {
-//         if (!(key in obj1)) {
-//             differences[key] = {
-//                 oldValue: undefined,
-//                 newValue: obj2[key]
-//             };
-//         }
-//     }
-
-//     return differences; // Array that contains ONLY the differences between 2 objects
-// }
-
-function getDifferences(oldObj, newObj) {
+function getDifferences(oldObj, newObj, prefix = '', visited = new Set()) {
     const differences = {};
 
     if (!oldObj || !newObj) {
         return differences;
     }
 
+    // Add visited objects to avoid circular references
+    visited.add(oldObj);
+    visited.add(newObj);
+
     for (const key in newObj) {
         if (newObj.hasOwnProperty(key)) {
-            if (newObj[key] !== oldObj[key]) {
-                differences[key] = {
-                    oldValue: oldObj[key] !== undefined ? oldObj[key] : "N/A",
-                    newValue: newObj[key] !== undefined ? newObj[key] : "N/A"
+            const oldVal = oldObj[key];
+            const newVal = newObj[key];
+            const fullKey = prefix ? `${prefix}.${key}` : key;
+
+            if (typeof newVal === 'object' && newVal !== null && !Array.isArray(newVal)) {
+                // Avoid circular references
+                if (!visited.has(newVal)) {
+                    const nestedDifferences = getDifferences(oldVal, newVal, fullKey, visited);
+                    Object.assign(differences, nestedDifferences);
+                }
+            } else if (newVal !== oldVal) {
+                differences[fullKey] = {
+                    oldValue: oldVal !== undefined ? oldVal : "N/A",
+                    newValue: newVal !== undefined ? newVal : "N/A"
                 };
             }
         }
     }
 
     return differences;
+}
+
+// Function to get differences between 2 permission overwrites
+function getPermissionDifferences(oldPermissions, newPermissions) {
+    const differences = [];
+
+    const oldPermsMap = new Map(oldPermissions.map(overwrite => [overwrite.id, overwrite]));
+    const newPermsMap = new Map(newPermissions.map(overwrite => [overwrite.id, overwrite]));
+
+    for (const [id, newPerm] of newPermsMap) {
+        const oldPerm = oldPermsMap.get(id);
+        if (!oldPerm) {
+            differences.push({ id, type: newPerm.type, allow: newPerm.allow, deny: newPerm.deny, change: 'added' });
+        } else {
+            const permDifferences = getDifferences(oldPerm, newPerm);
+            if (Object.keys(permDifferences).length > 0) {
+                // Format bitfields to human-readable permissions
+                if (permDifferences['allow.bitfield']) {
+                    permDifferences['allow.bitfield'].oldValue = formatPermissions(permDifferences['allow.bitfield'].oldValue);
+                    permDifferences['allow.bitfield'].newValue = formatPermissions(permDifferences['allow.bitfield'].newValue);
+                }
+                if (permDifferences['deny.bitfield']) {
+                    permDifferences['deny.bitfield'].oldValue = formatPermissions(permDifferences['deny.bitfield'].oldValue);
+                    permDifferences['deny.bitfield'].newValue = formatPermissions(permDifferences['deny.bitfield'].newValue);
+                }
+                differences.push({ id, type: newPerm.type, differences: permDifferences, change: 'updated' });
+            }
+        }
+    }
+
+    for (const [id, oldPerm] of oldPermsMap) {
+        if (!newPermsMap.has(id)) {
+            differences.push({ id, type: oldPerm.type, allow: oldPerm.allow, deny: oldPerm.deny, change: 'removed' });
+        }
+    }
+
+    return differences;
+}
+
+const { PermissionsBitField } = require("discord.js");
+// Function to format permissions bitfield to human-readable permissions
+function formatPermissions(bitfield) {
+    const permissions = new PermissionsBitField(bitfield);
+    return permissions.toArray().join(', ');
 }
 
 module.exports = (client) => {
@@ -308,7 +320,10 @@ module.exports = (client) => {
     //     // return sendLog(embed);
     // })
 
-    // Emitted whenever a guild channel is created.
+    /**
+     * Emitted whenever a guild channel is created.
+     * @param {GuildChannel} channel
+     */
     client.on(Events.ChannelCreate, async (channel) => {
         channel.guild
             .fetchAuditLogs({ type: AuditLogEvent.ChannelCreate })
@@ -326,7 +341,7 @@ module.exports = (client) => {
                 const embed = new EmbedBuilder()
                     .setTitle("\`🟢\` Channel has been Created")
                     .setColor("Green")
-                    .addFields({ name: "Channel Name", value: `${channel.name} (<#${id}>)`, inline: true, })
+                    .addFields({ name: "Channel Name", value: `${channel.name} (<#${channel.id}>)`, inline: true, })
                     .addFields({ name: "Channel Type", value: `${type}`, inline: true })
                     .addFields({ name: "Channel ID", value: `${channel.id}`, inline: false })
                     .addFields({ name: "Created By", value: `<@${executor.id}> (${executor.tag})`, inline: true })
@@ -340,7 +355,10 @@ module.exports = (client) => {
     }
     );
 
-    // Emitted whenever a channel is deleted.
+    /**
+     * Emitted whenever a channel is deleted.
+     * @param {DMChannel | GuildChannel} channel
+     */
     client.on(Events.ChannelDelete, async (channel) => {
         channel.guild
             .fetchAuditLogs({ type: AuditLogEvent.ChannelDelete })
@@ -368,10 +386,12 @@ module.exports = (client) => {
             });
     });
 
-    /*
-    Emitted whenever the pins of a channel are updated. Due to the nature of the WebSocket event, 
-    not much information can be provided easily here - you need to manually check the pins yourself.
-    */
+    /**
+     * Emitted whenever the pins of a channel are updated. Due to the nature of the WebSocket event, 
+     * not much information can be provided easily here - you need to manually check the pins yourself.
+     * @param {import("discord.js").TextBasedChannels} channel
+     * @param {Date} date
+     */
     client.on(Events.ChannelPinsUpdate, (channel, date) => {
         const embed = new EmbedBuilder()
             .setColor("Blue")
@@ -383,8 +403,8 @@ module.exports = (client) => {
 
     // Emitted whenever a channel is updated - e.g. name change, topic change, channel type change.
     /**
-     * @param {DMChannel | GuildChannel} oldChannel The channel before the update
-     * @param {DMChannel | GuildChannel} newChannel The channel after the update
+     * @param {DMChannel | GuildChannel} oldChannel
+     * @param {DMChannel | GuildChannel} newChannel
      */
     client.on(Events.ChannelUpdate, async (oldChannel, newChannel) => {
         // Check if channel is under server stats category (we don't want these channels be logged when modified)
@@ -394,107 +414,45 @@ module.exports = (client) => {
             .fetchAuditLogs({ type: AuditLogEvent.ChannelUpdate })
             .then(async (audit) => {
                 const { executor } = audit.entries.first();
-
                 if (!executor || !oldChannel || !newChannel) return;
 
+                const differences = getDifferences(oldChannel, newChannel);
+                const permissionDifferences = getPermissionDifferences(
+                    oldChannel.permissionOverwrites.cache.map(overwrite => overwrite),
+                    newChannel.permissionOverwrites.cache.map(overwrite => overwrite)
+                );
+
                 const embed = new EmbedBuilder()
+                    .setTitle(`\`🟢\` Channel ${oldChannel.name} has been modified`)
+                    .setDescription("The following changes have been made to the channel:")
                     .setColor("Green")
+                    .addFields({ name: "ID", value: oldChannel.id, inline: true })
+                    .addFields({ name: "Name", value: `<@${oldChannel.id}> (${oldChannel.name})`, inline: true });
 
-                // Name has been changed
-                if (oldChannel.name !== newChannel.name) {
-                    embed.setTitle(`\`🟢\` Channel name of ${newChannel} has been changed!`)
-                        .addFields({ name: "Old name", value: oldChannel.name, inline: false })
-                        .addFields({ name: "New name", value: newChannel.name, inline: false })
-                        .addFields({ name: "Modified by", value: `<@${executor.id}> (${executor.tag})`, inline: false })
-                        .addFields({ name: "Risk", value: msgConfig.lowRisk })
+                for (const key in differences) {
+                    const { oldValue, newValue } = differences[key];
+                    embed.addFields({ name: key, value: `Before: ${formatValue(oldValue)}\nAfter: ${formatValue(newValue)}`, inline: false });
                 }
 
-                // Topic has been changed
-                if (oldChannel.topic !== newChannel.topic) {
-                    embed.setTitle(`\`🟢\` Channel topic of ${newChannel} has been changed`)
-                        .addFields({ name: "Old topic", value: oldChannel.topic + " ", inline: false, }) // + " " -> to prevent empty string (bot crash) when topic is not set  
-                        .addFields({ name: "New topic", value: newChannel.topic + " ", inline: false, }) // + " " -> to prevent empty string (bot crash) when topic is not set  
-                        .addFields({ name: "Modified by", value: `<@${executor.id}> (${executor.tag})`, inline: false })
-                        .addFields({ name: "Risk", value: msgConfig.lowRisk })
-                }
+                for (const permDiff of permissionDifferences) {
+                    const targetType = permDiff.type === 0 ? 'Role' : 'User';
+                    const targetMention = permDiff.type === 0 ? `<@&${permDiff.id}>` : `<@${permDiff.id}>`;
 
-                // Type has been changed
-                if (oldChannel.type !== newChannel.type) {
-                    embed.setTitle(`\`🟢\` Channel type of ${newChannel} has been changed`)
-                        .addFields({ name: "Old type", value: oldChannel.type, inline: false, })
-                        .addFields({ name: "New type", value: newChannel.type, inline: false, })
-                        .addFields({ name: "Modified by", value: `<@${executor.id}> (${executor.tag})`, inline: false })
-                        .addFields({ name: "Risk", value: msgConfig.lowRisk })
-                }
-
-                // Part to check Channel Role Changes
-
-                // To know if changes concern user or role
-                async function getPermissionTargetType(guild, id) {
-                    const member = await guild.members.fetch(id).catch(() => null);
-                    if (member) return 'user';
-
-                    const role = await guild.roles.fetch(id).catch(() => null);
-                    if (role) return 'role';
-
-                    return null;
-                }
-
-                const oldPermissions = oldChannel.permissionOverwrites.cache.map(overwrite => ({
-                    id: overwrite.id,
-                    type: overwrite.type,
-                    allow: overwrite.allow.bitfield,
-                    deny: overwrite.deny.bitfield
-                }));
-
-                const newPermissions = newChannel.permissionOverwrites.cache.map(overwrite => ({
-                    id: overwrite.id,
-                    type: overwrite.type,
-                    allow: overwrite.allow.bitfield,
-                    deny: overwrite.deny.bitfield
-                }));
-
-                // Array to store permission changes
-                const permissionChanges = [];
-
-                // Check for added permissions
-                for (const permission of newPermissions) {
-                    if (!oldPermissions.some(oldPermission => oldPermission.id === permission.id && oldPermission.type === permission.type)) {
-                        const targetType = await getPermissionTargetType(newChannel.guild, permission.id);
-                        permissionChanges.push(`Added ${targetType === 'user' ? 'user' : 'role'} <@${newPermissions.id}> (ID: ${newPermissions.id}) permission added`);
+                    if (permDiff.change === 'added') {
+                        embed.addFields({ name: `Permission Added`, value: `${targetType}: ${targetMention}\nAllow: ${formatPermissions(permDiff.allow.bitfield)}\nDeny: ${formatPermissions(permDiff.deny.bitfield)}`, inline: false });
+                    } else if (permDiff.change === 'updated') {
+                        for (const key in permDiff.differences) {
+                            const { oldValue, newValue } = permDiff.differences[key];
+                            embed.addFields({ name: `Permission Updated`, value: `${targetType}: ${targetMention}\n${key} Before: ${oldValue}\n${key} After: ${newValue}`, inline: false });
+                        }
+                    } else if (permDiff.change === 'removed') {
+                        embed.addFields({ name: `Permission Removed`, value: `${targetType}: ${targetMention}\nAllow: ${formatPermissions(permDiff.allow.bitfield)}\nDeny: ${formatPermissions(permDiff.deny.bitfield)}`, inline: false });
                     }
                 }
 
-                // Check for removed permissions
-                for (const permission of oldPermissions) {
-                    if (!newPermissions.some(newPermission => newPermission.id === permission.id && newPermission.type === permission.type)) {
-                        const targetType = await getPermissionTargetType(newChannel.guild, permission.id);
-                        permissionChanges.push(`Removed ${targetType === 'user' ? '**user**' : '**role**'} <@${newPermissions.id}> (ID: ${newPermissions.id}) permission removed`);
-                    }
-                }
-
-                // Check for modified permissions
-                for (const oldPermission of oldPermissions) {
-                    const newPermission = newPermissions.find(newPerm => newPerm.id === oldPermission.id && newPerm.type === oldPermission.type);
-                    if (newPermission && (oldPermission.allow !== newPermission.allow || oldPermission.deny !== newPermission.deny)) {
-                        const targetType = await getPermissionTargetType(newChannel.guild, oldPermission.id);
-                        permissionChanges.push(`Modified ${targetType === 'user' ? '**user**' : '**role**'} <@${newPermission.id}> (ID: ${newPermission.id}) permission update`);
-                    }
-                }
-
-                // If there are permission changes, finally add them to the embed
-                if (permissionChanges.length > 0) {
-                    const permissionChangesString = permissionChanges.join('\n');
-                    const embed = new EmbedBuilder()
-                        .setTitle(`Permissions Changes of specific channel for User or Role`)
-                        .setColor("Green")
-                        .addFields({ name: "Channel Name", value: `${newChannel} (${newChannel.name})`, inline: true })
-                        .addFields({ name: "Channel ID", value: newChannel.id, inline: true })
-                        .addFields({ name: "Permission Changes", value: permissionChangesString, inline: false })
-                        .addFields({ name: "Risk", value: msgConfig.lowRisk, inline: false });
-
-                    return sendLog(embed);
-                }
+                embed.addFields({ name: "Modified by", value: `<@${executor.id}> (${executor.tag})`, inline: false });
+                embed.addFields({ name: "Risk", value: msgConfig.lowRisk, inline: false });
+                return sendLog(embed);
             })
     })
 
