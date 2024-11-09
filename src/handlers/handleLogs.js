@@ -3,6 +3,7 @@ const msgConfig = require("../messageConfig.json");
 const serverStatsCategoryId = msgConfig.serverStats_Category;
 const riskyLogsSchema = require("../schemas/riskyLogs");
 const susUserSchema = require("../schemas/suspiciousUserJoin");
+const getColorName = require("../utils/getColorName.js");
 
 // Function to get differences between 2 objects
 function getDifferences(oldObj, newObj, prefix = '', visited = new Set()) {
@@ -497,7 +498,8 @@ module.exports = (client) => {
         const embed = new EmbedBuilder()
             .setColor("Blue")
             .setTitle("🔵 ERROR")
-            .addFields({ name: "Text", value: error, inline: false })
+            .addFields({ name: "Error Name", value: error.name, inline: false })
+            .addFields({ name: "Error Message", value: error.message, inline: false })
             .addFields({ name: "Risk", value: msgConfig.info, inline: false })
 
         return sendLog(embed);
@@ -714,7 +716,11 @@ module.exports = (client) => {
         return sendLog(embed);
     })
 
-    // Emitted whenever a user joins a guild.
+    /**
+     * Emitted whenever a user joins a guild.
+     * @param {GuildMember} member
+     * Plus: Alert system for new users and users that have re-entered the server more than a certain limit
+     */
     client.on(Events.GuildMemberAdd, async (member) => {
         const staffChannel = client.channels.cache.get(`${msgConfig.staffChannel}`);
         const options = { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false };
@@ -782,20 +788,26 @@ module.exports = (client) => {
         }
     })
 
-    // Emitted whenever a member becomes available.
-    client.on(Events.GuildMemberAvailable, async (member) => {
-        const embed = new EmbedBuilder()
-            .setColor("Blue")
-            .setTitle(`\`🔵 Member is now Available\``)
-            .setThumbnail(member.displayAvatarURL())
-            .addFields({ name: "Name", value: `${member} (${member.user.username})`, inline: true })
-            .addFields({ name: "ID", value: member.id, inline: true })
-            .addFields({ name: "Risk", value: msgConfig.info, inline: false })
+    /**
+     * Emitted whenever a member becomes available.
+     * @param {GuildMember} member
+     */
+    // client.on(Events.GuildMemberAvailable, async (member) => {
+    //     const embed = new EmbedBuilder()
+    //         .setColor("Blue")
+    //         .setTitle(`\`🔵 Member is now Available\``)
+    //         .setThumbnail(member.displayAvatarURL())
+    //         .addFields({ name: "Name", value: `${member} (${member.user.username})`, inline: true })
+    //         .addFields({ name: "ID", value: member.id, inline: true })
+    //         .addFields({ name: "Risk", value: msgConfig.info, inline: false })
 
-        return sendLog(embed);
-    })
+    //     return sendLog(embed);
+    // })
 
-    // Emitted whenever a member leaves a guild, or is kicked.
+    /**
+     * Emitted whenever a member leaves a guild, or is kicked.
+     * @param {GuildMember} member
+     */
     client.on(Events.GuildMemberRemove, async (member) => {
         const options = { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false };
 
@@ -816,55 +828,112 @@ module.exports = (client) => {
         return sendLog(embed);
     })
 
-    // Emitted whenever a guild member changes - i.e. new role, removed role, nickname.
+    /**
+     * Emitted whenever a chunk of guild members is received (all members come from the same guild).
+     * @param {Collection<Snowflake, GuildMember>} members
+     * @param {Guild} guild
+     * @param {GuildMembersChunk} chunk
+     */
+    client.on(Events.GuildMembersChunk, async (members, guild, chunk) => {
+        const embed = new EmbedBuilder()
+            .setColor("Blue")
+            .setTitle(`\`🔵\` Guild Members Chunk Received`)
+            .addFields({ name: "Guild Name", value: `${guild.name} (${guild.id})`, inline: true })
+            .addFields({ name: "Members", value: `${members.size}`, inline: true })
+            .addFields({ name: "Risk", value: msgConfig.info, inline: false })
+
+        return sendLog(embed);
+    });
+
+    /**
+     * Emitted whenever a guild member changes - i.e. new role, removed role, nickname.
+     * @param {GuildMember} oldMember
+     * @param {GuildMember} newMember
+     */
     client.on(Events.GuildMemberUpdate, async (oldMember, newMember) => {
         const embed = new EmbedBuilder()
             .setColor("Yellow")
-            .setThumbnail(oldMember.displayAvatarURL())
+            .setThumbnail(oldMember.displayAvatarURL());
 
-        // Check if Nickname has Changed
-        if (oldMember.nickname != newMember.nickname) {
-            embed.setTitle(`\`🟡\` Member Nickname has Changed`)
-                .addFields({ name: "Old Nickname", value: oldMember.nickname || "None", inline: true })
-                .addFields({ name: "New Nickname", value: newMember.nickname || "None", inline: true })
-                .addFields({ name: "Risk", value: msgConfig.moderateRisk, inline: false })
-        }
+        const differences = getDifferences(oldMember, newMember);
 
-        // Check if Server Avatar is Changed
-        if (oldMember.displayAvatarURL() != newMember.displayAvatarURL()) {
-            embed.setTitle(`\`🟡\` Member Avatar has changed`)
-                .addFields({ name: "Name", value: `${oldMember} (${oldMember.user.username})`, inline: true })
-                .addFields({ name: "ID", value: oldMember.id, inline: true })
-                .addFields({ name: "Old Avatar", value: oldMember.displayAvatarURL(), inline: false })
-                .addFields({ name: "New Avatar", value: newMember.displayAvatarURL(), inline: true })
-        }
+        // getDifferences() doesn't check roles, so we need to check them separately
+        const oldRoles = oldMember.roles.cache;
+        const newRoles = newMember.roles.cache;
 
-        // System to verify if roles have Changed
-        const oldRoles = Array.from(oldMember.roles.cache.values());
-        const newRoles = Array.from(newMember.roles.cache.values());
+        const rolesAdded = newRoles.filter(role => !oldRoles.has(role.id));
+        const rolesRemoved = oldRoles.filter(role => !newRoles.has(role.id));
 
-        const rolesAdded = newRoles.filter((role) => !oldRoles.includes(role));
-        const rolesRemoved = oldRoles.filter((role) => !newRoles.includes(role));
+        embed.addFields({ name: "Member", value: `${newMember} (${newMember.id})`, inline: true });
+        if (rolesAdded.size > 0 || rolesRemoved.size > 0) {
+            embed.setTitle(`\`🟡\` Member Roles have been changed`);
 
-        if (rolesAdded.length > 0 || rolesRemoved.length > 0) {
-            embed.setTitle(`\`🟡\` Member Roles have changed`);
-
-            if (rolesAdded.length > 0) {
+            if (rolesAdded.size > 0) {
                 embed.addFields({ name: "Roles Added", value: rolesAdded.map(role => `${role} (ID: ${role.id})`).join(', '), inline: false });
             }
 
-            if (rolesRemoved.length > 0) {
+            if (rolesRemoved.size > 0) {
                 embed.addFields({ name: "Roles Removed", value: rolesRemoved.map(role => `${role} (ID: ${role.id})`).join(', '), inline: false });
             }
 
             embed.addFields({ name: "Risk", value: msgConfig.moderateRisk, inline: false });
         }
+        else
+            embed.setTitle(`\`🟡\` Member has been modified`);
+
+        // Differences detected by getDifferences() here:
+        for (const key in differences) {
+            const { oldValue, newValue } = differences[key];
+            embed.addFields({ name: key, value: `Before: ${oldValue}\nAfter: ${newValue}`, inline: false });
+        }
 
         return sendLog(embed);
     })
 
-    // Emitted when guild role is created
+    /**
+     * Emitted when guild role is created
+     * @param {Role} role
+     */
     client.on(Events.GuildRoleCreate, async (role) => {
+        const options = { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false };
+
+        const formattedCreatedAt = role.createdAt.toLocaleString('en-US', options);
+
+        let permissions = 'No permissions';
+
+        if (role.permissions.toArray().length > 0) {
+            permissions = formatPermissions(role.permissions.bitfield);
+        }
+
+        const colorHex = `#${role.color.toString(16).padStart(6, '0')}`;
+        const colorName = await getColorName(colorHex);
+
+        const embed = new EmbedBuilder()
+            .setColor("Green")
+            .setTitle(`\`🟢\` New Role has been Created`)
+            .addFields({ name: "ID", value: role.id, inline: true })
+            .addFields({ name: "Name", value: `${role} (${role.name})`, inline: true })
+            .addFields({ name: "Color", value: `${colorName} (${colorHex})`, inline: false })
+            .addFields({ name: "Icon", value: role.icon || "None", inline: true })
+            .addFields({ name: "Unicode Emoji", value: role.unicodeEmoji || "None", inline: true })
+            .addFields({ name: "Created At", value: formattedCreatedAt, inline: true })
+            .addFields({ name: "Separate from others?", value: `\`${role.hoist}\``, inline: true })
+            .addFields({ name: "Editable?", value: `\`${role.editable}\``, inline: false })
+            .addFields({ name: "Managed?", value: `\`${role.managed}\``, inline: true })
+            .addFields({ name: "Mentionable?", value: `\`${role.mentionable}\``, inline: true })
+            .addFields({ name: "Role Position", value: role.position.toString(), inline: false })
+            .addFields({ name: "Role Raw Position", value: role.rawPosition.toString(), inline: true })
+            .addFields({ name: "Role Permissions", value: permissions, inline: false })
+            .addFields({ name: "Risk", value: msgConfig.lowRisk, inline: false });
+
+        return sendLog(embed);
+    })
+
+    /**
+     * Emitted when guild role is deleted
+     * @param {Role} role
+     */
+    client.on(Events.GuildRoleDelete, async (role) => {
         const options = { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false };
 
         const formattedCreatedAt = role.createdAt.toLocaleString('en-US', options);
@@ -876,72 +945,80 @@ module.exports = (client) => {
         }
 
         const embed = new EmbedBuilder()
-            .setColor("Green")
-            .setTitle(`\`🟢\` New Role has Created`)
-            .addFields({ name: "ID", value: role.id, inline: true })
-            .addFields({ name: "Name", value: `${role} (${role.name})`, inline: true })
-            .addFields({ name: "Color (base 10)", value: role.color.toString(), inline: false })
-            .addFields({ name: "Icon", value: role.icon || "None", inline: true })
-            .addFields({ name: "Unicode Emoji", value: role.unicodeEmoji || "None", inline: true })
-            .addFields({ name: "Created At", value: formattedCreatedAt, inline: true })
-            .addFields({ name: "Separate from others?", value: `\`${role.hoist}\``, inline: true })
-            .addFields({ name: "Editable?", value: `\`${role.editable}\``, inline: false })
-            .addFields({ name: "Managed?", value: `\`${role.managed}\``, inline: true })
-            .addFields({ name: "Mentionable?", value: `\`${role.mentionable}\``, inline: true })
-            .addFields({ name: "Role Position", value: role.position.toString(), inline: false })
-            .addFields({ name: "Role Raw Position", value: role.rawPosition.toString(), inline: true })
-            .addFields({ name: "Risk", value: msgConfig.lowRisk, inline: false })
-
-        return sendLog(embed);
-    })
-
-    // Emitted when guild role is deleted
-    client.on(Events.GuildRoleDelete, async (role) => {
-        const options = { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false };
-
-        const formattedCreatedAt = role.createdAt.toLocaleString('en-US', options);
-
-        if (role.permissions.toArray().length > 0) {
-            permissions = role.permissions.toArray().map(permission => `\`${permission}\``).join(', ');
-        }
-
-        const embed = new EmbedBuilder()
-            .setColor("Green")
-            .setTitle(`\`🟢\` Role has been Deleted`)
+            .setColor("Yellow")
+            .setTitle(`\`🟡\` Role has been Deleted`)
             .addFields({ name: "ID", value: role.id, inline: true })
             .addFields({ name: "Name", value: `${role} (${role.name})`, inline: true })
             .addFields({ name: "Created At", value: formattedCreatedAt, inline: true })
             .addFields({ name: "Separate from others?", value: `\`${role.hoist}\``, inline: false })
             .addFields({ name: "Mentionable?", value: `\`${role.mentionable}\``, inline: true })
-            .addFields({ name: "Risk", value: msgConfig.lowRisk, inline: false })
+            .addFields({ name: "Role Permissions: ", value: permissions, inline: false })
+            .addFields({ name: "Risk", value: msgConfig.moderateRisk, inline: false })
 
         return sendLog(embed);
     })
 
-    // Emitted when guild role is updated 
+    /**
+     * Emitted when guild role is updated 
+     * @param {Role} oldRole
+     * @param {Role} newRole
+     */
     client.on(Events.GuildRoleUpdate, async (oldRole, newRole) => {
-        // Get Differences between roles using function at the top of file     
         const differences = getDifferences(oldRole, newRole);
 
-        // Building the embed
-        const embed = new EmbedBuilder()
-            .setTitle(`\`🟡\` Role ${newRole.name} has been modified`)
-            .setDescription("The following changes have been made to role:")
-            .setColor("Yellow")
-            .addFields({ name: "Role ID", value: newRole.id, inline: true })
-            .addFields({ name: "Role Name", value: `<@${newRole.id}> (${newRole.name})`, inline: true })
+        // getDifference() doesn't check permissions, so we need to check them separately
+        const oldPermissions = oldRole.permissions;
+        const newPermissions = newRole.permissions;
 
-        for (const key in differences) {
-            const { oldValue, newValue } = differences[key];
-            if (key != "tags") // Won't log useless changes
-                embed.addFields({ name: key, value: `Before: ${oldValue}\nAfter: ${newValue}`, inline: false });
+        const permissionsAdded = newPermissions.toArray().filter(perm => !oldPermissions.has(perm));
+        const permissionsRemoved = oldPermissions.toArray().filter(perm => !newPermissions.has(perm));
+
+        // Remove junk data from differences
+        delete differences.tags;
+        delete differences.rawPosition;
+
+        // Check if the only difference is rawPosition and tags (which are not important)
+        if (Object.keys(differences).length === 0 && permissionsAdded.length === 0 && permissionsRemoved.length === 0) {
+            return; // It doesn't send the embed if there are no differences (othwerwise it would be empty)
         }
 
-        embed.addFields({ name: "Risk", value: msgConfig.moderateRisk, inline: false })
+        const embed = new EmbedBuilder()
+            .setTitle(`\`🟡\` Role has been modified`)
+            .setDescription("The following changes have been made to role:")
+            .setColor("Yellow")
+            .addFields({ name: "Role ID", value: oldRole.id, inline: true })
+            .addFields({ name: "Role Name", value: `<@${oldRole.id}> (${oldRole.name})`, inline: true });
+
+        // Differences detected by getDifferences() here:
+        for (const key in differences) {
+            const { oldValue, newValue } = differences[key];
+            if (key === 'color') {
+                const oldColorHex = `#${oldValue.toString(16).padStart(6, '0')}`;
+                const newColorHex = `#${newValue.toString(16).padStart(6, '0')}`;
+                const oldColorName = await getColorName(oldColorHex);
+                const newColorName = await getColorName(newColorHex);
+                embed.addFields({ name: 'Color', value: `Before: ${oldColorName}\nAfter: ${newColorName}`, inline: false });
+            } else {
+                embed.addFields({ name: key, value: `Before: ${oldValue}\nAfter: ${newValue}`, inline: false });
+            }
+        }
+
+        if (permissionsAdded.length > 0) {
+            embed.addFields({ name: "Permissions Added", value: permissionsAdded.map(perm => `\`${perm}\``).join(', '), inline: false });
+        }
+
+        if (permissionsRemoved.length > 0) {
+            embed.addFields({ name: "Permissions Removed", value: permissionsRemoved.map(perm => `\`${perm}\``).join(', '), inline: false });
+        }
+
+        embed.addFields({ name: "Risk", value: msgConfig.moderateRisk, inline: false });
         return sendLog(embed);
     })
 
-    // Emitted whenever a guild scheduled event is created.
+    /**
+     * Emitted whenever a guild scheduled event is created.
+     * @param {GuildScheduledEvent} guildScheduledEvent
+     */
     client.on(Events.GuildScheduledEventCreate, async (guildScheduledEvent) => {
         const event = guildScheduledEvent;
 
@@ -972,7 +1049,10 @@ module.exports = (client) => {
         return sendLog(embed);
     })
 
-    // Emitted whenever a guild scheduled event is deleted.
+    /**
+     * Emitted whenever a guild scheduled event is deleted.
+     * @param {GuildScheduledEvent} guildScheduledEvent
+     */
     client.on(Events.GuildScheduledEventDelete, async (guildScheduledEvent) => {
         const event = guildScheduledEvent;
 
@@ -995,9 +1075,13 @@ module.exports = (client) => {
             .addFields({ name: "Risk", value: msgConfig.lowRisk, inline: false })
 
         return sendLog(embed);
-    })
+    });
 
-    // Emitted whenever a guild scheduled event gets updated.
+    /**
+     * Emitted whenever a guild scheduled event gets updated.
+     * @param {GuildScheduledEvent} oldGuildScheduledEvent
+     * @param {GuildScheduledEvent} newGuildScheduledEvent
+     */
     client.on(Events.GuildScheduledEventUpdate, async (oldGuildScheduledEvent, newGuildScheduledEvent) => {
         const oldEvent = oldGuildScheduledEvent;
         const newEvent = newGuildScheduledEvent;
@@ -1005,9 +1089,9 @@ module.exports = (client) => {
         const differences = getDifferences(oldEvent, newEvent);
 
         const embed = new EmbedBuilder()
-            .setTitle(`\`🔵\` Existing Scheduled Event has been modified`)
+            .setTitle(`\`🟢\` Existing Scheduled Event has been modified`)
             .setDescription("The following changes have been made to scheduled event:")
-            .setColor("Blue")
+            .setColor("Green")
             .addFields({ name: "Event ID", value: newEvent.id, inline: true })
             .addFields({ name: "Event Name", value: `${newEvent.name}`, inline: true })
 
@@ -1016,11 +1100,15 @@ module.exports = (client) => {
             embed.addFields({ name: key, value: `Before: ${oldValue}\nAfter: ${newValue}`, inline: false });
         }
 
-        embed.addFields({ name: "Risk", value: msgConfig.info, inline: false })
+        embed.addFields({ name: "Risk", value: msgConfig.lowRisk, inline: false })
         return sendLog(embed);
-    })
+    });
 
-    // Emitted whenever a user subscribes to a guild scheduled event
+    /**
+     * Emitted whenever a user subscribes to a guild scheduled event
+     * @param {GuildScheduledEvent} guildScheduledEvent
+     * @param {User} user
+     */
     client.on(Events.GuildScheduledEventUserAdd, async (guildScheduledEvent, user) => {
         const event = guildScheduledEvent;
 
@@ -1033,9 +1121,13 @@ module.exports = (client) => {
             .addFields({ name: "Risk", value: msgConfig.info })
 
         return sendLog(embed);
-    })
+    });
 
-    // Emitted whenever a user unsubscribes from a guild scheduled event
+    /**
+     * Emitted whenever a user unsubscribes from a guild scheduled event
+     * @param {GuildScheduledEvent} guildScheduledEvent
+     * @param {User} user
+     */
     client.on(Events.GuildScheduledEventUserRemove, async (guildScheduledEvent, user) => {
         const event = guildScheduledEvent;
 
@@ -1050,7 +1142,10 @@ module.exports = (client) => {
         return sendLog(embed);
     })
 
-    // Server Sticker Created
+    /**
+     * Emitted whenever a custom sticker is created in a guild.
+     * @param {Sticker} sticker
+     */
     client.on(Events.GuildStickerCreate, async (sticker) => {
         const options = { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false };
 
@@ -1108,7 +1203,10 @@ module.exports = (client) => {
         return sendLog(embed);
     })
 
-    // Server Sticker Deleted
+    /**
+     * Emitted whenever a custom sticker is deleted in a guild.
+     * @param {Sticker} sticker
+     */
     client.on(Events.GuildStickerDelete, async (sticker) => {
         const options = { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false };
 
@@ -1128,16 +1226,21 @@ module.exports = (client) => {
         return sendLog(embed);
     })
 
-    // Server Sticker Updated
+    /**
+     * Emitted whenever a custom sticker is updated in a guild.
+     * @param {Sticker} oldSticker
+     * @param {Sticker} newSticker
+     */
     client.on(Events.GuildStickerUpdate, async (oldSticker, newSticker) => {
         const differences = getDifferences(oldSticker, newSticker);
 
         const embed = new EmbedBuilder()
-            .setTitle(`\`🔵\` Server sticker ${newSticker.name} has been modified`)
+            .setTitle(`\`🔵\` Server sticker has been modified`)
             .setThumbnail(oldSticker.url)
             .setDescription("The following changes have been made to server sticker:")
             .setColor("Blue")
-            .addFields({ name: "ID", value: newSticker.id, inline: true })
+            .addFields({ name: "Sticker Name", value: `<@${oldSticker.id}> (${oldSticker.name})`, inline: true })
+            .addFields({ name: "Sticker ID", value: oldSticker.id, inline: true })
 
         for (const key in differences) {
             const { oldValue, newValue } = differences[key];
@@ -1148,24 +1251,32 @@ module.exports = (client) => {
         return sendLog(embed);
     })
 
-    // Emitted whenever a guild becomes unavailable, likely due to a server outage.
+    /**
+     * Emitted whenever a guild becomes unavailable, likely due to a server outage.
+     * @param {Guild} guild
+     */
     client.on(Events.GuildUnavailable, async (guild) => {
         const embed = new EmbedBuilder()
-            .setTitle(`\`🔴\` Server ${guild.name} is unavailable (probably due to discord API issues)`)
+            .setTitle(`\`⚫\` Server ${guild.name} is unavailable (probably due to discord API issues)`)
             .setColor("Red")
-            .addFields({ name: "Risk", value: msgConfig.error, inline: false })
+            .addFields({ name: "Risk", value: msgConfig.discordApiError, inline: false })
 
         return sendLog(embed);
     })
 
-    // Emitted whenever a guild is updated - e.g. name change.
+    /**
+     * Emitted whenever a guild is updated - e.g. name change.
+     * @param {Guild} oldGuild
+     * @param {Guild} newGuild
+     */
     client.on(Events.GuildUpdate, async (oldGuild, newGuild) => {
         const differences = getDifferences(oldGuild, newGuild);
 
         const embed = new EmbedBuilder()
-            .setTitle(`\`🔵\` Server ${oldGuild.name} has been modified`)
+            .setTitle(`\`🔴\` Server ${oldGuild.name} has been modified`)
             .setDescription("The following changes have been made to server:")
-            .setColor("Blue")
+            .setColor("Red")
+            .addFields({ name: "Server Name", value: `${oldGuild.name}`, inline: true })
             .addFields({ name: "Server ID", value: oldGuild.id, inline: true });
 
         for (const key in differences) {
@@ -1173,21 +1284,29 @@ module.exports = (client) => {
             embed.addFields({ name: key, value: `Before: ${oldValue}\nAfter: ${newValue}`, inline: false });
         }
 
-        embed.addFields({ name: "Risk", value: msgConfig.info, inline: false });
+        embed.addFields({ name: "Risk", value: msgConfig.highRisk, inline: false });
         return sendLog(embed);
     });
 
-    // // Emitted when an interaction is created.
+    /**
+     * Emitted when an interaction is created.
+     * @param {Interaction} interaction
+     */
     // client.on(Events.InteractionCreate, async (interaction) => {
-    //     return console.log(interaction);
+    //     const embed = new EmbedBuilder()
+    //         .setColor("Blue")
+    //         .setTitle(`\`🔵\` New Interaction has been created`)
+    //         .addFields({ name: "Interaction ID", value: interaction.id, inline: true })
+    //         .addFields({ name: "Interaction Type", value: interaction.type, inline: true })
+    //         .addFields({ name: "Risk", value: msgConfig.info, inline: false })
+    //
+    //     return sendLog(embed);
     // });
 
-    // // Cache Invalidated (refreshed)
-    // client.on(Events.Invalidated, async () => {
-    //     return console.log("Cache Refreshed");
-    // })
-
-    // Emitted when an invite is created. This event requires the PermissionFlagsBits permission for the channel.
+    /**
+     * Emitted when an invite is created. This event requires the PermissionFlagsBits permission for the channel.
+     * @param {Invite} invite
+     */
     client.on(Events.InviteCreate, async (invite) => {
         const options = { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false };
 
@@ -1217,7 +1336,10 @@ module.exports = (client) => {
         return sendLog(embed);
     });
 
-    // Emitted when an invite is deleted. This event requires the PermissionFlagsBits permission for the channel.
+    /**
+     * Emitted when an invite is deleted. This event requires the PermissionFlagsBits permission for the channel.
+     * @param {Invite} invite
+     */
     client.on(Events.InviteDelete, async (invite) => {
         const options = { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false };
 
@@ -1238,12 +1360,14 @@ module.exports = (client) => {
         return sendLog(embed);
     })
 
-    // Emitted whenever messages are deleted in bulk.
+    /**
+     * Emitted whenever messages are deleted in bulk.
+     * @param {Collection<Snowflake, Message>} messages
+     * @param {GuildTextBasedChannel} channel
+     */
     client.on(Events.MessageBulkDelete, async (messages, channel) => {
-        let title = `\`🟣\` Messages have been bulk deleted`
-
         const embed = new EmbedBuilder()
-            .setTitle(title)
+            .setTitle(`\`🟣\` Messages have been bulk deleted`)
             .setColor("Purple")
             .addFields({ name: "Channel", value: `${channel} (${channel.id})`, inline: false })
             .addFields({ name: "Risk", value: msgConfig.raidRisk, inline: false })
@@ -1251,12 +1375,18 @@ module.exports = (client) => {
         return sendLog(embed, false, channel.id, title);
     })
 
-    // Emitted whenever a message is created.
+    /**
+     * Emitted whenever a message is created.
+     * @param {Message} message
+     */
     // client.on(Events.MessageCreate, async (message) => {
     //     return console.log(message);
     // })
 
-    // Emitted whenever a message is deleted. (without deleted by)
+    /**
+     * Emitted whenever a message is deleted.
+     * @param {Message} message
+     */
     client.on(Events.MessageDelete, async (message) => {
         const mes = message.content;
 
@@ -1269,12 +1399,30 @@ module.exports = (client) => {
             .setTitle(`\`🟡\` Message deleted`)
             .addFields({ name: "Message Author", value: `${message.author}`, inline: true })
             .addFields({ name: "Message Content", value: `${mes}`, inline: true })
-            .addFields({ name: "Message Channel", value: `${message.channel}`, inline: true })
-            .addFields({ name: "Risk", value: msgConfig.moderateRisk, inline: false });
+            .addFields({ name: "Message Channel", value: `${message.channel}`, inline: true });
 
         if (attachments.length > 0) {
             embed.addFields({ name: "Message Attachments", value: attachments.join(" , ") });
         }
+
+        // Recovers audit logs to find who deleted the message
+        const fetchedLogs = await message.guild.fetchAuditLogs({
+            limit: 1,
+            type: AuditLogEvent.MessageDelete,
+        });
+
+        const deletionLog = fetchedLogs.entries.first();
+
+        if (deletionLog) {
+            const { executor, target } = deletionLog;
+
+            // Checks if the deleted message matches the message in the audit log
+            if (target.id === message.author.id) {
+                embed.addFields({ name: "Deleted by", value: `${executor} (${executor.id})`, inline: true });
+            }
+        }
+
+        embed.addFields({ name: "Risk", value: msgConfig.moderateRisk, inline: false });
 
         return sendLog(embed);
     });
