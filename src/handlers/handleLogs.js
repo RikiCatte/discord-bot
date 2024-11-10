@@ -1,4 +1,4 @@
-const { EmbedBuilder, Events, AuditLogEvent, ActionRowBuilder, ButtonBuilder, ButtonStyle, DMChannel, GuildChannel, AutoModerationActionExecution, GuildAuditLogsEntry } = require("discord.js");
+const { EmbedBuilder, Events, AuditLogEvent, ActionRowBuilder, ButtonBuilder, ButtonStyle, DMChannel, GuildChannel, AutoModerationActionExecution, GuildAuditLogsEntry, PollAnswer, MessageReaction, ThreadChannel, ThreadMember, TextChannel, NewsChannel, VoiceChannel, StageChannel, ForumChannel, MediaChannel } = require("discord.js");
 const msgConfig = require("../messageConfig.json");
 const serverStatsCategoryId = msgConfig.serverStats_Category;
 const riskyLogsSchema = require("../schemas/riskyLogs");
@@ -393,7 +393,7 @@ module.exports = (client) => {
     /**
      * Emitted whenever the pins of a channel are updated. Due to the nature of the WebSocket event, 
      * not much information can be provided easily here - you need to manually check the pins yourself.
-     * @param {import("discord.js").TextBasedChannels} channel
+     * @param {TextBasedChannels} channel
      * @param {Date} date
      */
     client.on(Events.ChannelPinsUpdate, (channel, date) => {
@@ -1427,8 +1427,30 @@ module.exports = (client) => {
         return sendLog(embed);
     });
 
-    // Emitted whenever a reaction is added to a cached message.
-    client.on(Events.MessageReactionAdd, async (messageReaction, user) => {
+    /**
+     * Emitted whenever a user votes in a poll.
+     * @param {PollAnswer} pollAnswer
+     * @param {Snowflake} userId 
+     */
+    client.on(Events.MessagePollVoteAdd, async (pollAnswer, userId) => {
+        // TODO
+    });
+
+    /**
+     * Emitted whenever a user removes their vote in a poll.
+     * @param {PollAnswer} pollAnswer
+     */
+    client.on(Events.MessagePollVoteRemove, async (pollAnswer, userId) => {
+        // TODO
+    });
+
+    /**
+     * Emitted whenever a reaction is added to a cached message.
+     * @param {MessageReaction} messageReaction
+     * @param {User} user
+     * @param {MessageReactionEventDetails} details 
+     */
+    client.on(Events.MessageReactionAdd, async (messageReaction, user, details) => {
         const embed = new EmbedBuilder()
             .setTitle(`\`🔵\` Reaction Added to a Message`)
             .setColor("Blue")
@@ -1442,13 +1464,19 @@ module.exports = (client) => {
             .addFields({ name: "Message Content", value: messageReaction.message.content || "Unknown", inline: true })
             .addFields({ name: "Message ID", value: messageReaction.message.id, inline: true })
             .addFields({ name: "Added by", value: `${user} (${user.id})`, inline: false })
+            .addFields({ name: "Super Emoji used?", value: details.burst ? "Yes" : "No", inline: true })
             .addFields({ name: "Risk", value: msgConfig.info, inline: false })
 
         return sendLog(embed);
     })
 
-    // Emitted whenever a reaction is removed from a cached message.
-    client.on(Events.MessageReactionRemove, async (messageReaction, user) => {
+    /**
+     * Emitted whenever a reaction is removed from a cached message.
+     * @param {MessageReaction} messageReaction
+     * @param {User} user
+     * @param {MessageReactionEventDetails} details
+     */
+    client.on(Events.MessageReactionRemove, async (messageReaction, user, details) => {
         const embed = new EmbedBuilder()
             .setTitle(`\`🔵\` Reaction Removed from a Message`)
             .setColor("Blue")
@@ -1461,12 +1489,17 @@ module.exports = (client) => {
             .addFields({ name: "Message Content", value: messageReaction.message.content || "Unknown", inline: true })
             .addFields({ name: "Message ID", value: messageReaction.message.id, inline: true })
             .addFields({ name: "Added by", value: `${user} (${user.id})`, inline: false })
+            .addFields({ name: "Super Emoji used?", value: details.burst ? "Yes" : "No", inline: true })
             .addFields({ name: "Risk", value: msgConfig.info, inline: false })
 
         return sendLog(embed);
     })
 
-    // Emitted whenever all reactions are removed from a cached message.
+    /**
+     * Emitted whenever all reactions are removed from a cached message.
+     * @param {Message} message
+     * @param {Collection<(string|Snowflake), MessageReaction>} reactions
+     */
     client.on(Events.MessageReactionRemoveAll, async (message, reactions, messageReactions) => {
         const embed = new EmbedBuilder()
             .setTitle(`\`🔵\` Message no longer has any reaction`)
@@ -1480,27 +1513,35 @@ module.exports = (client) => {
         return sendLog(embed);
     })
 
-    // Emitted when a bot removes an emoji reaction from a cached message.
-    client.on(Events.MessageReactionRemoveEmoji, async (messageReaction) => {
+    /**
+     * Emitted when a bot removes an emoji reaction from a cached message.
+     * @param {MessageReaction} reaction
+     */
+    client.on(Events.MessageReactionRemoveEmoji, async (reaction) => {
         const embed = new EmbedBuilder()
             .setTitle(`\`🔵\` a Bot Removed an Emoji from a Message`)
-            .addFields({ name: "Channel", value: `${messageReaction.message.channel} (${messageReaction.message.channelId})` })
-            .addFields({ name: "Message Channel", value: `${messageReaction.message.channel} (${messageReaction.message.channelId})`, inline: false })
-            .addFields({ name: "Message ID", value: messageReaction.message.id, inline: true })
-            .addFields({ name: "Message Author", value: `${messageReaction.message.author} (${messageReaction.message.author.id})`, inline: true })
-            .addFields({ name: "Message Content", value: messageReaction.message.content || "Unknown", inline: false })
+            .addFields({ name: "Channel", value: `${reaction.message.channel} (${reaction.message.channelId})` })
+            .addFields({ name: "Message Channel", value: `${reaction.message.channel} (${reaction.message.channelId})`, inline: false })
+            .addFields({ name: "Message ID", value: reaction.message.id, inline: true })
+            .addFields({ name: "Message Author", value: `${reaction.message.author} (${reaction.message.author.id})`, inline: true })
+            .addFields({ name: "Message Content", value: reaction.message.content || "Unknown", inline: false })
             .addFields({ name: "Risk", value: msgConfig.info, inline: false })
 
         return sendLog(embed);
     })
 
-    // Emitted whenever a message is updated - e.g. embed or content change.
+    /**
+     * Emitted whenever a message is updated - e.g. embed or content change.
+     * @param {Message} oldMessage
+     * @param {Message} newMessage
+     * It records only changes in text messages (embeds are not recorded for example)
+     */
     client.on(Events.MessageUpdate, async (oldMessage, newMessage) => {
         if (oldMessage.author.bot || newMessage.author.bot) return;
 
         if (!oldMessage || !newMessage) return;
 
-        const executor = oldMessage.author;
+        const author = oldMessage.author;
 
         const oldContent = oldMessage.content;
         const newContent = newMessage.content;
@@ -1512,30 +1553,42 @@ module.exports = (client) => {
             .setTitle("`🟡` Message Edited")
             .addFields({ name: "Old Message", value: `${oldContent}`, inline: false })
             .addFields({ name: "New Message", value: `${newContent}`, inline: false })
-            .addFields({ name: "Edited By", value: `<@${executor.id}> (${executor.tag})`, inline: false })
+            .addFields({ name: "Edited By", value: `<@${author.id}> (${author.tag})`, inline: false })
             .addFields({ name: "Risk", value: msgConfig.moderateRisk, inline: false })
 
         return sendLog(embed);
     })
 
-    // Emitted whenever a guild member's presence (e.g. status, activity) is changed.
+    /**
+     * Emitted whenever a guild member's presence (e.g. status, activity) is changed.
+     * @param {Presence} oldPresence
+     * @param {Presence} newPresence
+     */
     // client.on(Events.PresenceUpdate, async (oldPresence, newPresence) => {
     //     const embed = new EmbedBuilder()
     //         .setTitle(`\`🔵\` User Changed his status`)
     //         .setColor("Blue")
     //         .addFields({ name: "User", value: `<@${newPresence.userId}> (${newPresence.userId})`, inline: false })
-    //         .addFields({ name: "Status", value: `\`${newPresence.status}\``, inline: true })
+    //         .addFields({ name: "Old Status", value: `\`${oldPresence.status}\``, inline: false })
+    //         .addFields({ name: "New Status", value: `\`${newPresence.status}\``, inline: true })
     //         .addFields({ name: "Risk", value: msgConfig.info, inline: false })
 
     //     return sendLog(embed);
     // })
 
-    // Emitted when the client becomes ready to start working.
+    /**
+     * Emitted when the client becomes ready to start working.
+     * @param {Client} client
+     */
     // client.on(Events.Ready, async (client) => {
     //     return console.log("Client ", client, " is ready!".red);
     // })
 
-    // Emitted when a shard's WebSocket disconnects and will no longer reconnect.
+    /**
+     * Emitted when a shard's WebSocket disconnects and will no longer reconnect.
+     * @param {CloseEvent} event
+     * @param {number} id
+     */
     // client.on(Events.ShardDisconnect, async (event, id) => {
     //     const embed = new EmbedBuilder()
     //         .setTitle(`\`🔵\` Shard Disconnected`)
@@ -1546,18 +1599,28 @@ module.exports = (client) => {
     //     return sendLog(embed);
     // })
 
-    // Emitted whenever a shard's WebSocket encounters a connection error.
+    /**
+     * Emitted whenever a shard's WebSocket encounters a connection error.
+     * @param {Error} error
+     * @param {number} shardId
+     */
     // client.on(Events.ShardError, async (error, shardId) => {
     //     const embed = new EmbedBuilder()
     //         .setTitle(`\`🔴\` Shard Error`)
     //         .setColor("Blue")
     //         .addFields({ name: "Shard ID", value: shardId.toString(), inline: false })
+    //         .addFields({ name: "Error Name", value: error.name, inline: false })
+    //         .addFields({ name: "Error Message", value: error.message, inline: true })
     //         .addFields({ name: "Risk", value: msgConfig.error, inline: false })
 
     //     return sendLog(embed);
     // })
 
-    // Emitted when a shard turns ready.
+    /**
+     * Emitted when a shard turns ready.
+     * @param {number} id
+     * @param {Set<Snowflake>} unavilableGuilds
+     */
     // client.on(Events.ShardReady, async (id, unavilableGuilds) => {
     //     const embed = new EmbedBuilder()
     //         .setTitle(`\`🔵\` Shard turned ready`)
@@ -1568,7 +1631,10 @@ module.exports = (client) => {
     //     return sendLog(embed);
     // })
 
-    // Emitted when a shard is attempting to reconnect or re-identify.
+    /**
+     * Emitted when a shard is attempting to reconnect or re-identify.
+     * @param {number} id
+     */
     // client.on(Events.ShardReconnecting, async (id) => {
     //     const embed = new EmbedBuilder()
     //         .setTitle(`\`🔵\` Shard Reconnecting`)
@@ -1579,18 +1645,26 @@ module.exports = (client) => {
     //     return sendLog(embed);
     // })
 
-    // Emitted when a shard resumes successfully.
+    /**
+     * Emitted when a shard resumes successfully.
+     * @param {number} id
+     * @param {number} replayedEvents
+     */
     // client.on(Events.ShardResume, async (id, replayedEvents) => {
     //     const embed = new EmbedBuilder()
     //         .setTitle(`\`🔵\` Shard Resumed`)
     //         .setColor("Blue")
     //         .addFields({ name: "ID", value: id.toString(), inline: false })
+    //         .addFields({ name: "Replayed Events", value: replayedEvents.toString(), inline: true })
     //         .addFields({ name: "Risk", value: msgConfig.info, inline: false })
 
     //     return sendLog(embed);
     // })
 
-    // Emitted whenever a stage instance is created.
+    /**
+     * Emitted whenever a stage instance is created.
+     * @param {StageInstance} stageInstance
+     */
     client.on(Events.StageInstanceCreate, async (stageInstance) => {
         var privacyLevel = stageInstance.privacyLevel;
 
@@ -1610,7 +1684,10 @@ module.exports = (client) => {
         return sendLog(embed);
     })
 
-    // Emitted whenever a stage instance is deleted.
+    /**
+     * Emitted whenever a stage instance is deleted.
+     * @param {StageInstance} stageInstance
+     */
     client.on(Events.StageInstanceDelete, async (stageInstance) => {
         const embed = new EmbedBuilder()
             .setTitle(`\`🔵\` Conference has ended`)
@@ -1623,15 +1700,20 @@ module.exports = (client) => {
         return sendLog(embed);
     })
 
-    // Emitted whenever a stage instance gets updated - e.g. change in topic or privacy level
+    /**
+     * Emitted whenever a stage instance gets updated - e.g. change in topic or privacy level.
+     * @param {StageInstance} oldStageInstance
+     * @param {StageInstance} newStageInstance
+     */
     client.on(Events.StageInstanceUpdate, async (oldStageInstance, newStageInstance) => {
         const differences = getDifferences(oldStageInstance, newStageInstance);
 
         const embed = new EmbedBuilder()
-            .setTitle(`\`🔵\` Conference with ID ${oldStageInstance.id} has been modified`)
+            .setTitle(`\`🔵\` Conference has been modified`)
             .setDescription("The following changes have been made to conference:")
             .setColor("Blue")
-            .addFields({ name: "Conference ID", value: oldStageInstance.id, inline: true });
+            .addFields({ name: "Conference ID", value: oldStageInstance.id, inline: true })
+            .addFields({ name: "Conference Topic: ", value: oldStageInstance.topic, inline: true });
 
         for (const key in differences) {
             const { oldValue, newValue } = differences[key];
@@ -1642,7 +1724,11 @@ module.exports = (client) => {
         return sendLog(embed);
     })
 
-    // Emitted whenever a thread is created or when the client user is added to a thread.
+    /**
+     * Emitted whenever a thread is created or when the client user is added to a thread.
+     * @param {ThreadChannel} thread
+     * @param {boolean} newlyCreated
+     */
     client.on(Events.ThreadCreate, async (thread, newlyCreated) => {
         const embed = new EmbedBuilder()
             .setTitle(`\`🟢\` Thread Created`)
@@ -1663,7 +1749,10 @@ module.exports = (client) => {
         return sendLog(embed);
     })
 
-    // Emitted whenever a thread is deleted.
+    /**
+     * Emitted whenever a thread is deleted.
+     * @param {ThreadChannel} threadChannel
+     */
     client.on(Events.ThreadDelete, async (threadChannel) => {
         const embed = new EmbedBuilder()
             .setTitle(`\`🔵\` Thread Deleted`)
@@ -1678,36 +1767,76 @@ module.exports = (client) => {
         return sendLog(embed);
     })
 
-    // Emitted whenever the client user gains access to a text or news channel that contains threads
+    /**
+     * Emitted whenever the client user gains access to a text or news channel that contains threads
+     * @param {Collection<Snowflake, ThreadChannel>} threads
+     * @param {Guild} guild
+     */
     // client.on(Events.ThreadListSync, async (threads, guild) => {
     //     return console.log("threads: ", threads, "guild: ", guild)
     // })
 
-    // Emitted whenever members are added or removed from a thread. This event requires the GatewayIntentBits privileged gateway intent.
-    // Emitted whenever the client user's thread member is updated.
+    /**
+     * Emitted whenever members are added or removed from a thread. This event requires the GatewayIntentBits.GuildMembers privileged gateway intent.
+     * @param {Collection<Snowflake, ThreadMember>} addedMembers
+     * @param {Collection<Snowflake, ThreadMember>} removedMembers
+     */
+    client.on(Events.ThreadMembersUpdate, async (addedMembers, removedMembers, thread) => { // TODO
+        const embed = new EmbedBuilder()
+            .setTitle(`\`🔵\` Thread Members Update`)
+            .setColor("Blue")
+            .addFields({ name: "Thread ID", value: thread.id, inline: true })
+            .addFields({ name: "Thread Name", value: thread.name, inline: true })
+
+        if (addedMembers.size > 0) {
+            embed.addFields({ name: "Added Members", value: addedMembers.map(member => `<@${member.id}> (${member.id})`).join("\n"), inline: false });
+        }
+
+        if (removedMembers.size > 0) {
+            embed.addFields({ name: "Removed Members", value: removedMembers.map(member => `<@${member.id}> (${member.id})`).join("\n"), inline: false });
+        }
+
+        embed.addFields({ name: "Risk", value: msgConfig.lowRisk, inline: false });
+        return sendLog(embed);
+    })
+
+    /**
+     * Emitted whenever the client user's thread member is updated.
+     * @param {ThreadMember} oldMember
+     * @param {ThreadMember} newMember
+     */
     // client.on(Events.ThreadMemberUpdate, async (oldMember, newMember) => {
-    //     console.log("old: ", oldMember, " new: ", newMember);
+    //     const differences = getDifferences(oldMember, newMember);
+
+    //     const embed = new EmbedBuilder()
+    //         .setTitle(`\`🟢\` Thread Member Update`)
+    //         .setColor("Green")
+    //         .addFields({ name: "Thread ID", value: oldMember.id, inline: true })
+    //         .addFields({ name: "Thread Name", value: oldMember.name, inline: true });
+
+    //     for (const key in differences) {
+    //         const { oldValue, newValue } = differences[key];
+    //         embed.addFields({ name: key, value: `Before: ${oldValue}\nAfter: ${newValue}`, inline: false });
+    //     }
+
+    //     embed.addFields({ name: "Risk", value: msgConfig.lowRisk, inline: false });
+    //     return sendLog(embed);
     // })
 
-    // Emitted whenever members are added or removed from a thread. This event requires the GatewayIntentBits privileged gateway intent.
-    client.on(Events.ThreadMembersUpdate, async (addedMembers, removedMembers, thread) => { // TODO
-        console.log("added: ", addedMembers, " removed: ", removedMembers, " thread: ", thread);
-    })
-
-    // Emitted whenever the client user's thread member is updated.
-    client.on(Events.ThreadMemberUpdate, async (oldMember, newMember) => { // TODO
-
-    })
-
-    // Emitted whenever a thread is updated - e.g. name change, archive state change, locked state change.
+    /**
+     * Emitted whenever a thread is updated - e.g. name change, archive state change, locked state change.
+     * @param {ThreadChannel} oldThread
+     * @param {ThreadChannel} newThread
+     */
     client.on(Events.ThreadUpdate, async (oldThread, newThread) => {
         const differences = getDifferences(oldThread, newThread);
 
         const embed = new EmbedBuilder()
-            .setTitle(`\`🟢\` Thread <#${oldThread.id}> has been modified`)
+            .setTitle(`\`🟢\` Thread has been modified`)
             .setDescription("The following changes have been made to thread:")
             .setColor("Blue")
-            .addFields({ name: "Thread ID", value: oldThread.id, inline: true });
+            .addFields({ name: "Thread ID", value: oldThread.id, inline: true })
+            .addFields({ name: "Thread Name", value: oldThread.name, inline: true });
 
         for (const key in differences) {
             const { oldValue, newValue } = differences[key];
@@ -1718,7 +1847,10 @@ module.exports = (client) => {
         return sendLog(embed);
     })
 
-    // Emitted whenever a user starts typing in a channel.
+    /**
+     * Emitted whenever a user starts typing in a channel.
+     * @param {Typing} typing
+     */
     // client.on(Events.TypingStart, async (typing) => {
     //     const embed = new EmbedBuilder()
     //         .setTitle(`\`🔵\` User Started Typing`)
@@ -1729,15 +1861,20 @@ module.exports = (client) => {
     //     return sendLog(embed);
     // })
 
-    // Emitted whenever a user's details (e.g. username) are changed. Triggered by the Discord gateway events UserUpdate, GuildMemberUpdate, and PresenceUpdate.
+    /**
+     * Emitted whenever a user's details (e.g. username) are changed. Triggered by the Discord gateway events UserUpdate, GuildMemberUpdate, and PresenceUpdate.
+     * @param {User} oldUser
+     * @param {User} newUser
+     */
     client.on(Events.UserUpdate, async (oldUser, newUser) => {
         const differences = getDifferences(oldUser, newUser);
 
         const embed = new EmbedBuilder()
-            .setTitle(`\`🟢\` User details of ${oldUser.globalName} are changed`)
+            .setTitle(`\`🟢\` User details are changed`)
             .setDescription("The following changes have been made to user:")
             .setColor("Green")
-            .addFields({ name: "User ID", value: oldUser.id, inline: true });
+            .addFields({ name: "User ID", value: oldUser.id, inline: true })
+            .addFields({ name: "User Name", value: oldUser.username, inline: true });
 
         for (const key in differences) {
             const { oldValue, newValue } = differences[key];
@@ -1748,39 +1885,99 @@ module.exports = (client) => {
         return sendLog(embed);
     })
 
-    // Emitted whenever a member changes voice state - e.g. joins/leaves a channel, mutes/unmutes.
+    /**
+     * Emitted whenever a member changes voice state - e.g. joins/leaves a channel, mutes/unmutes.
+     * @param {VoiceState} oldState
+     * @param {VoiceState} newState
+     */
     client.on(Events.VoiceStateUpdate, async (oldState, newState) => {
-        const user = await client.users.fetch(newState.id)
+        const user = await client.users.fetch(newState.id);
         const embed = new EmbedBuilder()
-            .setAuthor({ name: user.globalName, iconURL: msgConfig.author_img })
-            .setColor("Blue")
+            .setAuthor({ name: user.globalName, iconURL: user.displayAvatarURL() })
+            .setColor("Blue");
 
-        if (newState.serverDeaf)
-            embed.setDescription(`User ${user} has been deafened by someone in <#${newState.channelId}>`)
-        else if (oldState.serverDeaf && !newState.serverDeaf)
-            embed.setDescription(`User ${user} has been undeafened by someone in <#${newState.channelId}>`)
-        else if (newState.serverMute)
-            embed.setDescription(`User ${user} has been muted by someone in <#${newState.channelId}>`)
-        else if (oldState.serverMute && !newState.serverMute)
-            embed.setDescription(`User ${user} has been unmuted by someone in <#${newState.channelId}>`)
-        else if (newState.streaming)
-            embed.setDescription(`User ${user} started streaming in <#${newState.channelId}>`)
-        else if (oldState.streaming && !newState.streaming)
-            embed.setDescription(`User ${user} finished streaming in <#${newState.channelId}>`)
-        else if (!oldState.channelId && newState.channelId)
-            embed.setDescription(`User ${user} joined <#${newState.channelId}>`)
-        else if (!newState.channelId)
-            embed.setDescription(`User ${user} left <#${oldState.channelId}>`)
-        else if ((oldState.channelId && newState.channelId) && (oldState.channelId != newState.channelId))
-            embed.setDescription(`User ${user} switched from <#${oldState.channelId}> to <#${newState.channelId}>`)
-        else
-            return; // Other changes (which will not be logged)
+        // Joined a channel
+        if (!oldState.channelId && newState.channelId) {
+            embed.setDescription(`User ${user} joined <#${newState.channelId}>`);
+        }
 
-        embed.addFields({ name: "Risk", value: msgConfig.info, inline: false });
-        return sendLog(embed);
+        // Left a channel
+        if (oldState.channelId && !newState.channelId) {
+            embed.setDescription(`User ${user} left <#${oldState.channelId}>`);
+        }
+
+        // Changed channel
+        if (oldState.channelId && newState.channelId && oldState.channelId !== newState.channelId) {
+            embed.setDescription(`User ${user} switched from <#${oldState.channelId}> to <#${newState.channelId}>`);
+        }
+
+        if (oldState.serverDeaf !== newState.serverDeaf) {
+            if (newState.serverDeaf) {
+                embed.setDescription(`User ${user} has been deafened by someone in <#${newState.channelId}>`);
+            } else {
+                embed.setDescription(`User ${user} has been undeafened by someone in <#${newState.channelId}>`);
+            }
+        }
+
+        if (oldState.serverMute !== newState.serverMute) {
+            if (newState.serverMute) {
+                embed.setDescription(`User ${user} has been muted by someone in <#${newState.channelId}>`);
+            } else {
+                embed.setDescription(`User ${user} has been unmuted by someone in <#${newState.channelId}>`);
+            }
+        }
+
+        if (oldState.streaming !== newState.streaming) {
+            if (newState.streaming) {
+                embed.setDescription(`User ${user} started streaming in <#${newState.channelId}>`);
+            } else {
+                embed.setDescription(`User ${user} finished streaming in <#${newState.channelId}>`);
+            }
+        }
+
+        if (oldState.selfDeaf !== newState.selfDeaf) {
+            if (newState.selfDeaf) {
+                embed.setDescription(`User ${user} self-deafened in <#${newState.channelId}>`);
+            } else {
+                embed.setDescription(`User ${user} self-undeafened in <#${newState.channelId}>`);
+            }
+        }
+
+        if (oldState.selfMute !== newState.selfMute) {
+            if (newState.selfMute) {
+                embed.setDescription(`User ${user} self-muted in <#${newState.channelId}>`);
+            } else {
+                embed.setDescription(`User ${user} self-unmuted in <#${newState.channelId}>`);
+            }
+        }
+
+        if (oldState.selfVideo !== newState.selfVideo) {
+            if (newState.selfVideo) {
+                embed.setDescription(`User ${user} started video in <#${newState.channelId}>`);
+            } else {
+                embed.setDescription(`User ${user} stopped video in <#${newState.channelId}>`);
+            }
+        }
+
+        if (oldState.suppress !== newState.suppress) {
+            if (newState.suppress) {
+                embed.setDescription(`User ${user} has been suppressed in <#${newState.channelId}>`);
+            } else {
+                embed.setDescription(`User ${user} has been unsuppressed in <#${newState.channelId}>`);
+            }
+        }
+
+        // Embed will be sent only if there is a description (preventing empty embeds)
+        if (embed.data.description) {
+            embed.addFields({ name: "Risk", value: msgConfig.info, inline: false });
+            return sendLog(embed);
+        }
     })
 
-    // Emitted for general warnings.
+    /**
+     * Emitted for general warnings.
+     * @param {string} info
+     */
     client.on(Events.Warn, async (info) => {
         const embed = new EmbedBuilder()
             .setTitle(`\`🔵\` Warn Info`)
@@ -1790,7 +1987,10 @@ module.exports = (client) => {
         return sendLog(embed);
     })
 
-    // Emitted whenever a channel has its webhooks changed. (webhookUpdate is deprecated in Discord.js v14)
+    /**
+     * Emitted whenever a channel has its webhooks changed.
+     * @param {TextChannel | NewsChannel | VoiceChannel | StageChannel | ForumChannel | MediaChannel} channel
+     */
     client.on(Events.WebhooksUpdate, async (channel) => {
         const embed = new EmbedBuilder()
             .setTitle(`\`🔵\` Channel's webhooks have changed`)
