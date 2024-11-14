@@ -1,4 +1,4 @@
-const { EmbedBuilder, Events, AuditLogEvent, ActionRowBuilder, ButtonBuilder, ButtonStyle, DMChannel, GuildChannel, AutoModerationActionExecution, GuildAuditLogsEntry, PollAnswer, MessageReaction, ThreadChannel, ThreadMember, TextChannel, NewsChannel, VoiceChannel, StageChannel, ForumChannel, MediaChannel } = require("discord.js");
+const { EmbedBuilder, Events, AuditLogEvent, ActionRowBuilder, ButtonBuilder, ButtonStyle, DMChannel, GuildChannel, AutoModerationActionExecution, GuildAuditLogsEntry, PollAnswer, MessageReaction, ThreadChannel, ThreadMember, TextChannel, NewsChannel, VoiceChannel, StageChannel, ForumChannel, MediaChannel, Embed } = require("discord.js");
 const msgConfig = require("../messageConfig.json");
 const serverStatsCategoryId = msgConfig.serverStats_Category;
 const riskyLogsSchema = require("../schemas/riskyLogs");
@@ -495,6 +495,8 @@ module.exports = (client) => {
      * @param {Error} error
      */
     client.on(Events.Error, async (error) => {
+        console.log(error);
+
         const embed = new EmbedBuilder()
             .setColor("Blue")
             .setTitle("🔵 ERROR")
@@ -1433,15 +1435,40 @@ module.exports = (client) => {
      * @param {Snowflake} userId 
      */
     client.on(Events.MessagePollVoteAdd, async (pollAnswer, userId) => {
-        // TODO
+        const guildMember = await client.guilds.cache.get(msgConfig.guild).members.fetch(userId);
+
+        const embed = new EmbedBuilder()
+            .setTitle(`\`🔵\` User voted in a poll`)
+            .setColor("Blue")
+            .addFields({ name: "User", value: `${guildMember} (${guildMember.id})`, inline: true })
+            .addFields({ name: "Answer's Text", value: pollAnswer.text || null, inline: true })
+            .addFields({ name: "Emoji Used", value: `${pollAnswer.emoji}`, inline: false })
+            .addFields({ name: "Poll Question", value: pollAnswer.poll.question.text || "Unknown", inline: true })
+            .addFields({ name: `"${pollAnswer.text}" Answer Votes`, value: pollAnswer.voteCount.toString(), inline: false })
+            .addFields({ name: "Risk", value: msgConfig.info, inline: false })
+
+        return sendLog(embed);
     });
 
     /**
      * Emitted whenever a user removes their vote in a poll.
      * @param {PollAnswer} pollAnswer
+     * @param {Snowflake} userId
      */
     client.on(Events.MessagePollVoteRemove, async (pollAnswer, userId) => {
-        // TODO
+        const guildMember = await client.guilds.cache.get(msgConfig.guild).members.fetch(userId);
+
+        const embed = new EmbedBuilder()
+            .setTitle(`\`🔵\` User removed their vote in a poll`)
+            .setColor("Blue")
+            .addFields({ name: "User", value: `${guildMember} (${guildMember.id})`, inline: true })
+            .addFields({ name: "Answer's Text", value: pollAnswer.text || null, inline: true })
+            .addFields({ name: "Emoji Used", value: `${pollAnswer.emoji}`, inline: false })
+            .addFields({ name: "Poll Question", value: pollAnswer.poll.question.text || "Unknown", inline: true })
+            .addFields({ name: `"${pollAnswer.text}" Answer Votes`, value: pollAnswer.voteCount.toString(), inline: false })
+            .addFields({ name: "Risk", value: msgConfig.info, inline: false })
+
+        return sendLog(embed);
     });
 
     /**
@@ -1781,7 +1808,7 @@ module.exports = (client) => {
      * @param {Collection<Snowflake, ThreadMember>} addedMembers
      * @param {Collection<Snowflake, ThreadMember>} removedMembers
      */
-    client.on(Events.ThreadMembersUpdate, async (addedMembers, removedMembers, thread) => { // TODO
+    client.on(Events.ThreadMembersUpdate, async (addedMembers, removedMembers, thread) => {
         const embed = new EmbedBuilder()
             .setTitle(`\`🔵\` Thread Members Update`)
             .setColor("Blue")
