@@ -96,7 +96,7 @@ module.exports = {
                     }
 
                     embed
-                        .setAuthor({ name: `${client.user.username}`, iconURL: msgConfig.author_img })
+                        .setAuthor({ name: `${client.user.username}`, iconURL: msgConfig.author_img, url: msgConfig.author_url })
                         .setFooter({ text: msgConfig.footer_text, iconURL: msgConfig.footer_iconURL })
                         .setTimestamp();
 
