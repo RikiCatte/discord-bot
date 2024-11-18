@@ -1,92 +1,21 @@
-const { EmbedBuilder, Events, AuditLogEvent, ActionRowBuilder, ButtonBuilder, ButtonStyle, DMChannel, GuildChannel, AutoModerationActionExecution, GuildAuditLogsEntry, PollAnswer, MessageReaction, ThreadChannel, ThreadMember, TextChannel, NewsChannel, VoiceChannel, StageChannel, ForumChannel, MediaChannel, Embed } = require("discord.js");
+const { EmbedBuilder, Events, AuditLogEvent, ActionRowBuilder, ButtonBuilder, ButtonStyle, DMChannel, GuildChannel, AutoModerationActionExecution, GuildAuditLogsEntry, PollAnswer, MessageReaction, ThreadChannel, ThreadMember, TextChannel, NewsChannel, VoiceChannel, StageChannel, ForumChannel, MediaChannel, Embed, PermissionOverwriteManager } = require("discord.js");
 const msgConfig = require("../messageConfig.json");
 const serverStatsCategoryId = msgConfig.serverStats_Category;
 const riskyLogsSchema = require("../schemas/riskyLogs");
 const susUserSchema = require("../schemas/suspiciousUserJoin");
 const getColorName = require("../utils/getColorName.js");
-
-// Function to get differences between 2 objects
-function getDifferences(oldObj, newObj, prefix = '', visited = new Set()) {
-    const differences = {};
-
-    if (!oldObj || !newObj) {
-        return differences;
-    }
-
-    // Add visited objects to avoid circular references
-    visited.add(oldObj);
-    visited.add(newObj);
-
-    for (const key in newObj) {
-        if (newObj.hasOwnProperty(key)) {
-            const oldVal = oldObj[key];
-            const newVal = newObj[key];
-            const fullKey = prefix ? `${prefix}.${key}` : key;
-
-            if (typeof newVal === 'object' && newVal !== null && !Array.isArray(newVal)) {
-                // Avoid circular references
-                if (!visited.has(newVal)) {
-                    const nestedDifferences = getDifferences(oldVal, newVal, fullKey, visited);
-                    Object.assign(differences, nestedDifferences);
-                }
-            } else if (newVal !== oldVal) {
-                differences[fullKey] = {
-                    oldValue: oldVal !== undefined ? oldVal : "N/A",
-                    newValue: newVal !== undefined ? newVal : "N/A"
-                };
-            }
-        }
-    }
-
-    return differences;
-}
-
-// Function to get differences between 2 permission overwrites
-function getPermissionDifferences(oldPermissions, newPermissions) {
-    const differences = [];
-
-    const oldPermsMap = new Map(oldPermissions.map(overwrite => [overwrite.id, overwrite]));
-    const newPermsMap = new Map(newPermissions.map(overwrite => [overwrite.id, overwrite]));
-
-    for (const [id, newPerm] of newPermsMap) {
-        const oldPerm = oldPermsMap.get(id);
-        if (!oldPerm) {
-            differences.push({ id, type: newPerm.type, allow: newPerm.allow, deny: newPerm.deny, change: 'added' });
-        } else {
-            const permDifferences = getDifferences(oldPerm, newPerm);
-            if (Object.keys(permDifferences).length > 0) {
-                // Format bitfields to human-readable permissions
-                if (permDifferences['allow.bitfield']) {
-                    permDifferences['allow.bitfield'].oldValue = formatPermissions(permDifferences['allow.bitfield'].oldValue);
-                    permDifferences['allow.bitfield'].newValue = formatPermissions(permDifferences['allow.bitfield'].newValue);
-                }
-                if (permDifferences['deny.bitfield']) {
-                    permDifferences['deny.bitfield'].oldValue = formatPermissions(permDifferences['deny.bitfield'].oldValue);
-                    permDifferences['deny.bitfield'].newValue = formatPermissions(permDifferences['deny.bitfield'].newValue);
-                }
-                differences.push({ id, type: newPerm.type, differences: permDifferences, change: 'updated' });
-            }
-        }
-    }
-
-    for (const [id, oldPerm] of oldPermsMap) {
-        if (!newPermsMap.has(id)) {
-            differences.push({ id, type: oldPerm.type, allow: oldPerm.allow, deny: oldPerm.deny, change: 'removed' });
-        }
-    }
-
-    return differences;
-}
-
-const { PermissionsBitField } = require("discord.js");
-// Function to format permissions bitfield to human-readable permissions
-function formatPermissions(bitfield) {
-    const permissions = new PermissionsBitField(bitfield);
-    return permissions.toArray().join(', ');
-}
+const getDifferences = require("../utils/getDifferences.js");
+const getPermissionDifferences = require("../utils/getPermissionDifferences.js");
+const validateEmbedFields = require("../utils/validateEmbedFields.js");
 
 module.exports = (client) => {
-    // Sends the Log in the channel (channel ID inside .json file)
+    /**
+     * Sends the Log in the designated channel (channel ID inside .json file)
+     * @param {Embed | string} embed 
+     * @param {boolean} raidRisk 
+     * @param {int} channelId 
+     * @param {string} logTitle 
+     */
     async function sendLog(embed, raidRisk, channelId, logTitle) {
         const staffChannel = client.channels.cache.get(`${msgConfig.staffChannel}`);
         const LogChannel = client.channels.cache.get(`${msgConfig.logsChannel}`);
@@ -108,6 +37,9 @@ module.exports = (client) => {
                 return console.log("[LOGGING SYSTEM][ERROR] Error with sending API Error message!".red);
             }
         }
+
+        // Validate embed fields. (prevents crashes if fields are not strings)
+        embed = await validateEmbedFields(embed);
 
         embed.setFooter({ text: "Mod Logging System by RikiCatte", iconURL: msgConfig.footer_iconURL });
         embed.setTimestamp();
@@ -290,11 +222,11 @@ module.exports = (client) => {
      * @param {AutoModerationRule} newAutoModRule
      * On discord.js v 14.16.3 the event is not working properly, oldAutoModRule seems to be always null
      */
-    client.on(Events.AutoModerationRuleUpdate, (oldAutoModRule, newAutoModRule) => {
+    client.on(Events.AutoModerationRuleUpdate, async (oldAutoModRule, newAutoModRule) => {
         if (!oldAutoModRule)
             return sendLog("apiError", "autoModerationRuleUpdate");
 
-        const differences = getDifferences(oldAutoModRule, newAutoModRule);
+        const differences = await getDifferences(oldAutoModRule, newAutoModRule);
 
         const embed = new EmbedBuilder()
             .setTitle(`\`🟡\` Automod rule ${newAutoModRule.name} has been modified`)
@@ -420,22 +352,22 @@ module.exports = (client) => {
                 const { executor } = audit.entries.first();
                 if (!executor || !oldChannel || !newChannel) return;
 
-                const differences = getDifferences(oldChannel, newChannel);
-                const permissionDifferences = getPermissionDifferences(
+                const differences = await getDifferences(oldChannel, newChannel);
+                const permissionDifferences = await getPermissionDifferences(
                     oldChannel.permissionOverwrites.cache.map(overwrite => overwrite),
                     newChannel.permissionOverwrites.cache.map(overwrite => overwrite)
                 );
 
                 const embed = new EmbedBuilder()
-                    .setTitle(`\`🟢\` Channel ${oldChannel.name} has been modified`)
+                    .setTitle(`\`🟡\` Channel ${oldChannel.name} has been modified`)
                     .setDescription("The following changes have been made to the channel:")
-                    .setColor("Green")
+                    .setColor("Yellow")
                     .addFields({ name: "ID", value: oldChannel.id, inline: true })
                     .addFields({ name: "Name", value: `<@${oldChannel.id}> (${oldChannel.name})`, inline: true });
 
                 for (const key in differences) {
                     const { oldValue, newValue } = differences[key];
-                    embed.addFields({ name: key, value: `Before: ${formatValue(oldValue)}\nAfter: ${formatValue(newValue)}`, inline: false });
+                    embed.addFields({ name: key, value: `Before: ${oldValue}\nAfter: ${newValue}`, inline: false });
                 }
 
                 for (const permDiff of permissionDifferences) {
@@ -455,7 +387,7 @@ module.exports = (client) => {
                 }
 
                 embed.addFields({ name: "Modified by", value: `<@${executor.id}> (${executor.tag})`, inline: false });
-                embed.addFields({ name: "Risk", value: msgConfig.lowRisk, inline: false });
+                embed.addFields({ name: "Risk", value: msgConfig.moderateRisk, inline: false });
                 return sendLog(embed);
             })
     })
@@ -687,7 +619,7 @@ module.exports = (client) => {
      * @param {GuildEmoji} newEmoji
      */
     client.on(Events.GuildEmojiUpdate, async (oldEmoji, newEmoji) => {
-        const differences = getDifferences(oldEmoji, newEmoji);
+        const differences = await getDifferences(oldEmoji, newEmoji);
 
         const embed = new EmbedBuilder()
             .setTitle(`\`🔵\` Emoji ${newEmoji.name} has been modified`)
@@ -858,7 +790,7 @@ module.exports = (client) => {
             .setColor("Yellow")
             .setThumbnail(oldMember.displayAvatarURL());
 
-        const differences = getDifferences(oldMember, newMember);
+        const differences = await getDifferences(oldMember, newMember);
 
         // getDifferences() doesn't check roles, so we need to check them separately
         const oldRoles = oldMember.roles.cache;
@@ -976,7 +908,7 @@ module.exports = (client) => {
      * @param {Role} newRole
      */
     client.on(Events.GuildRoleUpdate, async (oldRole, newRole) => {
-        const differences = getDifferences(oldRole, newRole);
+        const differences = await getDifferences(oldRole, newRole);
 
         // getDifference() doesn't check permissions, so we need to check them separately
         const oldPermissions = oldRole.permissions;
@@ -1098,7 +1030,7 @@ module.exports = (client) => {
         const oldEvent = oldGuildScheduledEvent;
         const newEvent = newGuildScheduledEvent;
 
-        const differences = getDifferences(oldEvent, newEvent);
+        const differences = await getDifferences(oldEvent, newEvent);
 
         const embed = new EmbedBuilder()
             .setTitle(`\`🟢\` Existing Scheduled Event has been modified`)
@@ -1244,7 +1176,7 @@ module.exports = (client) => {
      * @param {Sticker} newSticker
      */
     client.on(Events.GuildStickerUpdate, async (oldSticker, newSticker) => {
-        const differences = getDifferences(oldSticker, newSticker);
+        const differences = await getDifferences(oldSticker, newSticker);
 
         const embed = new EmbedBuilder()
             .setTitle(`\`🔵\` Server sticker has been modified`)
@@ -1282,7 +1214,7 @@ module.exports = (client) => {
      * @param {Guild} newGuild
      */
     client.on(Events.GuildUpdate, async (oldGuild, newGuild) => {
-        const differences = getDifferences(oldGuild, newGuild);
+        const differences = await getDifferences(oldGuild, newGuild);
 
         const embed = new EmbedBuilder()
             .setTitle(`\`🔴\` Server ${oldGuild.name} has been modified`)
@@ -1754,7 +1686,7 @@ module.exports = (client) => {
      * @param {StageInstance} newStageInstance
      */
     client.on(Events.StageInstanceUpdate, async (oldStageInstance, newStageInstance) => {
-        const differences = getDifferences(oldStageInstance, newStageInstance);
+        const differences = await getDifferences(oldStageInstance, newStageInstance);
 
         const embed = new EmbedBuilder()
             .setTitle(`\`🔵\` Conference has been modified`)
@@ -1854,7 +1786,7 @@ module.exports = (client) => {
      * @param {ThreadMember} newMember
      */
     // client.on(Events.ThreadMemberUpdate, async (oldMember, newMember) => {
-    //     const differences = getDifferences(oldMember, newMember);
+    //     const differences = await getDifferences(oldMember, newMember);
 
     //     const embed = new EmbedBuilder()
     //         .setTitle(`\`🟢\` Thread Member Update`)
@@ -1877,7 +1809,7 @@ module.exports = (client) => {
      * @param {ThreadChannel} newThread
      */
     client.on(Events.ThreadUpdate, async (oldThread, newThread) => {
-        const differences = getDifferences(oldThread, newThread);
+        const differences = await getDifferences(oldThread, newThread);
 
         const embed = new EmbedBuilder()
             .setTitle(`\`🟢\` Thread has been modified`)
@@ -1915,7 +1847,7 @@ module.exports = (client) => {
      * @param {User} newUser
      */
     client.on(Events.UserUpdate, async (oldUser, newUser) => {
-        const differences = getDifferences(oldUser, newUser);
+        const differences = await getDifferences(oldUser, newUser);
 
         const embed = new EmbedBuilder()
             .setTitle(`\`🟢\` User details are changed`)
