@@ -103,7 +103,7 @@ module.exports = {
                     interaction.editReply({ embeds: [embed] });
                 } catch (error) {
                     console.log("[WEATHER API]", error);
-                    interaction.editReply("An error occurred while fetching the weather data.");
+                    return await interaction.editReply("An error occurred while fetching the weather data.");
                 }
 
                 break;
@@ -142,7 +142,7 @@ module.exports = {
                     interaction.editReply({ embeds: embeds });
                 } catch (error) {
                     console.log("[WEATHER API]", error);
-                    interaction.editReply("An error occurred while fetching the weather data.");
+                    return await interaction.editReply("An error occurred while fetching the weather data.");
                 }
 
                 break;
