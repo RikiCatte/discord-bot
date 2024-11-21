@@ -1,7 +1,5 @@
 const { SlashCommandBuilder, EmbedBuilder } = require("discord.js");
 const axios = require("axios");
-const FormData = require("form-data");
-const { Blob } = require("buffer");
 const msgConfig = require("../../messageConfig.json");
 
 module.exports = {
