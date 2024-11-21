@@ -87,7 +87,7 @@ module.exports = (client) => {
     client.on(Events.ApplicationCommandPermissionsUpdate, (data) => {
         const embed = new EmbedBuilder()
             .setColor("Yellow")
-            .setTitle("\`🟡\` Permissions for an application command has been updated")
+            .setTitle("\`🟡\` Application Command permissions Updated")
             .addFields({ name: "Application ID", value: `${data.applicationId}`, inline: true })
             .addFields({ name: "Updated Command / Global Entity ID", value: `${data.id}`, inline: true })
             .addFields({ name: "Role / User / Channel ID [Has Permission]", value: `${data.permissions.id} [${data.permissions.permission}]`, inline: false })
@@ -105,7 +105,7 @@ module.exports = (client) => {
         let title = "\`🟣\` AutoModeration Action Triggered"
 
         const fields = [
-            { name: "Channel", value: `${automodAction.channel} (${automodAction.channelId})`, inline: false },
+            { name: "Channel - ID", value: `${automodAction.channel} - (${automodAction.channelId})`, inline: false },
             { name: "Content", value: `${automodAction.content}`, inline: true },
             { name: "Matched Content", value: `${automodAction.matchedContent}`, inline: true },
             { name: "Matched Keyword", value: `${automodAction.matchedKeyword}`, inline: true },
@@ -129,7 +129,6 @@ module.exports = (client) => {
         return sendLog(embed, true, automodAction.channelId, title);
     })
 
-
     /**
      * Emitted whenever an auto moderation rule is created. This event requires the PermissionFlagsBits permission.
      * @param {AutoModerationRule} automodRule
@@ -149,8 +148,7 @@ module.exports = (client) => {
         if (evType == 2) evType = "Member Update";
 
         const fields = [
-            { name: "Name", value: `${automodRule.name}`, inline: false },
-            { name: "Rule ID", value: `${automodRule.id}`, inline: false },
+            { name: "Rule Name - ID", value: `${automodRule.name} - ${automodRule.id}`, inline: false },
             { name: "Created By", value: `<@${automodRule.creatorId}> (${automodRule.creatorId})`, inline: false },
             { name: "Enabled?", value: `\`${automodRule.enabled}\``, inline: false },
             { name: "Event Type", value: `${evType}`, inline: false },
@@ -192,8 +190,7 @@ module.exports = (client) => {
         if (evType == 2) evType = "Member Update";
 
         const fields = [
-            { name: "Name", value: `${automodRule.name}`, inline: false },
-            { name: "Rule ID", value: `${automodRule.id}`, inline: false },
+            { name: "Rule Name - ID", value: `${automodRule.name} ${automodRule.id}`, inline: false },
             { name: "Created By", value: `<@${automodRule.creatorId}> (${automodRule.creatorId})`, inline: false },
             { name: "Enabled?", value: `\`${automodRule.enabled}\``, inline: false },
             { name: "Event Type", value: `${evType}`, inline: false },
@@ -229,12 +226,10 @@ module.exports = (client) => {
         const differences = await getDifferences(oldAutoModRule, newAutoModRule);
 
         const embed = new EmbedBuilder()
-            .setTitle(`\`🟡\` Automod rule ${newAutoModRule.name} has been modified`)
+            .setTitle(`\`🟡\` Automod Rule Modified`)
             .setDescription("The following changes have been made to automod rule:")
             .setColor("Yellow")
-            .addFields({ name: "ID", value: newAutoModRule.id, inline: true })
-            .addFields({ name: "Name", value: `<@${newAutoModRule.id}> (${newAutoModRule.name})`, inline: true });
-
+            .addFields({ name: "Rule Name - ID", value: `${oldAutoModRule.name} - ${oldAutoModRule.id}`, inline: true })
         for (const key in differences) {
             const { oldValue, newValue } = differences[key];
             embed.addFields({ name: key, value: `Before: ${oldValue}\nAfter: ${newValue}`, inline: false });
@@ -275,11 +270,10 @@ module.exports = (client) => {
                 if (type == 4) type = "Category";
 
                 const embed = new EmbedBuilder()
-                    .setTitle("\`🟢\` Channel has been Created")
+                    .setTitle("\`🟢\` Channel Created")
                     .setColor("Green")
-                    .addFields({ name: "Channel Name", value: `${channel.name} (<#${channel.id}>)`, inline: true, })
+                    .addFields({ name: "Channel - Channel ID", value: `${channel} - ${channel.id}`, inline: false })
                     .addFields({ name: "Channel Type", value: `${type}`, inline: true })
-                    .addFields({ name: "Channel ID", value: `${channel.id}`, inline: false })
                     .addFields({ name: "Created By", value: `<@${executor.id}> (${executor.tag})`, inline: true })
                     .addFields({ name: "Parent Category ID", value: `${channel.parentId}`, inline: false })
                     .addFields({ name: "NSFW?", value: `\`${channel.nsfw}\``, inline: true })
@@ -288,12 +282,12 @@ module.exports = (client) => {
 
                 return sendLog(embed);
             })
-    }
-    );
+    });
 
     /**
      * Emitted whenever a channel is deleted.
      * @param {DMChannel | GuildChannel} channel
+     * Deleted by field should be always correct.
      */
     client.on(Events.ChannelDelete, async (channel) => {
         channel.guild
@@ -312,9 +306,8 @@ module.exports = (client) => {
                 const embed = new EmbedBuilder()
                     .setTitle("\`🟡\` Channel Deleted")
                     .setColor("Yellow")
-                    .addFields({ name: "Channel Name", value: `${channel.name}`, inline: false })
-                    .addFields({ name: "Channel Type", value: `${type}`, inline: false })
-                    .addFields({ name: "Channel ID", value: `${channel.id}`, inline: false })
+                    .addFields({ name: "Channel - Channel ID", value: `${channel} - ${channel.id}`, inline: false })
+                    .addFields({ name: "Channel Type", value: `${type}`, inline: true })
                     .addFields({ name: "Deleted By", value: `<@${executor.id}> (${executor.tag})`, inline: false })
                     .addFields({ name: "Risk", value: msgConfig.moderateRisk })
 
@@ -331,7 +324,8 @@ module.exports = (client) => {
     client.on(Events.ChannelPinsUpdate, (channel, date) => {
         const embed = new EmbedBuilder()
             .setColor("Blue")
-            .setTitle(`\`🟢\` New Pinned Message in ${channel}`)
+            .setTitle(`\`🟢\` New Pinned Message`)
+            .addFields({ name: "Channel - Channel ID", value: `${channel} - (${channel.id})`, inline: true })
             .addFields({ name: "Risk", value: msgConfig.lowRisk })
 
         return sendLog(embed);
@@ -359,11 +353,10 @@ module.exports = (client) => {
                 );
 
                 const embed = new EmbedBuilder()
-                    .setTitle(`\`🟡\` Channel ${oldChannel.name} has been modified`)
+                    .setTitle(`\`🟡\` Channel Modified`)
                     .setDescription("The following changes have been made to the channel:")
                     .setColor("Yellow")
-                    .addFields({ name: "ID", value: oldChannel.id, inline: true })
-                    .addFields({ name: "Name", value: `<@${oldChannel.id}> (${oldChannel.name})`, inline: true });
+                    .addFields({ name: "Channel ID - Name", value: `${oldChannel.id} - ${oldChannel.name}`, inline: false });
 
                 for (const key in differences) {
                     const { oldValue, newValue } = differences[key];
@@ -404,7 +397,6 @@ module.exports = (client) => {
 
     //     return sendLog(embed);
     // })
-
 
     /**
      * Emitted for general debugging information.
@@ -489,14 +481,11 @@ module.exports = (client) => {
             .then(async (audit) => {
                 const { executor } = audit.entries.first();
 
-                const name = guildBan.user.username;
-                const id = guildBan.user.id;
-
                 const embed = new EmbedBuilder()
                     .setColor("Red")
                     .setTitle("\`🔴\` Member Banned")
-                    .addFields({ name: "Member Name", value: `${name} (<@${id}>)`, inline: false })
-                    .addFields({ name: "Member ID", value: `${id}`, inline: true })
+                    .addFields({ name: "Member - Member Username", value: `${guildBan.user} - ${guildBan.user.username}`, inline: false })
+                    .addFields({ name: "Member ID", value: `${guildBan.user.id}`, inline: true })
                     .addFields({ name: "Banned By", value: `<@${executor.id}> (${executor.tag})`, inline: false })
                     .addFields({ name: "Reason", value: guildBan.reason || "None", inline: false })
                     .addFields({ name: "Risk", value: msgConfig.highRisk })
@@ -515,14 +504,11 @@ module.exports = (client) => {
             .then(async (audit) => {
                 const { executor } = audit.entries.first();
 
-                const name = guildBan.user.username;
-                const id = guildBan.user.id;
-
                 const embed = new EmbedBuilder()
                     .setColor("Red")
                     .setTitle("\`🔴\` Member Unbanned")
-                    .addFields({ name: "Member Name", value: `${name} (<@${id}>)`, inline: false })
-                    .addFields({ name: "Member ID", value: `${id}`, inline: false })
+                    .addFields({ name: "Member - Member Username", value: `${guildBan.user} - ${guildBan.user.username}`, inline: false })
+                    .addFields({ name: "Member ID", value: `${guildBan.user.id}`, inline: true })
                     .addFields({ name: "Unbanned By", value: `<@${executor.id}> (${executor.tag})`, inline: false })
                     .addFields({ name: "Reason", value: guildBan.reason || "None", inline: false })
                     .addFields({ name: "Risk", value: msgConfig.highRisk })
@@ -539,7 +525,7 @@ module.exports = (client) => {
         const embed = new EmbedBuilder()
             .setColor("Blue")
             .setTitle("\`🔵\` Client has joined a Guild")
-            .addFields({ name: "Guild Name", value: `${guild.name} (${guild.id})`, inline: false })
+            .addFields({ name: "Guild Name - ID", value: `${guild.name} - (${guild.id})`, inline: false })
             .addFields({ name: "Risk", value: msgConfig.info, inline: false })
 
         return sendLog(embed);
@@ -553,7 +539,7 @@ module.exports = (client) => {
         const embed = new EmbedBuilder()
             .setColor("Blue")
             .setTitle("\`🔵\` Client has been kicked from a Guild")
-            .addFields({ name: "Guild Name", value: `${guild.name} (${guild.id})`, inline: false })
+            .addFields({ name: "Guild Name/ID", value: `${guild.name} (${guild.id})`, inline: false })
             .addFields({ name: "Risk", value: msgConfig.info, inline: false })
 
         return sendLog(embed);
@@ -572,17 +558,16 @@ module.exports = (client) => {
 
         const embed = new EmbedBuilder()
             .setColor("Blue")
-            .setTitle(`\`🔵\` New Server Emoji Created: ${createdEmoji.name}`)
-            .addFields({ name: "Animated?", value: `\`${createdEmoji.animated}\``, inline: true })
+            .setTitle(`\`🔵\` Server Emoji Created`)
+            .addFields({ name: "Emoji Name - ID", value: `${createdEmoji.name} - ${createdEmoji.id}`, inline: false })
+            .addFields({ name: "Animated?", value: `\`${createdEmoji.animated}\``, inline: false })
             .addFields({ name: "Available?", value: `\`${createdEmoji.available}\``, inline: true })
             .addFields({ name: "Author", value: `<@${author.id}> (${author.id})` || `\`Unknown\``, inline: true })
             .addFields({ name: "Client", value: (`<@${createdEmoji.client.user.id}> (${createdEmoji.client.user.id})`) || `\`Unknown\``, inline: true })
             .addFields({ name: "Created At", value: formattedCreatedAt, inline: false })
             .addFields({ name: "Deletable?", value: `\`${createdEmoji.deletable}\``, inline: true })
             .addFields({ name: "Managed by Ext. Service?", value: `\`${createdEmoji.managed}\``, inline: true })
-            .addFields({ name: "Emoji's Server", value: `${createdEmoji.guild} (${createdEmoji.guild.id})`, inline: false })
-            .addFields({ name: "Emoji ID", value: createdEmoji.identifier, inline: true })
-            .addFields({ name: "Emoji Name", value: createdEmoji.name, inline: true })
+            .addFields({ name: "Emoji's Guild - Guild ID", value: `${createdEmoji.guild} - (${createdEmoji.guild.id})`, inline: false })
             .addFields({ name: "Emoji URL", value: createdEmoji.imageURL(), inline: true })
             .addFields({ name: "Emoji Preview", value: createdEmoji.toString(), inline: true })
             .addFields({ name: "Risk", value: msgConfig.info })
@@ -601,12 +586,11 @@ module.exports = (client) => {
 
         const embed = new EmbedBuilder()
             .setColor("Blue")
-            .setTitle(`\`🔵\` Server Emoji Deleted: ${deletedEmoji.name}`)
-            .addFields({ name: "Client", value: (`<@${deletedEmoji.client.user.id}> (${deletedEmoji.client.user.id})`) || `\`Unknown\``, inline: true })
+            .setTitle(`\`🔵\` Server Emoji Deleted`)
+            .addFields({ name: "Emoji Name - ID", value: `${deletedEmoji.name} - ${deletedEmoji.id}`, inline: false })
+            .addFields({ name: "Client", value: (`<@${deletedEmoji.client.user.id}> (${deletedEmoji.client.user.id})`) || `\`Unknown\``, inline: false })
             .addFields({ name: "Created At", value: formattedCreatedAt, inline: false })
-            .addFields({ name: "Emoji's Server", value: `${deletedEmoji.guild} (${deletedEmoji.guild.id})`, inline: false })
-            .addFields({ name: "Emoji ID", value: deletedEmoji.identifier, inline: true })
-            .addFields({ name: "Emoji Name", value: deletedEmoji.name, inline: true })
+            .addFields({ name: "Emoji's Guild ID", value: `${deletedEmoji.guild} - (${deletedEmoji.guild.id})`, inline: false })
             .addFields({ name: "Emoji URL", value: deletedEmoji.imageURL(), inline: true })
             .addFields({ name: "Risk", value: msgConfig.info })
 
@@ -622,11 +606,10 @@ module.exports = (client) => {
         const differences = await getDifferences(oldEmoji, newEmoji);
 
         const embed = new EmbedBuilder()
-            .setTitle(`\`🔵\` Emoji ${newEmoji.name} has been modified`)
+            .setTitle(`\`🔵\` Serer Emoji modified`)
             .setDescription("The following changes have been made to emoji:")
             .setColor("Blue")
-            .addFields({ name: "Emoji ID", value: newEmoji.id, inline: true })
-            .addFields({ name: "Emoji Name", value: `<@${newEmoji.id}> (${newEmoji.name})`, inline: true })
+            .addFields({ name: "Emoji Name - ID", value: `${newEmoji.name} - ${newEmoji.id}`, inline: true })
 
         for (const key in differences) {
             const { oldValue, newValue } = differences[key];
@@ -645,7 +628,8 @@ module.exports = (client) => {
     client.on(Events.GuildIntegrationsUpdate, async (guild) => {
         const embed = new EmbedBuilder()
             .setColor("Blue")
-            .setTitle(`\`🔵\` Server Integrations of ${guild.name} (${guild.id}) has been updated`)
+            .setTitle(`\`🔵\` Guild Integrations have been updated`)
+            .addFields({ name: "Guild Name - ID", value: `${guild.name} - ${guild.id}`, inline: false })
             .addFields({ name: "Risk", value: msgConfig.info, inline: false })
 
         return sendLog(embed);
@@ -654,7 +638,7 @@ module.exports = (client) => {
     /**
      * Emitted whenever a user joins a guild.
      * @param {GuildMember} member
-     * Plus: Alert system for new users and users that have re-entered the server more than a certain limit
+     * Plus: Alert system for recently created accounts and users that have re-entered the server more than a certain limit
      */
     client.on(Events.GuildMemberAdd, async (member) => {
         const staffChannel = client.channels.cache.get(`${msgConfig.staffChannel}`);
@@ -669,8 +653,8 @@ module.exports = (client) => {
             .setColor("Blue")
             .setTitle(`\`🔵\` Member **Joined** the Server`)
             .setThumbnail(member.displayAvatarURL())
-            .addFields({ name: "Name", value: `${member} (${member.user.username})`, inline: true })
-            .addFields({ name: "ID", value: member.id, inline: true })
+            .addFields({ name: "Member - Member Userame", value: `${member} - ${member.user.username}`, inline: false })
+            .addFields({ name: "Member ID", value: member.id, inline: true })
             .addFields({ name: "Created At", value: formattedCreatedAt, inline: true })
             .addFields({ name: "Joined At", value: formattedJoinedAt, inline: true })
             .addFields({ name: "Official Discord System User?", value: `\`${member.user.system}\``, inline: true })
@@ -753,8 +737,8 @@ module.exports = (client) => {
             .setColor("Blue")
             .setTitle(`\`🔵\` Member **Left** the Server`)
             .setThumbnail(member.displayAvatarURL())
-            .addFields({ name: "Name", value: `${member} (${member.user.username})`, inline: true })
-            .addFields({ name: "ID", value: member.id, inline: true })
+            .addFields({ name: "Member - Member Userame", value: `${member} - ${member.user.username}`, inline: false })
+            .addFields({ name: "Member ID", value: member.id, inline: true })
             .addFields({ name: "Bot?", value: `\`${member.user.bot}\``, inline: true })
             .addFields({ name: "Created At", value: formattedCreatedAt, inline: true })
             .addFields({ name: "Joined At", value: formattedJoinedAt, inline: true })
@@ -773,8 +757,8 @@ module.exports = (client) => {
         const embed = new EmbedBuilder()
             .setColor("Blue")
             .setTitle(`\`🔵\` Guild Members Chunk Received`)
-            .addFields({ name: "Guild Name", value: `${guild.name} (${guild.id})`, inline: true })
-            .addFields({ name: "Members", value: `${members.size}`, inline: true })
+            .addFields({ name: "Guild Name - ID", value: `${guild.name} - ${guild.id}`, inline: true })
+            .addFields({ name: "Members Collection Size", value: `${members.size}`, inline: true })
             .addFields({ name: "Risk", value: msgConfig.info, inline: false })
 
         return sendLog(embed);
@@ -799,10 +783,10 @@ module.exports = (client) => {
         const rolesAdded = newRoles.filter(role => !oldRoles.has(role.id));
         const rolesRemoved = oldRoles.filter(role => !newRoles.has(role.id));
 
-        embed.addFields({ name: "Member", value: `${newMember} (${newMember.id})`, inline: true });
+        embed.addFields({ name: "Guild Member - Guild Member ID", value: `${newMember} - ${newMember.id}`, inline: true });
 
         if (rolesAdded.size > 0 || rolesRemoved.size > 0) {
-            embed.setTitle(`\`🟡\` Member Roles have been changed`);
+            embed.setTitle(`\`🟡\` Member Roles have been Changed`);
 
             const auditLogs = await newMember.guild.fetchAuditLogs({ limit: 1, type: AuditLogEvent.MemberRoleUpdate });
             const auditEntry = auditLogs.entries.first();
@@ -854,20 +838,19 @@ module.exports = (client) => {
 
         const embed = new EmbedBuilder()
             .setColor("Green")
-            .setTitle(`\`🟢\` New Role has been Created`)
-            .addFields({ name: "ID", value: role.id, inline: true })
-            .addFields({ name: "Name", value: `${role} (${role.name})`, inline: true })
+            .setTitle(`\`🟢\` Role Created`)
+            .addFields({ name: "Role - Role Name - Role ID", value: `${role} - ${role.name} - ${role.id}`, inline: false })
             .addFields({ name: "Color", value: `${colorName} (${colorHex})`, inline: false })
             .addFields({ name: "Icon", value: role.icon || "None", inline: true })
             .addFields({ name: "Unicode Emoji", value: role.unicodeEmoji || "None", inline: true })
-            .addFields({ name: "Created At", value: formattedCreatedAt, inline: true })
+            .addFields({ name: "Created At", value: formattedCreatedAt, inline: false })
             .addFields({ name: "Separate from others?", value: `\`${role.hoist}\``, inline: true })
-            .addFields({ name: "Editable?", value: `\`${role.editable}\``, inline: false })
-            .addFields({ name: "Managed?", value: `\`${role.managed}\``, inline: true })
+            .addFields({ name: "Editable?", value: `\`${role.editable}\``, inline: true })
+            .addFields({ name: "Managed?", value: `\`${role.managed}\``, inline: false })
             .addFields({ name: "Mentionable?", value: `\`${role.mentionable}\``, inline: true })
-            .addFields({ name: "Role Position", value: role.position.toString(), inline: false })
-            .addFields({ name: "Role Raw Position", value: role.rawPosition.toString(), inline: true })
-            .addFields({ name: "Role Permissions", value: permissions, inline: false })
+            .addFields({ name: "Role Position", value: role.position.toString(), inline: true })
+            .addFields({ name: "Role Raw Position", value: role.rawPosition.toString(), inline: false })
+            .addFields({ name: "Role Permissions", value: permissions, inline: true })
             .addFields({ name: "Risk", value: msgConfig.lowRisk, inline: false });
 
         return sendLog(embed);
@@ -890,11 +873,10 @@ module.exports = (client) => {
 
         const embed = new EmbedBuilder()
             .setColor("Yellow")
-            .setTitle(`\`🟡\` Role has been Deleted`)
-            .addFields({ name: "ID", value: role.id, inline: true })
-            .addFields({ name: "Name", value: `${role} (${role.name})`, inline: true })
-            .addFields({ name: "Created At", value: formattedCreatedAt, inline: true })
-            .addFields({ name: "Separate from others?", value: `\`${role.hoist}\``, inline: false })
+            .setTitle(`\`🟡\` Role Deleted`)
+            .addFields({ name: "Role - Role Name - Role ID", value: `${role} - ${role.name} - ${role.id}`, inline: false })
+            .addFields({ name: "Created At", value: formattedCreatedAt, inline: false })
+            .addFields({ name: "Separate from others?", value: `\`${role.hoist}\``, inline: true })
             .addFields({ name: "Mentionable?", value: `\`${role.mentionable}\``, inline: true })
             .addFields({ name: "Role Permissions: ", value: permissions, inline: false })
             .addFields({ name: "Risk", value: msgConfig.moderateRisk, inline: false })
@@ -927,11 +909,10 @@ module.exports = (client) => {
         }
 
         const embed = new EmbedBuilder()
-            .setTitle(`\`🟡\` Role has been modified`)
+            .setTitle(`\`🟡\` Role Modified`)
             .setDescription("The following changes have been made to role:")
             .setColor("Yellow")
-            .addFields({ name: "Role ID", value: oldRole.id, inline: true })
-            .addFields({ name: "Role Name", value: `<@${oldRole.id}> (${oldRole.name})`, inline: true });
+            .addFields({ name: "Role Name - ID", value: `${role.name} - ${role.id}`, inline: true })
 
         // Differences detected by getDifferences() here:
         for (const key in differences) {
@@ -974,19 +955,18 @@ module.exports = (client) => {
 
         const embed = new EmbedBuilder()
         embed.setColor("Green")
-            .setTitle("\`🟢\` New Scheduled Event has been Created")
+            .setTitle("\`🟢\` Scheduled Event Created")
             .setThumbnail(event.coverImageURL())
-            .addFields({ name: "Channel", value: `${event.channel} (${event.channelId})`, inline: false })
-            .addFields({ name: "Creator", value: `${event.creator} ${event.creatorId}`, inline: false })
+            .addFields({ name: "Channel - Channel ID", value: `${event.channel} - ${event.channelId}`, inline: false })
+            .addFields({ name: "Creator - Creator ID", value: `${event.creator} - ${event.creatorId}`, inline: false })
             .addFields({ name: "Created At", value: formattedCreatedAt, inline: true })
             .addFields({ name: "Location", value: event.entityMetadata.location.toString(), inline: true })
-            .addFields({ name: "Event Name", value: event.name.toString(), inline: false })
+            .addFields({ name: "Event Name - ID", value: `${event.name} - ${event.id}`, inline: false })
             .addFields({ name: "Description", value: event.description || "None", inline: true })
-            .addFields({ name: "ID", value: event.id, inline: true })
             .addFields({ name: "Image", value: event.coverImageURL() || "None", inline: true })
             .addFields({ name: "Scheduled Start", value: formattedStartAt, inline: false })
             .addFields({ name: "Scheduled End", value: formattedEndAt, inline: true })
-            .addFields({ name: "Status", value: `\`${event.status.toString()}\``, inline: true })
+            .addFields({ name: "Status", value: `\`${event.status}\``, inline: true })
             .addFields({ name: "Event URL", value: event.url, inline: false })
             .addFields({ name: "Risk", value: msgConfig.lowRisk, inline: false })
 
@@ -1006,14 +986,13 @@ module.exports = (client) => {
 
         const embed = new EmbedBuilder()
         embed.setColor("Green")
-            .setTitle("\`🟢\` Existing Scheduled Event has been Deleted")
+            .setTitle("\`🟢\` Scheduled Event Deleted")
             .setThumbnail(event.coverImageURL())
-            .addFields({ name: "Creator", value: `${event.creator} ${event.creatorId}`, inline: false })
+            .addFields({ name: "Creator - Creator User ID", value: `${event.creator} - ${event.creatorId}`, inline: false })
             .addFields({ name: "Created At", value: formattedCreatedAt, inline: true })
             .addFields({ name: "Location", value: event.entityMetadata.location.toString(), inline: true })
-            .addFields({ name: "Event Name", value: event.name.toString(), inline: false })
+            .addFields({ name: "Event Name - ID", value: `${event.name} - ${event.id}`, inline: false })
             .addFields({ name: "Description", value: event.description || "None", inline: true })
-            .addFields({ name: "ID", value: event.id, inline: true })
             .addFields({ name: "Image", value: event.coverImageURL() || "None", inline: true })
             .addFields({ name: "Event URL", value: event.url, inline: false })
             .addFields({ name: "Risk", value: msgConfig.lowRisk, inline: false })
@@ -1033,11 +1012,10 @@ module.exports = (client) => {
         const differences = await getDifferences(oldEvent, newEvent);
 
         const embed = new EmbedBuilder()
-            .setTitle(`\`🟢\` Existing Scheduled Event has been modified`)
+            .setTitle(`\`🟢\` Scheduled Event Modified`)
             .setDescription("The following changes have been made to scheduled event:")
             .setColor("Green")
-            .addFields({ name: "Event ID", value: newEvent.id, inline: true })
-            .addFields({ name: "Event Name", value: `${newEvent.name}`, inline: true })
+            .addFields({ name: "Scheduled Event Name - ID", value: `${oldGuildScheduledEvent.name} - ${oldGuildScheduledEvent.id}`, inline: true })
 
         for (const key in differences) {
             const { oldValue, newValue } = differences[key];
@@ -1058,10 +1036,9 @@ module.exports = (client) => {
 
         const embed = new EmbedBuilder()
             .setColor("Blue")
-            .setTitle(`\`🔵\` User subscribed a server scheduled event`)
-            .addFields({ name: "User", value: `${user} (${user.id})`, inline: false })
-            .addFields({ name: "Event ID", value: event.id, inline: true })
-            .addFields({ name: "Event Name", value: `${event.name}`, inline: true })
+            .setTitle(`\`🔵\` User has Subscribed to Scheduled Event`)
+            .addFields({ name: "User - User ID", value: `${user} - ${user.id}`, inline: false })
+            .addFields({ name: "Event Name - ID", value: `${guildScheduledEvent.name} - ${guildScheduledEvent.id}`, inline: true })
             .addFields({ name: "Risk", value: msgConfig.info })
 
         return sendLog(embed);
@@ -1077,10 +1054,9 @@ module.exports = (client) => {
 
         const embed = new EmbedBuilder()
             .setColor("Blue")
-            .setTitle(`\`🔵\` User unsuscribed a server scheduled event`)
-            .addFields({ name: "User", value: `${user} (${user.id})`, inline: false })
-            .addFields({ name: "Event ID", value: event.id, inline: true })
-            .addFields({ name: "Event Name", value: `<@${event.id}> (${event.name})`, inline: true })
+            .setTitle(`\`🔵\` User has Unsuscribed to Scheduled Event`)
+            .addFields({ name: "User - User ID", value: `${user} - ${user.id}`, inline: false })
+            .addFields({ name: "Event Name - ID", value: `${guildScheduledEvent.name} - ${guildScheduledEvent.id}`, inline: true })
             .addFields({ name: "Risk", value: msgConfig.info })
 
         return sendLog(embed);
@@ -1130,18 +1106,17 @@ module.exports = (client) => {
 
         const embed = new EmbedBuilder()
             .setColor("Blue")
-            .setTitle(`\`🔵\` Server Sticker created`)
+            .setTitle(`\`🔵\` Server Sticker Created`)
             .setThumbnail(sticker.url)
-            .addFields({ name: "Created At", value: formattedCreatedAt, inline: false })
-            .addFields({ name: "Name", value: sticker.name, inline: true })
-            .addFields({ name: "ID", value: sticker.id, inline: true })
+            .addFields({ name: "Sticker Name - ID", value: `${sticker.name} - ${sticker.id}`, inline: false })
+            .addFields({ name: "Created At", value: formattedCreatedAt, inline: true })
             .addFields({ name: "Description", value: sticker.description, inline: true })
-            .addFields({ name: "Owned by", value: `${sticker.guild} (${sticker.guildId})`, inline: false })
+            .addFields({ name: "Sticker's Guild - Guild ID", value: `${sticker.guild} - ${sticker.guildId}`, inline: false })
             .addFields({ name: "Format", value: stickerFormat, inline: true })
             .addFields({ name: "Pack ID", value: stickerPack.id || "None", inline: true })
             .addFields({ name: "Sticker Type", value: stickerType, inline: false })
             .addFields({ name: "URL", value: sticker.url, inline: true })
-            .addFields({ name: "Uploaded by", value: `<@${user.id}> (${user.id})`, inline: true })
+            .addFields({ name: "Uploaded by User - User ID", value: `${user} - ${user.id}`, inline: true })
             .addFields({ name: "Risk", value: msgConfig.info, inline: false })
 
         return sendLog(embed);
@@ -1158,12 +1133,11 @@ module.exports = (client) => {
 
         const embed = new EmbedBuilder()
             .setColor("Blue")
-            .setTitle(`\`🔵\` Server Sticker deleted`)
+            .setTitle(`\`🔵\` Server Sticker Deleted`)
             .setThumbnail(sticker.url)
-            .addFields({ name: "Created At", value: formattedCreatedAt, inline: false })
-            .addFields({ name: "Name", value: sticker.name, inline: true })
-            .addFields({ name: "ID", value: sticker.id, inline: true })
-            .addFields({ name: "Owned by", value: `${sticker.guild} (${sticker.guildId})`, inline: false })
+            .addFields({ name: "Sticker Name - ID", value: `${sticker.name} - ${sticker.id}`, inline: false })
+            .addFields({ name: "Created At", value: formattedCreatedAt, inline: true })
+            .addFields({ name: "Sticker's Guild - Guild ID", value: `${sticker.guild} - ${sticker.guildId}`, inline: false })
             .addFields({ name: "URL", value: sticker.url, inline: true })
             .addFields({ name: "Risk", value: msgConfig.info, inline: false })
 
@@ -1179,12 +1153,11 @@ module.exports = (client) => {
         const differences = await getDifferences(oldSticker, newSticker);
 
         const embed = new EmbedBuilder()
-            .setTitle(`\`🔵\` Server sticker has been modified`)
+            .setTitle(`\`🔵\` Server sticker Modified`)
             .setThumbnail(oldSticker.url)
             .setDescription("The following changes have been made to server sticker:")
             .setColor("Blue")
-            .addFields({ name: "Sticker Name", value: `<@${oldSticker.id}> (${oldSticker.name})`, inline: true })
-            .addFields({ name: "Sticker ID", value: oldSticker.id, inline: true })
+            .addFields({ name: "Sticker Name - ID", value: `${oldSticker.name} - ${oldSticker.id}`, inline: true })
 
         for (const key in differences) {
             const { oldValue, newValue } = differences[key];
@@ -1217,11 +1190,10 @@ module.exports = (client) => {
         const differences = await getDifferences(oldGuild, newGuild);
 
         const embed = new EmbedBuilder()
-            .setTitle(`\`🔴\` Server ${oldGuild.name} has been modified`)
+            .setTitle(`\`🔴\` Server Modified`)
             .setDescription("The following changes have been made to server:")
             .setColor("Red")
-            .addFields({ name: "Server Name", value: `${oldGuild.name}`, inline: true })
-            .addFields({ name: "Server ID", value: oldGuild.id, inline: true });
+            .addFields({ name: "Server Name - ID", value: `${oldGuild.name} - ${oldGuild.id}`, inline: true })
 
         for (const key in differences) {
             const { oldValue, newValue } = differences[key];
@@ -1263,17 +1235,17 @@ module.exports = (client) => {
             formattedExpiresAt = invite.expiresAt.toLocaleString('en-US', options);
 
         const embed = new EmbedBuilder()
-            .setTitle(`\`🔵\` New Server Invite has been created`)
+            .setTitle(`\`🔵\` Server Invite Created`)
             .setColor("Blue")
-            .addFields({ name: "Invite Channel", value: `${invite.channel} (${invite.channelId})`, inline: false })
+            .addFields({ name: "Invite Channel - Channel ID", value: `${invite.channel} - ${invite.channelId}`, inline: false })
             .addFields({ name: "Invite Code", value: invite.code, inline: true })
             .addFields({ name: "Created At", value: formattedCreatedAt, inline: true })
             .addFields({ name: "Expires At", value: formattedExpiresAt, inline: true })
-            .addFields({ name: "Inviter", value: `${invite.inviter} (${invite.inviterId})`, inline: false })
+            .addFields({ name: "Inviter User - User ID", value: `${invite.inviter} - ${invite.inviterId}`, inline: false })
             .addFields({ name: "Deletable by user?", value: `\`${invite.deletable}\``, inline: true })
-            .addFields({ name: "Max Uses", value: invite.maxUses.toString(), inline: true })
+            .addFields({ name: "Max Uses", value: `${invite.maxUses}`, inline: true })
             .addFields({ name: "Temp join?", value: `\`${invite.temporary}\``, inline: true })
-            .addFields({ name: "Uses until now", value: invite.uses.toString(), inline: false })
+            .addFields({ name: "Uses until now", value: `${invite.uses}`, inline: false })
             .addFields({ name: "URL", value: invite.url, inline: true })
             .addFields({ name: "Risk", value: msgConfig.info, inline: false })
 
@@ -1294,7 +1266,7 @@ module.exports = (client) => {
             formattedExpiresAt = invite.expiresAt.toLocaleString('en-US', options);
 
         const embed = new EmbedBuilder()
-            .setTitle(`\`🔵\` Server Invite has been deleted`)
+            .setTitle(`\`🔵\` Server Invite Deleted`)
             .setColor("Blue")
             .addFields({ name: "Invite Code", value: invite.code, inline: true })
             .addFields({ name: "Expires At", value: formattedExpiresAt, inline: true })
@@ -1311,9 +1283,9 @@ module.exports = (client) => {
      */
     client.on(Events.MessageBulkDelete, async (messages, channel) => {
         const embed = new EmbedBuilder()
-            .setTitle(`\`🟣\` Messages have been bulk deleted`)
+            .setTitle(`\`🟣\` Messages Deleted in Bulk`)
             .setColor("Purple")
-            .addFields({ name: "Channel", value: `${channel} (${channel.id})`, inline: false })
+            .addFields({ name: "Channel - Channel ID", value: `${channel} - ${channel.id}`, inline: false })
             .addFields({ name: "Risk", value: msgConfig.raidRisk, inline: false })
 
         return sendLog(embed, false, channel.id, title);
@@ -1343,9 +1315,9 @@ module.exports = (client) => {
 
         const embed = new EmbedBuilder()
             .setColor("Yellow")
-            .setTitle(`\`🟡\` Message deleted`)
+            .setTitle(`\`🟡\` Message Deleted`)
             .setThumbnail(message.author.displayAvatarURL())
-            .addFields({ name: "Message Author", value: `${message.author} (${message.author.id})`, inline: true })
+            .addFields({ name: "Message Author - Author ID", value: `${message.author} - ${message.author.id}`, inline: true })
             .addFields({ name: "Message Content", value: `${mes}`, inline: true })
             .addFields({ name: "Message Channel", value: `${message.channel}`, inline: true });
 
@@ -1381,9 +1353,9 @@ module.exports = (client) => {
         const guildMember = await client.guilds.cache.get(msgConfig.guild).members.fetch(userId);
 
         const embed = new EmbedBuilder()
-            .setTitle(`\`🔵\` User voted in a poll`)
+            .setTitle(`\`🔵\` Member Voted in a Poll`)
             .setColor("Blue")
-            .addFields({ name: "User", value: `${guildMember} (${guildMember.id})`, inline: true })
+            .addFields({ name: "Member - Member ID", value: `${guildMember} - ${guildMember.id}`, inline: true })
             .addFields({ name: "Answer's Text", value: pollAnswer.text || null, inline: true })
             .addFields({ name: "Emoji Used", value: `${pollAnswer.emoji}`, inline: false })
             .addFields({ name: "Poll Question", value: pollAnswer.poll.question.text || "Unknown", inline: true })
@@ -1402,9 +1374,9 @@ module.exports = (client) => {
         const guildMember = await client.guilds.cache.get(msgConfig.guild).members.fetch(userId);
 
         const embed = new EmbedBuilder()
-            .setTitle(`\`🔵\` User removed their vote in a poll`)
+            .setTitle(`\`🔵\` Member Removed his Vote in a Poll`)
             .setColor("Blue")
-            .addFields({ name: "User", value: `${guildMember} (${guildMember.id})`, inline: true })
+            .addFields({ name: "Member - Member ID", value: `${guildMember} - ${guildMember.id}`, inline: true })
             .addFields({ name: "Answer's Text", value: pollAnswer.text || null, inline: true })
             .addFields({ name: "Emoji Used", value: `${pollAnswer.emoji}`, inline: false })
             .addFields({ name: "Poll Question", value: pollAnswer.poll.question.text || "Unknown", inline: true })
@@ -1424,16 +1396,15 @@ module.exports = (client) => {
         const embed = new EmbedBuilder()
             .setTitle(`\`🔵\` Reaction Added to a Message`)
             .setColor("Blue")
-            .addFields({ name: "Emoji ID", value: messageReaction.emoji.identifier, inline: false })
-            .addFields({ name: "Emoji Name", value: messageReaction.emoji.name, inline: true })
+            .addFields({ name: "Emoji Name - ID", value: `${messageReaction.emoji.name} - ${messageReaction.emoji.identifier}`, inline: false })
             .addFields({ name: "Emoji URL", value: messageReaction.emoji.imageURL() || "Def. emojis have no URL", inline: true })
             .addFields({ name: "Emoji Preview", value: messageReaction.emoji.toString(), inline: false })
             .addFields({ name: "Same Emoji Count", value: messageReaction.count.toString(), inline: true })
-            .addFields({ name: "Message Author", value: `${messageReaction.message.author} (${messageReaction.message.author.id})`, inline: false })
-            .addFields({ name: "Message Channel", value: `${messageReaction.message.channel} (${messageReaction.message.channelId})`, inline: true })
+            .addFields({ name: "Message Author - Author ID", value: `${messageReaction.message.author} - ${messageReaction.message.author.id}`, inline: false })
+            .addFields({ name: "Message Channel - Channel ID", value: `${messageReaction.message.channel} - ${messageReaction.message.channelId}`, inline: true })
             .addFields({ name: "Message Content", value: messageReaction.message.content || "Unknown", inline: true })
             .addFields({ name: "Message ID", value: messageReaction.message.id, inline: true })
-            .addFields({ name: "Added by", value: `${user} (${user.id})`, inline: false })
+            .addFields({ name: "Added by User - User ID", value: `${user} - ${user.id}`, inline: false })
             .addFields({ name: "Super Emoji used?", value: details.burst ? "Yes" : "No", inline: true })
             .addFields({ name: "Risk", value: msgConfig.info, inline: false })
 
@@ -1450,15 +1421,14 @@ module.exports = (client) => {
         const embed = new EmbedBuilder()
             .setTitle(`\`🔵\` Reaction Removed from a Message`)
             .setColor("Blue")
-            .addFields({ name: "Emoji ID", value: messageReaction.emoji.identifier, inline: false })
-            .addFields({ name: "Emoji Name", value: messageReaction.emoji.name, inline: true })
+            .addFields({ name: "Emoji Name - ID", value: `${messageReaction.emoji.name} - ${messageReaction.emoji.identifier}`, inline: false })
             .addFields({ name: "Emoji URL", value: messageReaction.emoji.imageURL() || "Def. emojis have no URL", inline: true })
             .addFields({ name: "Emoji Preview", value: messageReaction.emoji.toString(), inline: false })
-            .addFields({ name: "Message Author", value: `${messageReaction.message.author} (${messageReaction.message.author.id})`, inline: false })
-            .addFields({ name: "Message Channel", value: `${messageReaction.message.channel} (${messageReaction.message.channelId})`, inline: true })
+            .addFields({ name: "Message Author - Author ID", value: `${messageReaction.message.author} - ${messageReaction.message.author.id}`, inline: false })
+            .addFields({ name: "Message Channel - Channel ID", value: `${messageReaction.message.channel} - ${messageReaction.message.channelId}`, inline: true })
             .addFields({ name: "Message Content", value: messageReaction.message.content || "Unknown", inline: true })
             .addFields({ name: "Message ID", value: messageReaction.message.id, inline: true })
-            .addFields({ name: "Added by", value: `${user} (${user.id})`, inline: false })
+            .addFields({ name: "Added by User - User ID", value: `${user} - ${user.id}`, inline: false })
             .addFields({ name: "Super Emoji used?", value: details.burst ? "Yes" : "No", inline: true })
             .addFields({ name: "Risk", value: msgConfig.info, inline: false })
 
@@ -1472,11 +1442,11 @@ module.exports = (client) => {
      */
     client.on(Events.MessageReactionRemoveAll, async (message, reactions, messageReactions) => {
         const embed = new EmbedBuilder()
-            .setTitle(`\`🔵\` Message no longer has any reaction`)
+            .setTitle(`\`🔵\` Message no Longer has any Reaction`)
             .setColor("Blue")
-            .addFields({ name: "Message Channel", value: `<#${message.channelId}> (${message.channelId})`, inline: false })
+            .addFields({ name: "Message Channel - Channel ID", value: `${message.channel} - ${message.channelId}`, inline: false })
             .addFields({ name: "Message ID", value: message.id, inline: true })
-            .addFields({ name: "Message Author", value: `${message.author} (${message.author.id})`, inline: true })
+            .addFields({ name: "Message Author - Author ID", value: `${message.author} - ${message.author.id}`, inline: true })
             .addFields({ name: "Message Content", value: message.content || "Unknown", inline: false })
             .addFields({ name: "Risk", value: msgConfig.info, inline: false })
 
@@ -1489,11 +1459,10 @@ module.exports = (client) => {
      */
     client.on(Events.MessageReactionRemoveEmoji, async (reaction) => {
         const embed = new EmbedBuilder()
-            .setTitle(`\`🔵\` a Bot Removed an Emoji from a Message`)
-            .addFields({ name: "Channel", value: `${reaction.message.channel} (${reaction.message.channelId})` })
-            .addFields({ name: "Message Channel", value: `${reaction.message.channel} (${reaction.message.channelId})`, inline: false })
+            .setTitle(`\`🔵\` Bot Removed an Emoji from a Message`)
+            .addFields({ name: "Message Channel - Channel ID", value: `${reaction.message.channel} - ${reaction.message.channelId}`, inline: false })
             .addFields({ name: "Message ID", value: reaction.message.id, inline: true })
-            .addFields({ name: "Message Author", value: `${reaction.message.author} (${reaction.message.author.id})`, inline: true })
+            .addFields({ name: "Message Author - Author ID", value: `${reaction.message.author} - ${reaction.message.author.id}`, inline: true })
             .addFields({ name: "Message Content", value: reaction.message.content || "Unknown", inline: false })
             .addFields({ name: "Risk", value: msgConfig.info, inline: false })
 
@@ -1521,6 +1490,7 @@ module.exports = (client) => {
         const embed = new EmbedBuilder()
             .setColor("Yellow")
             .setTitle("\`🟡\` Message Content Edited")
+            .setThumbnail(author.displayAvatarURL())
 
         if (oldContent.length <= 1024 && newContent.length <= 1024) {
             embed
@@ -1533,7 +1503,7 @@ module.exports = (client) => {
         }
 
         embed
-            .addFields({ name: "Edited By", value: `<@${author.id}> (${author.tag})`, inline: false })
+            .addFields({ name: "Edited By User - User ID", value: `${author} - ${author.id}`, inline: false })
             .addFields({ name: "Risk", value: msgConfig.moderateRisk, inline: false })
 
         return sendLog(embed);
