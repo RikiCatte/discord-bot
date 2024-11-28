@@ -1621,11 +1621,11 @@ module.exports = (client) => {
         privacyLevel == 1 ? privacyLevel = "Public" : privacyLevel = "GuildOnly";
 
         const embed = new EmbedBuilder()
-            .setTitle(`\`🔵\` Conference has started`)
+            .setTitle(`\`🔵\` Conference Started`)
             .setColor("Blue")
             .addFields({ name: "Stage Topic", value: stageInstance.topic, inline: false })
             .addFields({ name: "Stage ID", value: stageInstance.id, inline: true })
-            .addFields({ name: "Stage Channel", value: `<#${stageInstance.channelId}> (${stageInstance.channelId})`, inline: true })
+            .addFields({ name: "Stage Channel - Channel ID", value: `${stageInstance.channel} - ${stageInstance.channelId}`, inline: true })
             .addFields({ name: "Privacy Level", value: privacyLevel, inline: false })
             .addFields({ name: "Discoverable Disabled?", value: `\`${stageInstance.discoverableDisabled}\``, inline: true })
             .addFields({ name: "Server Scheduled Event", value: stageInstance.guildScheduledEventId || "None", inline: true })
@@ -1640,10 +1640,10 @@ module.exports = (client) => {
      */
     client.on(Events.StageInstanceDelete, async (stageInstance) => {
         const embed = new EmbedBuilder()
-            .setTitle(`\`🔵\` Conference has ended`)
+            .setTitle(`\`🔵\` Conference Ended`)
             .setColor("Blue")
             .addFields({ name: "Stage Topic", value: stageInstance.topic, inline: false })
-            .addFields({ name: "Stage Channel", value: `<#${stageInstance.channelId}> (${stageInstance.channelId})`, inline: true })
+            .addFields({ name: "Stage Channel - Channel ID", value: `${stageInstance.channel} - ${stageInstance.channelId}`, inline: true })
             .addFields({ name: "Server Scheduled Event", value: stageInstance.guildScheduledEventId || "None", inline: true })
             .addFields({ name: "Risk", value: msgConfig.info, inline: false })
 
@@ -1659,7 +1659,7 @@ module.exports = (client) => {
         const differences = await getDifferences(oldStageInstance, newStageInstance);
 
         const embed = new EmbedBuilder()
-            .setTitle(`\`🔵\` Conference has been modified`)
+            .setTitle(`\`🔵\` Conference Modified`)
             .setDescription("The following changes have been made to conference:")
             .setColor("Blue")
             .addFields({ name: "Conference ID", value: oldStageInstance.id, inline: true })
@@ -1683,13 +1683,12 @@ module.exports = (client) => {
         const embed = new EmbedBuilder()
             .setTitle(`\`🟢\` Thread Created`)
             .setColor("Green")
-            .addFields({ name: "Thread ID", value: thread.id, inline: false })
-            .addFields({ name: "Thread Name", value: thread.name, inline: true })
+            .addFields({ name: "Thread ID - Name", value: `${thread.id} - ${thread.name}`, inline: false })
             .addFields({ name: "Thread Locked?", value: `\`${thread.locked}\``, inline: true })
             .addFields({ name: "Thread Invitable?", value: `\`${thread.locked}\``, inline: true })
             .addFields({ name: "Archived?", value: `\`${thread.archived}\``, inline: true })
-            .addFields({ name: "RateLimit Per User", value: thread.rateLimitPerUser.toString(), inline: true })
-            .addFields({ name: "Owner User", value: `<@${thread.ownerId}> (${thread.ownerId})`, inline: true })
+            .addFields({ name: "RateLimit Per User", value: thread.rateLimitPerUser.toString(), inline: false })
+            .addFields({ name: "Owner User - User ID", value: `${thread.owner} - ${thread.ownerId}`, inline: true })
             .addFields({ name: "Auto-Archive Time", value: thread.autoArchiveDuration.toString(), inline: false })
             .addFields({ name: "Message Count", value: thread.messageCount.toString(), inline: true })
             .addFields({ name: "Member Count", value: thread.memberCount.toString(), inline: true })
@@ -1705,11 +1704,10 @@ module.exports = (client) => {
      */
     client.on(Events.ThreadDelete, async (threadChannel) => {
         const embed = new EmbedBuilder()
-            .setTitle(`\`🔵\` Thread Deleted`)
-            .setColor("Blue")
-            .addFields({ name: "Thread ID", value: threadChannel.id, inline: false })
-            .addFields({ name: "Thread Name", value: threadChannel.name, inline: true })
-            .addFields({ name: "Owner User", value: `<@${threadChannel.ownerId}> (${threadChannel.ownerId})`, inline: true })
+            .setTitle(`\`🟢\` Thread Deleted`)
+            .setColor("Green")
+            .addFields({ name: "Thread ID - Name", value: `${thread.id} - ${thread.name}`, inline: false })
+            .addFields({ name: "Owner User - User ID", value: `${thread.owner} - ${thread.ownerId}`, inline: true })
             .addFields({ name: "Message Count", value: threadChannel.messageCount.toString(), inline: false })
             .addFields({ name: "Member Count", value: threadChannel.memberCount.toString(), inline: true })
             .addFields({ name: "Risk", value: msgConfig.info, inline: false })
@@ -1735,8 +1733,7 @@ module.exports = (client) => {
         const embed = new EmbedBuilder()
             .setTitle(`\`🔵\` Thread Members Update`)
             .setColor("Blue")
-            .addFields({ name: "Thread ID", value: thread.id, inline: true })
-            .addFields({ name: "Thread Name", value: thread.name, inline: true })
+            .addFields({ name: "Thread ID - Name", value: `${thread.id} - ${thread.name}`, inline: false })
 
         if (addedMembers.size > 0) {
             embed.addFields({ name: "Added Members", value: addedMembers.map(member => `<@${member.id}> (${member.id})`).join("\n"), inline: false });
@@ -1785,8 +1782,7 @@ module.exports = (client) => {
             .setTitle(`\`🟢\` Thread has been modified`)
             .setDescription("The following changes have been made to thread:")
             .setColor("Blue")
-            .addFields({ name: "Thread ID", value: oldThread.id, inline: true })
-            .addFields({ name: "Thread Name", value: oldThread.name, inline: true });
+            .addFields({ name: "Thread ID - Name", value: `${thread.id} - ${thread.name}`, inline: false })
 
         for (const key in differences) {
             const { oldValue, newValue } = differences[key];
@@ -1823,8 +1819,7 @@ module.exports = (client) => {
             .setTitle(`\`🟢\` User details are changed`)
             .setDescription("The following changes have been made to user:")
             .setColor("Green")
-            .addFields({ name: "User ID", value: oldUser.id, inline: true })
-            .addFields({ name: "User Name", value: oldUser.username, inline: true });
+            .addFields({ name: "User ID - UserName", value: `${oldUser.id} - ${oldUser.username}`, inline: false })
 
         for (const key in differences) {
             const { oldValue, newValue } = differences[key];
@@ -1943,9 +1938,9 @@ module.exports = (client) => {
      */
     client.on(Events.WebhooksUpdate, async (channel) => {
         const embed = new EmbedBuilder()
-            .setTitle(`\`🔵\` Channel's webhooks have changed`)
+            .setTitle(`\`🔵\` Channel's Changed`)
             .setColor("Blue")
-            .addFields({ name: "Channel", value: `${channel} (${channel.id})`, inline: false })
+            .addFields({ name: "Channel - Channel ID", value: `${channel} - ${channel.id}`, inline: false })
 
         return sendLog(embed);
     })
