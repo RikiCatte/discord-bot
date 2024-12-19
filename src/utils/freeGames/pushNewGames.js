@@ -10,7 +10,6 @@ module.exports = async function pushNewGames(client) {
     await removeExpiredGames(); // Remove expired games from the database
 
     const allGames = await getFreeGames(); // Get all free games from all sources
-    console.log("allGames: ", allGames);
 
     // Filter games that have not been sent yet and save them in the database
     const newGames = [];
