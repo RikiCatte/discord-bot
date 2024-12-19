@@ -88,6 +88,7 @@ module.exports = async (client, member) => {
     const attachment = new AttachmentBuilder(buffer, { name: "captcha.png" });
 
     const capEmbed = new EmbedBuilder()
+        .setAuthor({ name: `${client.user.username}`, iconURL: msgConfig.author_img, url: msgConfig.author_url })
         .setColor("Blue")
         .setImage("attachment://captcha.png")
         .setTitle("Captcha Verification System")
@@ -160,6 +161,6 @@ module.exports = async (client, member) => {
         if (userCaptcha.Bypassed) return await member.send({ content: `You get verfication bypassed by user id ${userCaptcha.BypassedBy} in **${member.guild.name}** on \`${await frmtDate()} UTC +1/2\`` });
 
         // user has correctly submitted captcha and the message will be deleted
-        return await member.send({ content: `You get verified in **${member.guild.name}** on \`${await frmtDate()} UTC +1/2\`` });        
+        return await member.send({ content: `You get verified in **${member.guild.name}** on \`${await frmtDate()} UTC +1/2\`` });
     })
 }
