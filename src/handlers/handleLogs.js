@@ -6,6 +6,7 @@ const susUserSchema = require("../schemas/suspiciousUserJoin");
 const getColorName = require("../utils/getColorName.js");
 const getDifferences = require("../utils/getDifferences.js");
 const getPermissionDifferences = require("../utils/getPermissionDifferences.js");
+const formatPermissions = require("../utils/formatPermissions.js");
 const validateEmbedFields = require("../utils/validateEmbedFields.js");
 
 module.exports = (client) => {
@@ -1282,8 +1283,10 @@ module.exports = (client) => {
      * @param {GuildTextBasedChannel} channel
      */
     client.on(Events.MessageBulkDelete, async (messages, channel) => {
+        const title = `\`🟣\` Messages Deleted in Bulk`;
+
         const embed = new EmbedBuilder()
-            .setTitle(`\`🟣\` Messages Deleted in Bulk`)
+            .setTitle(title)
             .setColor("Purple")
             .addFields({ name: "Channel - Channel ID", value: `${channel} - ${channel.id}`, inline: false })
             .addFields({ name: "Risk", value: msgConfig.raidRisk, inline: false })
