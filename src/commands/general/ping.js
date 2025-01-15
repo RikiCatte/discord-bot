@@ -1,4 +1,4 @@
-const { SlashCommandBuilder } = require('discord.js');
+const { SlashCommandBuilder, MessageFlags } = require('discord.js');
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -9,6 +9,6 @@ module.exports = {
     botPermissions: [],
 
     run: (client, interaction) => {
-        interaction.reply({ content: "Pong", ephemeral: true });
+        interaction.reply({ content: "Pong", flags: MessageFlags.Ephemeral });
     },
 };
