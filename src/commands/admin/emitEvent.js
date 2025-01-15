@@ -49,13 +49,13 @@ module.exports = {
                     break;
                 // Other events...
                 default:
-                    interaction.reply({ content: `Event **${event}** is not handled in emitEvent.js`, ephemeral: true });
+                    interaction.reply({ content: `Event **${event}** is not handled in emitEvent.js`, flags: MessageFlags.Ephemeral });
                     return;
             }
         } catch (ex) {
             return console.log(`[EMIT EVENT ERROR] ${ex}`.red)
         }
 
-        return interaction.reply({ content: `Emitted event \`${event}\``, ephemeral: true });
+        return interaction.reply({ content: `Emitted event \`${event}\``, flags: MessageFlags.Ephemeral });
     },
 };

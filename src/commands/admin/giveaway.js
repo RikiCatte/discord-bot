@@ -106,7 +106,7 @@ module.exports = {
             messageId = options.getString("message-id");
 
             schema = await giveawaySchema.findOne({ MessageID: messageId });
-            if (!schema) return interaction.reply({ content: "No giveaway was found with that message ID", ephemeral: true });
+            if (!schema) return interaction.reply({ content: "No giveaway was found with that message ID", flags: MessageFlags.Ephemeral });
 
             channel = client.channels.cache.get(schema.ChannelID);
             message = await channel.messages.fetch(schema.MessageID);
@@ -155,13 +155,13 @@ module.exports = {
 
                 await giveawayData.save().catch((err) => console.log(err));
 
-                interaction.reply({ content: "Giveaway Started!", ephemeral: true });
+                interaction.reply({ content: "Giveaway Started!", flags: MessageFlags.Ephemeral });
                 break;
 
             case "end":
-                if (schema.Ended) return interaction.reply({ content: "Giveaway has already ended!", ephemeral: true });
+                if (schema.Ended) return interaction.reply({ content: "Giveaway has already ended!", flags: MessageFlags.Ephemeral });
 
-                if (schema.Paused) return interaction.reply({ content: "Giveaway is paused!", ephemeral: true });
+                if (schema.Paused) return interaction.reply({ content: "Giveaway is paused!", flags: MessageFlags.Ephemeral });
 
                 shuffledParticipants = shuffleParticipants(schema.Participants);
                 shuffledWinners = shuffledParticipants.slice(0, schema.WinnerCount);
@@ -169,7 +169,7 @@ module.exports = {
                 row = giveawayDisabledRow;
 
                 if (!shuffledWinners.length) {
-                    interaction.reply({ content: "Giveaway Ended!", ephemeral: true });
+                    interaction.reply({ content: "Giveaway Ended!", flags: MessageFlags.Ephemeral });
 
                     embed = new EmbedBuilder()
                         .setTitle("`🛑` Giveaway ended")
@@ -193,7 +193,7 @@ module.exports = {
                                 .setDescription("Ended the giveaway!")
                                 .setColor("White")
                                 .setTimestamp()
-                        ], ephemeral: true
+                        ], flags: MessageFlags.Ephemeral
                     })
                     mentions = shuffledWinners.map((winner) => `<@${winner}>`).join(", ");
                     embed = new EmbedBuilder()
@@ -215,9 +215,9 @@ module.exports = {
                 break;
 
             case "pause":
-                if (schema.Ended) return interaction.reply({ content: "Giveaway has already ended!", ephemeral: true });
+                if (schema.Ended) return interaction.reply({ content: "Giveaway has already ended!", flags: MessageFlags.Ephemeral });
 
-                if (schema.Paused) return interaction.reply({ content: "Giveaway is already paused!", ephemeral: true });
+                if (schema.Paused) return interaction.reply({ content: "Giveaway is already paused!", flags: MessageFlags.Ephemeral });
 
                 remainingTime = schema.EndTimestamp - new Date().getTime();
 
@@ -226,7 +226,7 @@ module.exports = {
 
                 await schema.save().catch((err) => console.log(err));
 
-                await interaction.reply({ content: "Giveaway paused successfully!", ephemeral: true });
+                await interaction.reply({ content: "Giveaway paused successfully!", flags: MessageFlags.Ephemeral });
 
                 embed = new EmbedBuilder()
                     .setTitle("`⏸` Giveaway paused")
@@ -241,9 +241,9 @@ module.exports = {
                 break;
 
             case "resume":
-                if (schema.Ended) return interaction.reply({ content: "Giveaway has already ended!", ephemeral: true });
+                if (schema.Ended) return interaction.reply({ content: "Giveaway has already ended!", flags: MessageFlags.Ephemeral });
 
-                if (schema.Paused == false) return interaction.reply({ content: "Giveaway is not paused!", ephemeral: true });
+                if (schema.Paused == false) return interaction.reply({ content: "Giveaway is not paused!", flags: MessageFlags.Ephemeral });
 
                 const newEndTimeStamp = new Date().getTime() + schema.RemainingTime;
 
@@ -272,21 +272,21 @@ module.exports = {
 
                 message.edit({ embeds: [embed], components: [row] });
 
-                await interaction.reply({ content: "Giveaway resumed succesfully!", ephemeral: true });
+                await interaction.reply({ content: "Giveaway resumed succesfully!", flags: MessageFlags.Ephemeral });
 
                 break;
 
             case "reroll":
-                if (schema.Ended == false) return interaction.reply({ content: "Giveaway has not already ended!", ephemeral: true });
+                if (schema.Ended == false) return interaction.reply({ content: "Giveaway has not already ended!", flags: MessageFlags.Ephemeral });
 
-                if (schema.Paused) return interaction.reply({ content: "Giveaway is paused!", ephemeral: true });
+                if (schema.Paused) return interaction.reply({ content: "Giveaway is paused!", flags: MessageFlags.Ephemeral });
 
                 shuffledParticipants = shuffleParticipants(schema.Participants.slice());
                 shuffledWinners = shuffledParticipants.slice(0, schema.WinnerCount);
 
-                if (!shuffledWinners) return interaction.reply({ content: "Rerolled giveaway but no new winners were selected!", ephemeral: true })
+                if (!shuffledWinners) return interaction.reply({ content: "Rerolled giveaway but no new winners were selected!", flags: MessageFlags.Ephemeral })
 
-                interaction.reply({ content: "Giveaway rerolled successfully!", ephemeral: true });
+                interaction.reply({ content: "Giveaway rerolled successfully!", flags: MessageFlags.Ephemeral });
 
                 mentions = shuffledWinners.map((winner) => `<@${winner}>`).join(", ");
 
@@ -312,7 +312,7 @@ module.exports = {
 
                 interaction.reply({
                     content: "Giveaway deleted successfully!",
-                    ephemeral: true,
+                    flags: MessageFlags.Ephemeral,
                 });
                 break;
         }

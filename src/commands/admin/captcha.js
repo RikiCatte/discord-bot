@@ -1,5 +1,5 @@
 const { CaptchaGenerator } = require("captcha-canvas");
-const { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits, ChatInputCommandInteraction, ButtonStyle, TextInputStyle, AttachmentBuilder, ActionRowBuilder, ButtonBuilder, ModalBuilder, TextInputBuilder } = require("discord.js");
+const { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits, ChatInputCommandInteraction, ButtonStyle, TextInputStyle, AttachmentBuilder, ActionRowBuilder, ButtonBuilder, ModalBuilder, TextInputBuilder, MessageFlags } = require("discord.js");
 const captchaSchema = require("../../schemas/captchaSetup");
 const captchaUsersDataSchema = require("../../schemas/captchaUsersData");
 const msgConfig = require("../../messageConfig.json");
@@ -110,7 +110,7 @@ module.exports = {
         switch (subcommand) {
             case "setup":
 
-                if (data) return await interaction.reply({ content: "The captcha system is already on!", ephemeral: true });
+                if (data) return await interaction.reply({ content: "The captcha system is already on!", flags: MessageFlags.Ephemeral });
                 const limit = options.getInteger("limit");
                 let time = options.getString("time");
                 let msecs = await secsToMs(time); // time in milliseconds
@@ -134,17 +134,17 @@ module.exports = {
                     .setColor("Blue")
                     .setDescription(`\`✅\` The captcha system has been **set!**`)
 
-                await interaction.reply({ embeds: [embed], ephemeral: true });
+                await interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
 
                 break;
             case "resend":
                 user = options.getUser("user");
 
-                if (!data) return await interaction.reply({ content: "There is no captcha verification system set here!", ephemeral: true });
+                if (!data) return await interaction.reply({ content: "There is no captcha verification system set here!", flags: MessageFlags.Ephemeral });
 
                 userData = await captchaUsersDataSchema.findOne({ Guild: interaction.guild.id, UserID: user.id });
 
-                if (!userData) return await interaction.reply({ content: `Unable to find ${user}'s CAPTCHA in the DB`, ephemeral: true });
+                if (!userData) return await interaction.reply({ content: `Unable to find ${user}'s CAPTCHA in the DB`, flags: MessageFlags.Ephemeral });
 
                 if (userData.CaptchaExpired) {
                     const data = await captchaSchema.findOne({ Guild: interaction.guild.id });
@@ -246,14 +246,14 @@ module.exports = {
                         return await interaction.member.send({ content: "Your captcha has expired, please contact a server Admin in order to gain the verified role." })
                     })
 
-                    await interaction.reply({ content: `Successfully resent CAPTCHA verification to ${user}`, ephemeral: true });
+                    await interaction.reply({ content: `Successfully resent CAPTCHA verification to ${user}`, flags: MessageFlags.Ephemeral });
                 } else {
-                    return await interaction.reply({ content: `${user}'s CAPTCHA is not expired!`, ephemeral: true });
+                    return await interaction.reply({ content: `${user}'s CAPTCHA is not expired!`, flags: MessageFlags.Ephemeral });
                 }
 
                 break;
             case "disable":
-                if (!data) return await interaction.reply({ content: "There is no captcha verification system set here!", ephemeral: true });
+                if (!data) return await interaction.reply({ content: "There is no captcha verification system set here!", flags: MessageFlags.Ephemeral });
 
                 await captchaSchema.deleteMany({ Guild: interaction.guild.id });
 
@@ -261,7 +261,7 @@ module.exports = {
                     .setColor("Blue")
                     .setDescription(`\`✅\` The captcha system has been **disabled!**`)
 
-                await interaction.reply({ embeds: [embed], ephemeral: true });
+                await interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
                 break;
             case "bypass":
                 const bypassUser = options.getUser("user");
@@ -270,15 +270,15 @@ module.exports = {
                 const schema = await captchaSchema.findOne({ Guild: interaction.guild.id });
                 role = schema.Role;
 
-                if (guildMember.roles.cache.has(role)) return await interaction.reply({ content: "❓ This user already has verified role", ephemeral: true });
+                if (guildMember.roles.cache.has(role)) return await interaction.reply({ content: "❓ This user already has verified role", flags: MessageFlags.Ephemeral });
 
                 await guildMember.roles.add(role).catch(async err => {
                     console.log(err);
-                    return await interaction.reply({ content: "🔴 There was an error while attempting to add you the verified role, please contact server staff to solve!", ephemeral: true });
+                    return await interaction.reply({ content: "🔴 There was an error while attempting to add you the verified role, please contact server staff to solve!", flags: MessageFlags.Ephemeral });
                 });
 
                 const userSchema = await captchaUsersDataSchema.findOne({ Guild: interaction.guild.id, UserID: guildMember.id });
-                if (!userSchema) return await interaction.reply({ content: `⚠️ User **${guildMember.displayName}** is not listed in the captcha system, he now has the verified role but there will not be a reference in the db`, ephemeral: true });
+                if (!userSchema) return await interaction.reply({ content: `⚠️ User **${guildMember.displayName}** is not listed in the captcha system, he now has the verified role but there will not be a reference in the db`, flags: MessageFlags.Ephemeral });
                 await captchaUsersDataSchema.findOneAndUpdate({ Guild: interaction.guild.id, UserID: guildMember.id }, // update mongodb schema with bypassed user data
                     {
                         $set: {
@@ -297,12 +297,12 @@ module.exports = {
                 )
 
 
-                await interaction.reply({ content: `🟢 You bypassed ${guildMember.displayName} (${guildMember.id}) from captcha verification`, ephemeral: true });
+                await interaction.reply({ content: `🟢 You bypassed ${guildMember.displayName} (${guildMember.id}) from captcha verification`, flags: MessageFlags.Ephemeral });
 
                 break;
             case "check-system":
                 const data = await captchaSchema.findOne({ Guild: interaction.guild.id });
-                if (!data) return await interaction.reply({ content: "There is no captcha verification system set here!", ephemeral: true });
+                if (!data) return await interaction.reply({ content: "There is no captcha verification system set here!", flags: MessageFlags.Ephemeral });
 
 
                 embed = new EmbedBuilder()
@@ -317,12 +317,12 @@ module.exports = {
                     .addFields({ name: "CAPTCHA Solution", value: `||${data.Captcha}||`, inline: false })
                     .setFooter({ text: "Captcha System by RikiCatte", iconURL: msgConfig.footer_iconURL })
 
-                await interaction.reply({ embeds: [embed], ephemeral: true });
+                await interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
                 break;
             case "check-user":
                 user = options.getUser("user");
                 userData = await captchaUsersDataSchema.findOne({ Guild: interaction.guild.id, UserID: user.id });
-                if (!userData) return await interaction.reply({ content: `User **${user}** is not listed in db`, ephemeral: true });
+                if (!userData) return await interaction.reply({ content: `User **${user}** is not listed in db`, flags: MessageFlags.Ephemeral });
 
                 embed = new EmbedBuilder()
                     .setAuthor({ name: client.user.username, iconURL: msgConfig.author_img, url: msgConfig.author_link })
@@ -342,7 +342,7 @@ module.exports = {
                     .addFields({ name: "Bypassed By", value: `${userData.BypassedBy}`, inline: true })
                     .setFooter({ text: "Captcha System by RikiCatte", iconURL: msgConfig.footer_iconURL })
 
-                await interaction.reply({ embeds: [embed], ephemeral: true });
+                await interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
                 break;
         }
     }

@@ -21,7 +21,7 @@ module.exports = {
      * @returns 
      */
     run: async (client, interaction) => {
-        await interaction.deferReply({ ephemeral: true });
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
         const { options } = interaction;
 
         const user = options.getUser("user");
@@ -32,17 +32,17 @@ module.exports = {
             const messages = await dmChannel.messages.fetch({ limit: 100 });
 
             if (messages.size === 0) {
-                return await interaction.reply({ content: "There are no messages to delete.", ephemeral: true });
+                return await interaction.reply({ content: "There are no messages to delete.", flags: MessageFlags.Ephemeral });
             }
 
             for (const message of messages.values()) {
                 await message.delete();
             }
 
-            return await interaction.editReply({ content: `Successfully deleted all messages with ${user.username}!`, ephemeral: true });
+            return await interaction.editReply({ content: `Successfully deleted all messages with ${user.username}!`, flags: MessageFlags.Ephemeral });
         } catch (err) {
             console.error(err);
-            return await interaction.editReply({ content: "There was an error trying to delete messages with this user.", ephemeral: true });
+            return await interaction.editReply({ content: "There was an error trying to delete messages with this user.", flags: MessageFlags.Ephemeral });
         }
     }
 }
