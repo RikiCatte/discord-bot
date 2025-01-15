@@ -44,7 +44,10 @@ module.exports = (client) => {
                         embed = new EmbedBuilder()
                             .setTitle("\`🔔\` New Commit")
                             .setAuthor({ name: `${client.user.username}`, iconURL: msgConfig.author_img, url: msgConfig.author_link })
-                            .addFields({ name: "Committer", value: commit.author ? commit.authjor.name : "Unknown committer" })
+                            .addFields(
+                                { name: "Committer", value: commit.author ? commit.author.name : "Unknown committer", inline: false },
+                                { name: "Modified files", value: commit.modified.join("\n"), inline: true },
+                            )
                             .setDescription(commit.message ? commit.message : "No commit message")
                             .setURL(commit.url ? commit.url : "")
                             .setColor("#0099ff")
@@ -143,7 +146,7 @@ module.exports = (client) => {
 
             default:
                 return;
-                // console.log(`[githubWebhooks.js] Unhandled event: ${event}`.red);
+            // console.log(`[githubWebhooks.js] Unhandled event: ${event}`.red);
         }
 
         res.status(200).send('Webhook received');
