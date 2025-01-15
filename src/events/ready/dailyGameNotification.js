@@ -15,16 +15,16 @@ module.exports = async function dailyGameNotification(client) {
         // Fetch new games and process them
         const newGames = await pushNewGames(); // Automatically calls getFreeGames and handles duplicates
 
-        if (newGames.length === 0) {
-            const embed = new EmbedBuilder()
-                .setAuthor({ name: `${client.user.username}`, iconURL: msgConfig.author_img, url: msgConfig.author_url })
-                .setTitle("😔 No new free games available")
-                .setDescription("There are no free games available at the moment. Try again tomorrow.")
-                .setColor("Grey")
-                .setTimestamp();
+        // if (newGames.length === 0) {
+        //     const embed = new EmbedBuilder()
+        //         .setAuthor({ name: `${client.user.username}`, iconURL: msgConfig.author_img, url: msgConfig.author_url })
+        //         .setTitle("😔 No new free games available")
+        //         .setDescription("There are no free games available at the moment. Try again tomorrow.")
+        //         .setColor("Grey")
+        //         .setTimestamp();
 
-            return await channel.send({ embeds: [embed] });
-        }
+        //     return await channel.send({ embeds: [embed] });
+        // }
 
         // Loop through each game to send an embed for each
         for (const game of newGames) {
