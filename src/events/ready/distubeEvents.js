@@ -54,10 +54,11 @@ module.exports = async () => {
                 }
             )
         )
-        .on('error', (channel, e) => {
-            if (channel) {
-                console.log("channel: ", channel)
-                channel.send({
+        .on('error', (error, queue, song) => {
+            console.error(error);
+
+            if (queue.textChannel) {
+                queue.textChannel.send({
                     embeds: [
                         new EmbedBuilder()
                             .setAuthor({ name: client.user.username, iconURL: msgConfig.author_img, url: msgConfig.author_link })
@@ -69,8 +70,6 @@ module.exports = async () => {
                     ]
                 })
             }
-            else
-                console.error(e);
         })
         .on('empty', (queue) =>
             queue.textChannel.send({
