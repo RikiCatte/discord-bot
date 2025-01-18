@@ -43,7 +43,6 @@ module.exports = (client) => {
                 case 'push':
                     if (payload.commits && payload.commits.length > 0) {
                         for (const commit of payload.commits) {
-                            console.log("commit: " + commit);
                             embed = new EmbedBuilder()
                                 .setTitle("\`🔔\` New Commit")
                                 .setAuthor({ name: `${client.user.username}`, iconURL: msgConfig.author_img, url: msgConfig.author_link })
