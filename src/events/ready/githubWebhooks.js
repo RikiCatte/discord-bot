@@ -2,6 +2,7 @@ const express = require("express");
 const crypto = require("crypto");
 const { EmbedBuilder } = require("discord.js");
 const msgConfig = require("../../messageConfig.json");
+require('dotenv').config();
 
 module.exports = (client) => {
     const app = express();
@@ -26,7 +27,7 @@ module.exports = (client) => {
         next();
     });
 
-    app.post('/webhook', async (req, res) => {
+    app.post(`${process.env.github_webhook_endpoint}`, async (req, res) => {
         const event = req.headers['x-github-event'];
         const payload = req.body;
         const channel = await client.channels.cache.get(msgConfig.githubUpdatesChannelId);
@@ -157,6 +158,6 @@ module.exports = (client) => {
     });
 
     app.listen(port, () => {
-        console.log(`[HTTP SERVER] Server is running on port ${port}`.cyan);
+        console.log(`[HTTP SERVER] Server listening on port ${port} on "${process.env.github_webhook_endpoint}" endpoint`.cyan);
     });
 };
