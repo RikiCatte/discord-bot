@@ -41,7 +41,7 @@ module.exports = (client) => {
             switch (event) {
                 case 'push':
                     if (payload.commits && payload.commits.length > 0) {
-                        payload.commits.forEach(commit => async () => {
+                        for (const commit of payload.commits) {
                             console.log("commit: " + commit);
                             embed = new EmbedBuilder()
                                 .setTitle("\`🔔\` New Commit")
@@ -57,7 +57,7 @@ module.exports = (client) => {
                                 .setFooter({ text: `${msgConfig.footer_text}`, iconURL: msgConfig.footer_iconURL });
 
                             await channel.send({ embeds: [embed] });
-                        });
+                        }
                     }
                     break;
 
@@ -82,8 +82,8 @@ module.exports = (client) => {
                         .setTitle("\`🧰\` New Issue")
                         .setAuthor({ name: `${client.user.username}`, iconURL: msgConfig.author_img, url: msgConfig.author_link })
                         .addFields(
-                            { name: "Title", value: payload.pull_request.title, inline: false },
-                            { name: "User", value: payload.pull_request.user.login, inline: true },
+                            { name: "Title", value: payload.issue.title, inline: false },
+                            { name: "User", value: payload.issue.user.login, inline: true }
                         )
                         .setURL(payload.issue.html_url)
                         .setColor("#0099ff")
@@ -135,7 +135,7 @@ module.exports = (client) => {
                         .setTitle("\`💭\` New Commit Comment")
                         .setAuthor({ name: `${client.user.username}`, iconURL: msgConfig.author_img, url: msgConfig.author_link })
                         .addFields(
-                            { name: "User", value: payload.pull_request.user.login, inline: false },
+                            { name: "User", value: payload.comment.user.login, inline: false },
                             { name: "Comment body", value: payload.comment.body, inline: true }
                         )
                         .setURL(payload.comment.html_url)
@@ -143,15 +143,14 @@ module.exports = (client) => {
                         .setTimestamp()
                         .setFooter({ text: `${msgConfig.footer_text}`, iconURL: msgConfig.footer_iconURL });
 
-                    channel.send({ embeds: [embed] });
+                    await channel.send({ embeds: [embed] });
                     break;
 
                 default:
-                    return;
-                // console.log(`[githubWebhooks.js] Unhandled event: ${event}`.red);
+                    console.log(`[githubWebhooks.js] Unhandled event: ${event}`);
             }
         } catch (error) {
-            return console.log(`[githubWebhooks.js] Unhandled error: ${error}`);
+            console.log(`[githubWebhooks.js] Unhandled error: ${error}`);
         }
 
         res.status(200).send('Webhook received');
