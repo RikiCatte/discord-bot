@@ -2,7 +2,8 @@ const { SlashCommandBuilder, MessageFlags, ChannelType } = require("discord.js")
 const { createAudioPlayer, createAudioResource, joinVoiceChannel } = require('@discordjs/voice');
 const gTTS = require('gtts');
 const fs = require('fs');
-const { Channel } = require("diagnostics_channel");
+
+const CHARS_LIMIT = 80;
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -37,15 +38,13 @@ module.exports = {
         const channel = options.getString('channel');
         const language = options.getString('language') || 'it';
 
-        const voiceChannel = client.channels.cache.get(channel);
-        if (!voiceChannel || voiceChannel.type !== ChannelType.GuildVoice) {
-            return interaction.editReply({ content: 'Invalid voice channel' });
-        }
+        if (text.length > CHARS_LIMIT) return interaction.editReply({ content: `The prompted text exceed the limit of ${CHARS_LIMIT} chars.`, flags: MessageFlags.Ephemeral });
 
-        if (voiceChannel.members.size === 0) {
-            return interaction.editReply({ content: 'This voice channel is empty' });
-        }
-        
+        const voiceChannel = client.channels.cache.get(channel);
+        if (!voiceChannel || voiceChannel.type !== ChannelType.GuildVoice) return interaction.editReply({ content: 'Invalid voice channel' });
+
+        if (voiceChannel.members.size === 0) return interaction.editReply({ content: 'This voice channel is empty' });
+
         const filePath = './tts.mp3';
 
         try {
