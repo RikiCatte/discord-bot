@@ -63,6 +63,7 @@ module.exports = {
         const { options } = interaction;
         const subcommand = options.getSubcommand();
         const text = options.getString('text');
+        const channel = options.getString('channel');
         const language = options.getString('language') || 'it';
 
         if (text.length > CHARS_LIMIT) return interaction.editReply({ content: `The prompted text exceed the limit of ${CHARS_LIMIT} chars.`, flags: MessageFlags.Ephemeral });
