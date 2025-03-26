@@ -1,3 +1,7 @@
+THIS IS THE DEVELOP BRANCH! 
+
+This means that this version will be updated more frequently but may be more unstable than the "main" branch version.
+
 USAGE:
 
 install node.js -> https://nodejs.org/en
