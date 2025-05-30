@@ -64,7 +64,7 @@ module.exports = async () => {
                             .setAuthor({ name: client.user.username, iconURL: msgConfig.author_img, url: msgConfig.author_link })
                             .setColor("Red")
                             .setTitle("\`❌\` Error")
-                            .setDescription(`\`⛔\` An error has occurred!`)
+                            .setDescription(`\`⛔\` ${error.errorCode === 'UNAVAILABLE_VIDEO' ? '\`ytdl-core\`: Probably caused by YouTube APIs issues.' : error.errorCode}`)
                             .setThumbnail(msgConfig.thumbnail)
                             .setFooter({ text: "Music Player by RikiCatte using Distube", iconURL: msgConfig.footer_iconURL })
                     ]
