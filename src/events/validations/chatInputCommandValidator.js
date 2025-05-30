@@ -40,6 +40,14 @@ module.exports = async (client, interaction) => {
 			};
 		};
 
+		if (commandObject.disabled) {
+			const rEmbed = new EmbedBuilder()
+				.setColor(`${mConfig.embedColorError}`)
+				.setDescription(`${mConfig.commandDisabled}`);
+			interaction.reply({ embeds: [rEmbed], ephemeral: true });
+			return;
+		}
+
 		if (commandObject.userPermissions?.length) {
 			for (const permission of commandObject.userPermissions) {
 				if (interaction.member.permissions.has(permission)) {
