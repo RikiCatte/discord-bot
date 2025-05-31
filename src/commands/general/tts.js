@@ -17,10 +17,11 @@ module.exports = {
                         .setDescription("The text you want the bot to speak")
                         .setRequired(true)
                 )
-                .addStringOption(option =>
+                .addChannelOption(option =>
                     option.setName("channel")
-                        .setDescription("The voice channel ID you want the bot to join")
+                        .setDescription("The voice channel you want the bot to join")
                         .setRequired(true)
+                        .addChannelTypes(ChannelType.GuildVoice)
                 )
                 .addStringOption(option =>
                     option.setName("language")
@@ -63,7 +64,6 @@ module.exports = {
         const { options } = interaction;
         const subcommand = options.getSubcommand();
         const text = options.getString('text');
-        const channel = options.getString('channel');
         const language = options.getString('language') || 'it';
 
         if (text.length > CHARS_LIMIT) return interaction.editReply({ content: `The prompted text exceed the limit of ${CHARS_LIMIT} chars.`, flags: MessageFlags.Ephemeral });
@@ -71,7 +71,7 @@ module.exports = {
         const filePath = './tts.mp3';
 
         if (subcommand === "voicechannel") {
-            const voiceChannel = client.channels.cache.get(channel);
+            const voiceChannel = options.getChannel('channel');
             if (!voiceChannel || voiceChannel.type !== ChannelType.GuildVoice) return await interaction.editReply({ content: 'Invalid voice channel', flags: MessageFlags.Ephemeral });
 
             if (voiceChannel.members.size === 0) return await interaction.editReply({ content: 'This voice channel is empty', flags: MessageFlags.Ephemeral });
