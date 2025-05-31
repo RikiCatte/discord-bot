@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder, } = require("discord.js");
+const { SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder, MessageFlags } = require("discord.js");
 const ticketSchema = require("../../schemas/ticket");
 const msgConfig = require("../../messageConfig.json");
 
@@ -45,7 +45,7 @@ module.exports = {
                                     .setThumbnail(msgConfig.thumbnail)
                                     .setTimestamp()
                                     .setFooter({ text: msgConfig.footer_text, iconURL: msgConfig.footer_iconURL })
-                            ], ephemeral: true
+                            ], flags: MessageFlags.Ephemeral
                         });
 
                     if (data.MembersID.includes(member.id))
@@ -57,7 +57,7 @@ module.exports = {
                                     .setThumbnail(msgConfig.thumbnail)
                                     .setTimestamp()
                                     .setFooter({ text: msgConfig.footer_text, iconURL: msgConfig.footer_iconURL })
-                            ], ephemeral: true
+                            ], flags: MessageFlags.Ephemeral
                         });
 
                     data.MembersID.push(member.id);
@@ -94,7 +94,7 @@ module.exports = {
                                     .setThumbnail(msgConfig.thumbnail)
                                     .setTimestamp()
                                     .setFooter({ text: msgConfig.footer_text, iconURL: msgConfig.footer_iconURL })
-                            ], ephemeral: true
+                            ], flags: MessageFlags.Ephemeral
                         });
 
                     if (!data.MembersID.includes(member.id))
@@ -106,7 +106,7 @@ module.exports = {
                                     .setThumbnail(msgConfig.thumbnail)
                                     .setTimestamp()
                                     .setFooter({ text: msgConfig.footer_text, iconURL: msgConfig.footer_iconURL })
-                            ], ephemeral: true
+                            ], flags: MessageFlags.Ephemeral
                         });
 
                     data.MembersID.remove(member.id);

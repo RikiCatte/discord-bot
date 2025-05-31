@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits } = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits, MessageFlags } = require('discord.js');
 const kickSchema = require("../../schemas/kick");
 const msgConfig = require("../../messageConfig.json");
 
@@ -36,7 +36,7 @@ module.exports = {
             .setFooter({ text: msgConfig.footer_text, iconURL: msgConfig.footer_iconURL });
 
         if (member.roles.highest.position >= interaction.member.roles.highest.position)
-            return interaction.reply({ embeds: [errEmbed], ephemeral: true });
+            return interaction.reply({ embeds: [errEmbed], flags: MessageFlags.Ephemeral });
 
         await member.kick(reason);
 

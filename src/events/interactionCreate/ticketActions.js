@@ -1,4 +1,4 @@
-const { EmbedBuilder, PermissionFlagsBits, ActionRowBuilder, ModalBuilder, TextInputBuilder, TextInputStyle } = require('discord.js');
+const { EmbedBuilder, PermissionFlagsBits, ActionRowBuilder, ModalBuilder, TextInputBuilder, TextInputStyle, MessageFlags } = require('discord.js');
 const { createTranscript } = require("discord-html-transcripts");
 const TicketSetup = require("../../schemas/ticketsetup");
 const ticketSchema = require("../../schemas/ticket");
@@ -29,10 +29,10 @@ module.exports = async (client, interaction) => {
         switch (customId) {
             case "close":
                 if (!member.permissions.has(PermissionFlagsBits.Administrator))
-                    return interaction.reply({ content: "Only Server Admins can close a ticket!", ephemeral: true });
+                    return interaction.reply({ content: "Only Server Admins can close a ticket!", flags: MessageFlags.Ephemeral });
 
                 if (data.Closed == true)
-                    return interaction.reply({ content: "Ticket is already getting deleted...", ephemeral: true });
+                    return interaction.reply({ content: "Ticket is already getting deleted...", flags: MessageFlags.Ephemeral });
 
                 const transcript = await createTranscript(channel, {
                     limit: -1,
@@ -80,10 +80,10 @@ module.exports = async (client, interaction) => {
 
             case "lock":
                 if (!member.permissions.has(ManageChannels))
-                    return interaction.reply({ content: "You don't have permissions to do that.", ephemeral: true });
+                    return interaction.reply({ content: "You don't have permissions to do that.", flags: MessageFlags.Ephemeral });
 
                 if (data.Locked == true)
-                    return interaction.reply({ content: "Ticket is already set to locked.", ephemeral: true });
+                    return interaction.reply({ content: "Ticket is already set to locked.", flags: MessageFlags.Ephemeral });
 
                 await ticketSchema.updateOne({ GuildID: guild.id, ChannelID: channel.id }, { Locked: true });
                 embed.setDescription(`Ticket was locked succesfully by ${member} 🔒`)
@@ -100,10 +100,10 @@ module.exports = async (client, interaction) => {
 
             case "unlock":
                 if (!member.permissions.has(ManageChannels))
-                    return interaction.reply({ content: "You don't have permissions to do that.", ephemeral: true });
+                    return interaction.reply({ content: "You don't have permissions to do that.", flags: MessageFlags.Ephemeral });
 
                 if (data.Locked == false)
-                    return interaction.reply({ content: "Ticket is already set to unlocked.", ephemeral: true });
+                    return interaction.reply({ content: "Ticket is already set to unlocked.", flags: MessageFlags.Ephemeral });
 
                 await ticketSchema.updateOne({ GuildID: guild.id, ChannelID: channel.id }, { Locked: false });
                 embed.setDescription("Ticket was unlocked succesfully 🔓")
@@ -120,10 +120,10 @@ module.exports = async (client, interaction) => {
 
             case "claim":
                 if (!member.permissions.has(ManageChannels))
-                    return interaction.reply({ content: "You don't have permissions to do that.", ephemeral: true });
+                    return interaction.reply({ content: "You don't have permissions to do that.", flags: MessageFlags.Ephemeral });
 
                 if (data.Claimed == true)
-                    return interaction.reply({ content: `Ticket is already claimed by <@${data.ClaimedBy}>`, ephemeral: true });
+                    return interaction.reply({ content: `Ticket is already claimed by <@${data.ClaimedBy}>`, flags: MessageFlags.Ephemeral });
 
                 await ticketSchema.updateOne({ GuildID: guild.id, ChannelID: channel.id }, { Claimed: true, ClaimedBy: member.id });
 
@@ -139,7 +139,7 @@ module.exports = async (client, interaction) => {
 
             case "rename":
                 if (!member.permissions.has(ManageChannels))
-                    return interaction.reply({ content: "You don't have permissions to do that.", ephemeral: true });
+                    return interaction.reply({ content: "You don't have permissions to do that.", flags: MessageFlags.Ephemeral });
 
                 const modal = new ModalBuilder({
                     customId: `renModal-${interaction.user.id}`,
@@ -183,19 +183,19 @@ module.exports = async (client, interaction) => {
 
             case "pingStaff":
                 if (pingStaffButtonState[interaction.user.id]) {
-                    return interaction.reply({ content: "\`⚠️\` You have already pressed this button, please wait for a staff member to respond to you.", ephemeral: true });
+                    return interaction.reply({ content: "\`⚠️\` You have already pressed this button, please wait for a staff member to respond to you.", flags: MessageFlags.Ephemeral });
                 }
 
                 const staffRoleId = process.env.staffRole;
 
                 if (!staffRoleId) {
-                    return interaction.reply({ content: "\`❌\` Check .env file staffRole field.", ephemeral: true });
+                    return interaction.reply({ content: "\`❌\` Check .env file staffRole field.", flags: MessageFlags.Ephemeral });
                 }
 
                 const staffRole = guild.roles.cache.get(staffRoleId);
 
                 if (!staffRole) {
-                    return interaction.reply({ content: "\`❌\` Make sure you entered the correct staff's roleId", ephemeral: true });
+                    return interaction.reply({ content: "\`❌\` Make sure you entered the correct staff's roleId", flags: MessageFlags.Ephemeral });
                 }
 
                 interaction.reply({ content: `User ${member} wants to tag ${staffRole}`, allowedMentions: { roles: [staffRoleId] } });

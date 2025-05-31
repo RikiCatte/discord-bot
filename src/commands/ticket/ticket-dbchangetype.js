@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, PermissionFlagsBits } = require("discord.js");
+const { SlashCommandBuilder, PermissionFlagsBits, MessageFlags } = require("discord.js");
 const ticketSchema = require("../../schemas/ticket");
 
 module.exports = {
@@ -15,7 +15,7 @@ module.exports = {
     botPermissions: [PermissionFlagsBits.ManageChannels],
 
     run: async (client, interaction) => {
-        await interaction.deferReply({ ephemeral: true });
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
         const { guild, options } = interaction;
         const newType = options.getString('type');
 
@@ -29,7 +29,7 @@ module.exports = {
             return await interaction.editReply({ content: `\`✅\` Succesfully updated ticket type DB variable to **${newType}**` });
         } catch (e) {
             console.log(e);
-            await interaction.editReply({ content: `\`❌\` Something went wrong! -> ${e}`, ephemeral: true });
+            await interaction.editReply({ content: `\`❌\` Something went wrong! -> ${e}`, flags: MessageFlags.Ephemeral });
         }
     }
 }

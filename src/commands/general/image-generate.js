@@ -26,6 +26,7 @@ module.exports = {
         .toJSON(),
     botPermissions: [],
     userPermissions: [],
+    disabled: true,
 
     /**
      * @param {Client} client

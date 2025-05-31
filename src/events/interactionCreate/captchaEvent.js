@@ -1,4 +1,4 @@
-const { EmbedBuilder, ModalSubmitInteraction } = require("discord.js");
+const { EmbedBuilder, ModalSubmitInteraction, MessageFlags } = require("discord.js");
 const captchaSchema = require("../../schemas/captchaSetup");
 const captchaUsersDataSchema = require("../../schemas/captchaUsersData");
 const msgConfig = require("../../messageConfig.json");
@@ -52,14 +52,14 @@ module.exports = async (client, interaction) => {
         );
         // if the user miss for the first time userSchema.MissedTimes will be null, so it should be 1 now else it should be incremented
 
-        return await interaction.reply({ content: "❌ That was wrong!, please try again", ephemeral: true });
+        return await interaction.reply({ content: "❌ That was wrong!, please try again", flags: MessageFlags.Ephemeral });
     }
 
 
 
     await member.roles.add(role).catch(async err => {
         console.log(err);
-        return await interaction.reply({ content: "🔴 There was an error while attempting to add you the verified role, please contact server staff to solve!", ephemeral: true });
+        return await interaction.reply({ content: "🔴 There was an error while attempting to add you the verified role, please contact server staff to solve!", flags: MessageFlags.Ephemeral });
     });
 
     const embed = new EmbedBuilder()
@@ -81,5 +81,5 @@ module.exports = async (client, interaction) => {
         }
     );
 
-    return await interaction.reply({ content: `✅ You have been verified in ${captchaGuild.name}`, ephemeral: true });
+    return await interaction.reply({ content: `✅ You have been verified in ${captchaGuild.name}`, flags: MessageFlags.Ephemeral });
 }

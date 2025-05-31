@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder } = require('discord.js')
+const { SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder, MessageFlags } = require('discord.js')
 const logSchema = require("../../schemas/logs");
 
 module.exports = {
@@ -44,13 +44,13 @@ module.exports = {
                     .setTimestamp();
             }
 
-            interaction.reply({ embeds: [embed], ephemeral: true });
+            interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
         } catch (err) {
             embed.setDescription("Something went wrong. Please contact DEVs")
                 .setColor("Red")
                 .setTimestamp();
 
-            interaction.reply({ embeds: [embed], ephemeral: true });
+            interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
         }
     },
 }

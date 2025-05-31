@@ -1,5 +1,6 @@
-const { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits } = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits, MessageFlags } = require('discord.js');
 const { default: axios } = require('axios')
+const msgConfig = require("../../messageConfig.json");
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -12,7 +13,7 @@ module.exports = {
     botPermissions: [PermissionFlagsBits.Administrator],
 
     run: async (client, interaction) => {
-        if (!interaction.member.permissions.has(PermissionFlagsBits.ManageEmojisAndStickers)) return await interaction.reply({ content: "You can't handle this.", ephemeral: true });
+        if (!interaction.member.permissions.has(PermissionFlagsBits.ManageGuildExpressions)) return await interaction.reply({ content: "You can't handle this.", flags: MessageFlags.Ephemeral });
 
         let emoji = interaction.options.getString('emoji')?.trim();
         const name = interaction.options.getString('name');
@@ -25,7 +26,7 @@ module.exports = {
                     if (image) return "gif";
                     else return "png";
                 }).catch(err => {
-                    console.log(err);
+                    if (err.response?.status !== 415) console.log(err); // Not log if the image is not a gif, it will automatically try to fetch as png
                     return "png";
                 })
 
@@ -53,7 +54,7 @@ module.exports = {
                 return interaction.reply({ embeds: [embed] });
             }).catch(err => {
                 console.log(err);
-                interaction.reply({ content: "You can't add other emojis because you reached the server's emoji limit", ephemeral: true })
+                interaction.reply({ content: "You can't add other emojis because you reached the server's emoji limit", flags: MessageFlags.Ephemeral })
             })
     }
 }

@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder } = require("discord.js");
+const { SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder, MessageFlags } = require("discord.js");
 const mConfig = require("../../messageConfig.json");
 
 module.exports = {
@@ -29,13 +29,8 @@ module.exports = {
         const target = options.getUser("target");
         const multiMsg = amount === 1 ? "message" : "messages";
 
-        if (!amount || amount > 100 || amount < 1) {
-            return await interaction.reply({
-                content:
-                    "Please specify an amount between 1 and 100 before deleting messages.",
-                ephemeral: true,
-            });
-        }
+        if (!amount || amount > 100 || amount < 1)
+            return await interaction.reply({ content: "Please specify an amount between 1 and 100 before deleting messages.", flags: MessageFlags.Ephemeral, });
 
         try {
             const channelMessages = await channel.messages.fetch();
@@ -43,7 +38,7 @@ module.exports = {
             if (channelMessages.size === 0) {
                 return await interaction.reply({
                     content: "There are no messages in this channel to delete.",
-                    ephemeral: true,
+                    flags: MessageFlags.Ephemeral,
                 });
             }
 
@@ -51,7 +46,7 @@ module.exports = {
 
             const clearEmbed = new EmbedBuilder().setColor(mConfig.embedColorSuccess);
 
-            await interaction.deferReply({ ephemeral: true });
+            await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
             let messagesToDelete = [];
 
@@ -64,14 +59,10 @@ module.exports = {
                     }
                 });
 
-                clearEmbed.setDescription(`
-            \`✅\` Succesfully cleared \`${messagesToDelete.length}\` ${multiMsg} from ${target} in ${channel}.
-         `);
+                clearEmbed.setDescription(`\`✅\` Succesfully cleared \`${messagesToDelete.length}\` ${multiMsg} from ${target} in ${channel}.`);
             } else {
                 messagesToDelete = channelMessages.first(amount);
-                clearEmbed.setDescription(`
-            \`✅\` Succesfully cleared \`${messagesToDelete.length}\` ${multiMsg} in ${channel}.
-         `);
+                clearEmbed.setDescription(`\`✅\` Succesfully cleared \`${messagesToDelete.length}\` ${multiMsg} in ${channel}.`);
             }
 
             if (messagesToDelete.length > 0) {
@@ -80,10 +71,7 @@ module.exports = {
 
             await interaction.editReply({ embeds: [clearEmbed] });
         } catch (error) {
-            await interaction.followUp({
-                content: "An error occured while clearing the messages.",
-                ephemeral: true,
-            });
+            await interaction.followUp({ content: "An error occured while clearing the messages.", flags: MessageFlags.Ephemeral, });
         }
     },
 };

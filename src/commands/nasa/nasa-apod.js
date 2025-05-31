@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder, MessageFlags } = require('discord.js');
 const axios = require('axios');
 require('dotenv').config();
 const msgConfig = require("../../messageConfig.json");
@@ -42,7 +42,7 @@ module.exports = {
                 await interaction.editReply({ embeds: [embed] });
             } catch (e) {
                 console.error(e);
-                return await interaction.reply({ content: 'Something went wrong, please contact Devs', ephemeral: true });
+                return await interaction.reply({ content: 'Something went wrong, please contact Devs', flags: MessageFlags.Ephemeral });
             }
         }
 

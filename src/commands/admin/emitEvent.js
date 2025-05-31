@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, PermissionFlagsBits, AutoModerationRule, ChatInputCommandInteraction } = require("discord.js");
+const { SlashCommandBuilder, PermissionFlagsBits, AutoModerationRule, ChatInputCommandInteraction, MessageFlags } = require("discord.js");
 
 module.exports = {
     data: new SlashCommandBuilder()

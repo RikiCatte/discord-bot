@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, EmbedBuilder, ButtonBuilder, ActionRowBuilder, ButtonStyle } = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder, ButtonBuilder, ActionRowBuilder, ButtonStyle, MessageFlags } = require('discord.js');
 const axios = require('axios');
 require('dotenv').config();
 
@@ -21,7 +21,7 @@ module.exports = {
     botPermissions: [],
 
     run: async (client, interaction) => {
-        await interaction.deferReply({ ephemeral: true });
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
         const { options } = interaction;
         const videoUrl = options.getString('link');
@@ -44,6 +44,10 @@ module.exports = {
 
         try {
             const output = await axios.request(input);
+
+            if (output.data.msg === "API retired.")
+                return await interaction.editReply({ content: `\`⚠️\` The YouTube video download API is currently retired.` });
+
             const link = output.data.link[22];
 
             const button = new ActionRowBuilder()
@@ -60,7 +64,7 @@ module.exports = {
 
             await interaction.editReply({ embeds: [embed], components: [button] });
         } catch (e) {
-            console.log(e);
+            console.log("exception: ", e);
             await interaction.editReply({ content: `\`⚠️\` The video link you provided is invalid, input a correct one!` });
         }
     }

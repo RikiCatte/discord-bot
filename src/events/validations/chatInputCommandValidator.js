@@ -1,6 +1,6 @@
 require("colors");
 
-const { EmbedBuilder, ButtonBuilder, ButtonStyle, ActionRowBuilder, ComponentType, ChatInputCommandInteraction } = require("discord.js");
+const { EmbedBuilder, ButtonBuilder, ButtonStyle, ActionRowBuilder, ComponentType, ChatInputCommandInteraction, MessageFlags } = require("discord.js");
 const { developersId, testServerId } = require("../../config.json");
 const mConfig = require("../../messageConfig.json");
 const getLocalCommands = require("../../utils/getLocalCommands");
@@ -25,7 +25,7 @@ module.exports = async (client, interaction) => {
 				const rEmbed = new EmbedBuilder()
 					.setColor(`${mConfig.embedColorError}`)
 					.setDescription(`${mConfig.commandDevOnly}`);
-				interaction.reply({ embeds: [rEmbed], ephemeral: true });
+				interaction.reply({ embeds: [rEmbed], flags: MessageFlags.Ephemeral });
 				return;
 			};
 		};
@@ -35,7 +35,7 @@ module.exports = async (client, interaction) => {
 				const rEmbed = new EmbedBuilder()
 					.setColor(`${mConfig.embedColorError}`)
 					.setDescription(`${mConfig.commandTestMode}`);
-				interaction.reply({ embeds: [rEmbed], ephemeral: true });
+				interaction.reply({ embeds: [rEmbed], flags: MessageFlags.Ephemeral });
 				return;
 			};
 		};
@@ -44,7 +44,7 @@ module.exports = async (client, interaction) => {
 			const rEmbed = new EmbedBuilder()
 				.setColor(`${mConfig.embedColorError}`)
 				.setDescription(`${mConfig.commandDisabled}`);
-			interaction.reply({ embeds: [rEmbed], ephemeral: true });
+			interaction.reply({ embeds: [rEmbed], flags: MessageFlags.Ephemeral });
 			return;
 		}
 
@@ -56,7 +56,7 @@ module.exports = async (client, interaction) => {
 				const rEmbed = new EmbedBuilder()
 					.setColor(`${mConfig.embedColorError}`)
 					.setDescription(`${mConfig.userNoPermissions}`);
-				interaction.reply({ embeds: [rEmbed], ephemeral: true });
+				interaction.reply({ embeds: [rEmbed], flags: MessageFlags.Ephemeral });
 				return;
 			};
 		};
@@ -70,7 +70,7 @@ module.exports = async (client, interaction) => {
 				const rEmbed = new EmbedBuilder()
 					.setColor(`${mConfig.embedColorError}`)
 					.setDescription(`${mConfig.botNoPermissions}`);
-				interaction.reply({ embeds: [rEmbed], ephemeral: true });
+				interaction.reply({ embeds: [rEmbed], flags: MessageFlags.Ephemeral });
 				return;
 			};
 		};
@@ -82,10 +82,10 @@ module.exports = async (client, interaction) => {
 	// ERRORS FLAG SYSTEM
 	catch (error) {
 		if (!interaction.inGuild())
-			return await interaction.reply({ content: "You can't use slash commands in DMs!", ephemeral: true });
+			return await interaction.reply({ content: "You can't use slash commands in DMs!", flags: MessageFlags.Ephemeral });
 
 		console.log(error);
-		await interaction.reply({ content: "There was an error while executing this command!", ephemeral: true }).catch(err => { });
+		await interaction.reply({ content: "There was an error while executing this command!", flags: MessageFlags.Ephemeral }).catch(err => { });
 
 		let errorTime = `<t:${Math.floor(Date.now() / 1000)}:R>`;
 
@@ -129,7 +129,7 @@ module.exports = async (client, interaction) => {
 		// 			.addFields({ name: "Error Command Channel", value: `${channel} (${channel.id})` })
 		// 			.setTimestamp();
 
-		// 		await i.reply({ embeds: [userEmbed], ephemeral: true });
+		// 		await i.reply({ embeds: [userEmbed], flags: MessageFlags.Ephemeral });
 		// 	}
 		// })
 

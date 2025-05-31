@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, PermissionFlagsBits, Client, ChatInputCommandInteraction, Collection, EmbedBuilder } = require('discord.js');
+const { SlashCommandBuilder, Client, ChatInputCommandInteraction, EmbedBuilder, MessageFlags } = require('discord.js');
 const msgConfig = require("../../messageConfig.json");
 
 module.exports = {
@@ -70,7 +70,7 @@ module.exports = {
                     const channel = interaction.options.getChannel("channel") || interaction.channel;
 
                     if (options.length < 2 || options.length > 10) {
-                        return await interaction.reply({ content: "You need to provide at least 2 options and at most 10 options.", ephemeral: true });
+                        return await interaction.reply({ content: "You need to provide at least 2 options and at most 10 options.", flags: MessageFlags.Ephemeral });
                     }
 
                     await channel.send({
@@ -82,7 +82,7 @@ module.exports = {
                         },
                     });
 
-                    await interaction.reply({ content: "Poll created!", ephemeral: true });
+                    await interaction.reply({ content: "Poll created!", flags: MessageFlags.Ephemeral });
 
                     break;
                 case "end":
@@ -90,20 +90,20 @@ module.exports = {
                     const message = await interaction.channel.messages.fetch(messageId);
 
                     if (!message) {
-                        return await interaction.reply({ content: "You provided an invalid message ID. Check that the message exist and is in this channel.", ephemeral: true });
+                        return await interaction.reply({ content: "You provided an invalid message ID. Check that the message exist and is in this channel.", flags: MessageFlags.Ephemeral });
                     }
 
                     if (!message.poll) {
-                        return await interaction.reply({ content: "The provided message is not a poll.", ephemeral: true });
+                        return await interaction.reply({ content: "The provided message is not a poll.", flags: MessageFlags.Ephemeral });
                     }
 
                     if (message.poll.resultsFinalized) {
-                        return await interaction.reply({ content: "The poll has already ended.", ephemeral: true });
+                        return await interaction.reply({ content: "The poll has already ended.", flags: MessageFlags.Ephemeral });
                     }
 
                     const endedPoll = await message.poll.end();
 
-                    await interaction.reply({ content: "Poll ended!", ephemeral: true });
+                    await interaction.reply({ content: "Poll ended!", flags: MessageFlags.Ephemeral });
 
                     const embed = new EmbedBuilder()
                         .setAuthor({name: `${client.user.username}`, iconURL: msgConfig.author_img})

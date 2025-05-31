@@ -43,18 +43,47 @@ module.exports = (client) => {
                 case 'push':
                     if (payload.commits && payload.commits.length > 0) {
                         for (const commit of payload.commits) {
+                            const maxFiles = 10;
+
+                            // File lists
+                            const addedFiles = commit.added || [];
+                            const modifiedFiles = commit.modified || [];
+                            const removedFiles = commit.removed || [];
+
+                            // Truncate lists for embed
+                            const addedList = addedFiles.slice(0, maxFiles).join("\n") + (addedFiles.length > maxFiles ? `\n...and ${addedFiles.length - maxFiles} more` : "");
+                            const modifiedList = modifiedFiles.slice(0, maxFiles).join("\n") + (modifiedFiles.length > maxFiles ? `\n...and ${modifiedFiles.length - maxFiles} more` : "");
+                            const removedList = removedFiles.slice(0, maxFiles).join("\n") + (removedFiles.length > maxFiles ? `\n...and ${removedFiles.length - maxFiles} more` : "");
+
+                            // Counts
+                            const addedCount = addedFiles.length;
+                            const modifiedCount = modifiedFiles.length;
+                            const removedCount = removedFiles.length;
+
                             embed = new EmbedBuilder()
-                                .setTitle("\`🔔\` New Commit")
+                                .setTitle("🔔 New Commit")
                                 .setAuthor({ name: `${client.user.username}`, iconURL: msgConfig.author_img, url: msgConfig.author_link })
-                                .addFields(
-                                    { name: "Committer", value: commit.author ? commit.author.name : "Unknown committer", inline: false },
-                                    { name: "Modified files", value: commit.modified.join("\n"), inline: true },
-                                )
                                 .setDescription(commit.message ? commit.message : "No commit message")
                                 .setURL(commit.url ? commit.url : "")
                                 .setColor("#0099ff")
+                                .addFields(
+                                    { name: "Committer", value: commit.author ? commit.author.name : "Unknown committer", inline: false },
+                                    { name: "Files Added", value: `${addedCount}`, inline: true },
+                                    { name: "Files Modified", value: `${modifiedCount}`, inline: true },
+                                    { name: "Files Removed", value: `${removedCount}`, inline: true }
+                                )
                                 .setTimestamp()
                                 .setFooter({ text: `${msgConfig.footer_text}`, iconURL: msgConfig.footer_iconURL });
+
+                            if (addedCount > 0) {
+                                embed.addFields({ name: "Added Files", value: addedList, inline: false });
+                            }
+                            if (modifiedCount > 0) {
+                                embed.addFields({ name: "Modified Files", value: modifiedList, inline: false });
+                            }
+                            if (removedCount > 0) {
+                                embed.addFields({ name: "Removed Files", value: removedList, inline: false });
+                            }
 
                             await channel.send({ embeds: [embed] });
                         }

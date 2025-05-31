@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, PermissionFlagsBits } = require('discord.js')
+const { SlashCommandBuilder, PermissionFlagsBits, MessageFlags } = require('discord.js')
 const ticketSchema = require('../../schemas/ticket');
 
 module.exports = {
@@ -10,14 +10,14 @@ module.exports = {
     botPermissions: [PermissionFlagsBits.Administrator],
 
     run: async (client, interaction) => {
-        await interaction.deferReply({ ephemeral: true });
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
         try {
             let result = await ticketSchema.deleteMany({});
-            await interaction.editReply({ content: `\`✅\` Succesfully deleted ${result.deletedCount} tickets from DB`, ephemeral: true });
+            await interaction.editReply({ content: `\`✅\` Succesfully deleted ${result.deletedCount} tickets from DB`, flags: MessageFlags.Ephemeral });
         } catch (e) {
             console.log(e);
-            await interaction.editReply({ content: `\`❌\` Something went wrong! -> ${e}`, ephemeral: true });
+            await interaction.editReply({ content: `\`❌\` Something went wrong! -> ${e}`, flags: MessageFlags.Ephemeral });
         }
     },
 }

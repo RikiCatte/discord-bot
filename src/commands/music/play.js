@@ -1,4 +1,4 @@
-const { ButtonBuilder, ActionRowBuilder, EmbedBuilder, SlashCommandBuilder, ButtonStyle, Message } = require('discord.js');
+const { ButtonBuilder, ActionRowBuilder, EmbedBuilder, SlashCommandBuilder, ButtonStyle, MessageFlags } = require('discord.js');
 const client = require('../../index');
 
 module.exports = {
@@ -23,12 +23,12 @@ module.exports = {
 
         if (!voiceChannel) {
             embed.setColor('#ff0000').setDescription('You must be in a voice channel to execute music commands.');
-            return interaction.reply({ embeds: [embed], ephemeral: true });
+            return interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
         }
 
         if (!member.voice.channelId == guild.members.me.voice.channelId) {
             embed.setColor('#ff0000').setDescription(`You can't use the music player as it is already active in <#${guild.members.me.voice.channelId}>`);
-            return interaction.reply({ embeds: [embed], ephemeral: true });
+            return interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
         }
 
         try {
@@ -143,7 +143,7 @@ module.exports = {
 
             embed.setColor('#ff0000').setDescription('⛔ | Something went wrong...');
 
-            return await interaction.reply({ embeds: [embed], ephemeral: true });
+            return await interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
         }
     },
 };

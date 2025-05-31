@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require("discord.js");
+const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, MessageFlags } = require("discord.js");
 const puppeteer = require("puppeteer");
 
 module.exports = {
@@ -13,11 +13,12 @@ module.exports = {
         .toJSON(),
     userPermissions: [],
     botPermissions: [],
+    disabled: true, // Not supports arm64
 
     run: async (client, interaction) => {
         const { options } = interaction;
         const query = options.getString("query");
-        await interaction.deferReply({ ephemeral: true });
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
         const browser = await puppeteer.launch({ headless: true });
         const page = await browser.newPage();

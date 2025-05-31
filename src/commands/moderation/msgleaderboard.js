@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, EmbedBuilder } = require("discord.js");
+const { SlashCommandBuilder, EmbedBuilder, MessageFlags } = require("discord.js");
 const lb = require("../../schemas/msgleaderboard");
 
 module.exports = {
@@ -55,7 +55,7 @@ module.exports = {
 
                 const user = options.getUser("user");
                 const data = await lb.findOne({ Guild: interaction.guild.id, User: user.id });
-                if (!data) return await interaction.reply({ content: "\`⚠️\` Looks like you have 0 messages history logged with this bot!", ephemeral: true });
+                if (!data) return await interaction.reply({ content: "\`⚠️\` Looks like you have 0 messages history logged with this bot!", flags: MessageFlags.Ephemeral });
                 else {
                     var t = await total().then(async data => { return data.length });
 
@@ -66,14 +66,14 @@ module.exports = {
                         .addFields({ name: "Leaderboard Standing", value: `\`#${await lbUser(user.id)}/${t}\`` })
                         .setTimestamp();
 
-                    await interaction.reply({ embeds: [embed], ephemeral: true });
+                    await interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
                 }
 
                 break;
             case "total":
 
                 const data2 = await lb.findOne({ Guidl: interaction.guild.id });
-                if (!data2) return await interaction.reply({ content: "\`⚠️\` Looks like you have 0 messages history logged with this bot!", ephemeral: true });
+                if (!data2) return await interaction.reply({ content: "\`⚠️\` Looks like you have 0 messages history logged with this bot!", flags: MessageFlags.Ephemeral });
                 else {
                     var leaderboard = await total();
                     leaderboard.sort((a, b) => b.messages - a.messages);
@@ -83,6 +83,7 @@ module.exports = {
                     var num = 1;
                     await output.forEach(async value => {
                         const member = await interaction.guild.members.cache.get(value.user);
+                        if (!member) return; // Fix undefined member, happens when member has left the server?
                         string += `#${num} Member: **${member.user.username}**, Messages: \`${value.messages}\`\n`;
                         num++;
                     });
@@ -94,7 +95,7 @@ module.exports = {
                         .setTitle(`${interaction.guild.name}'s Message Leaderboard 1-10`)
                         .setDescription(`${string}`);
 
-                    await interaction.reply({ embeds: [embed], ephemeral: true });
+                    await interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
                 }
         }
     }

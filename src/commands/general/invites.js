@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder } = require("discord.js");
+const { SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder, MessageFlags } = require("discord.js");
 const invitesystemSchema = require("../../schemas/invitesSetup");
 const inviteSchema = require("../../schemas/invite");
 const buttonPagination = require("../../utils/buttonPagination");
@@ -63,7 +63,7 @@ module.exports = {
                 .setColor(mConfig.embedColorError)
                 .setDescription("`❌` The system is not yet set up. Use `/invites setup` to configure it.");
 
-            return interaction.reply({ embeds: [rEmbed], ephemeral: true });
+            return interaction.reply({ embeds: [rEmbed], flags: MessageFlags.Ephemeral });
         }
 
         try {
@@ -108,7 +108,7 @@ module.exports = {
                             .setColor(mConfig.embedColorError)
                             .setDescription(`\`❌\` ${member ? `${member.user.username} has` : "You have"} no invite codes.`);
 
-                        return interaction.reply({ embeds: [rEmbed], ephemeral: true });
+                        return interaction.reply({ embeds: [rEmbed], flags: MessageFlags.Ephemeral });
                     }
 
                     const pages = [];
@@ -200,7 +200,7 @@ module.exports = {
                         .setTitle("New server invite")
                         .setDescription(`Here's your invite code: \`${invite.code}\`\nYour invite link is: https://discord.gg/${invite.code}`);
 
-                    await interaction.reply({ embeds: [rEmbed], ephemeral: true });
+                    await interaction.reply({ embeds: [rEmbed], flags: MessageFlags.Ephemeral });
                     break;
                 }
             }

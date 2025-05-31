@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, EmbedBuilder, Colors } = require('discord.js');
+const { SlashCommandBuilder, Colors, MessageFlags } = require('discord.js');
 const msgConfig = require("../../messageConfig.json");
 
 module.exports = {
@@ -45,6 +45,6 @@ module.exports = {
         }
 
         await interaction.channel.send({ embeds: [embed] });
-        await interaction.reply({ content: "Message has been sent below!", ephemeral: true });
+        await interaction.reply({ content: "Message has been sent below!", flags: MessageFlags.Ephemeral });
     }
 }

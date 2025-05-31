@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, EmbedBuilder, AttachmentBuilder } = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder, AttachmentBuilder, MessageFlags } = require('discord.js');
 require('dotenv').config();
 const msgConfig = require("../../messageConfig.json");
 
@@ -12,7 +12,7 @@ module.exports = {
     botPermissions: [],
 
     run: async (client, interaction) => {
-        await interaction.deferReply({ ephemeral: true });
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
         const image = interaction.options.getAttachment('image');
 

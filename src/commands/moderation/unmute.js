@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder } = require('discord.js');
+const { SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder, MessageFlags } = require('discord.js');
 const msgConfig = require("../../messageConfig.json");
 
 module.exports = {
@@ -37,15 +37,15 @@ module.exports = {
             .setFooter({ text: msgConfig.footer_text, iconURL: msgConfig.footer_iconURL });
 
         if (member.roles.highest.position >= interaction.member.roles.highest.position) // commentare in caso di errori
-            return interaction.reply({ embeds: [errEmbed], ephemeral: true });
+            return interaction.reply({ embeds: [errEmbed], flags: MessageFlags.Ephemeral });
 
         try {
             await member.timeout(null);
 
-            interaction.reply({ embeds: [successEmbed], ephemeral: true });
+            interaction.reply({ embeds: [successEmbed], flags: MessageFlags.Ephemeral });
         } catch (err) {
             console.log(err);
-            return interaction.reply({ content: "You have to select a valid target!", ephemeral: true });
+            return interaction.reply({ content: "You have to select a valid target!", flags: MessageFlags.Ephemeral });
         }
     }
 }

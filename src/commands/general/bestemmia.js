@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
+const { SlashCommandBuilder, MessageFlags } = require('discord.js');
 const fs = require('fs').promises;
 const path = require('path');
 
@@ -27,7 +27,7 @@ module.exports = {
             await interaction.reply(rigaDaInviare);
         } catch (error) {
             console.error('Errore durante la lettura del file JSON:', error);
-            await interaction.reply({ content: `Si è verificato un errore durante la lettura del file.`, ephemeral: true });
+            await interaction.reply({ content: `Si è verificato un errore durante la lettura del file.`, flags: MessageFlags.Ephemeral });
         }
     }
 };

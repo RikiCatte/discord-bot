@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, EmbedBuilder, ChatInputCommandInteraction } = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder, ChatInputCommandInteraction, MessageFlags } = require('discord.js');
 const axios = require('axios');
 require('dotenv').config();
 const msgConfig = require("../../messageConfig.json");
@@ -105,7 +105,7 @@ module.exports = {
         const host = "api.antitor.com";
         const apiKey = process.env.antitorApi;
 
-        await interaction.deferReply({ ephemeral: true });
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
         const { options } = interaction;
         const ipAddress = options.getString("ipaddress");
@@ -159,7 +159,7 @@ module.exports = {
                     return await interaction.editReply({ embeds: [embed] });
                 } catch (e) {
                     console.log(e);
-                    return await interaction.editReply({ content: 'Something went wrong! please contact Bot Dev', ephemeral: true });
+                    return await interaction.editReply({ content: 'Something went wrong! please contact Bot Dev', flags: MessageFlags.Ephemeral });
                 }
             case "ipexist":
                 reqURL = `https://${host}/history/exist?ip=${ipAddress}&key=${apiKey}`;
@@ -190,7 +190,7 @@ module.exports = {
                     return await interaction.editReply({ content: `The IP Address ${ipAddress} is not found in antitor database!` });
                 } catch (e) {
                     console.log(e);
-                    return await interaction.editReply({ content: 'Something went wrong! please contact Bot Dev', ephemeral: true });
+                    return await interaction.editReply({ content: 'Something went wrong! please contact Bot Dev', flags: MessageFlags.Ephemeral });
                 }
             case "sumstats":
                 const day = options.getString("day");
@@ -239,7 +239,7 @@ module.exports = {
                     return await interaction.editReply({ content: `The IP Address ${ipAddress} is not found in antitor database!` });
                 } catch (e) {
                     console.log(e);
-                    return await interaction.editReply({ content: 'Something went wrong! please contact Bot Dev', ephemeral: true });
+                    return await interaction.editReply({ content: 'Something went wrong! please contact Bot Dev', flags: MessageFlags.Ephemeral });
                 }
         }
     }

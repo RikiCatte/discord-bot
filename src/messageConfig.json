@@ -5,7 +5,7 @@
   "embedErrorMessage": "`❌` An error occurred!",
   "commandDevOnly": "`❌` This command can only be executed by developers.",
   "commandTestMode": "`❌` This is in development and cannot be executed in this server.",
-  "commandDisabled": "`❌` This command has been disabled by DEVs.",
+  "commandDisabled": "`❌` This command has been disabled by DEVs and no one can use it.",
   "commandPremiumOnly": "`❌` This command can only be executed by premium users.",
   "userNoPermissions": "`❌` You do not have enough permissions to execute this command.",
   "botNoPermissions": "`❌` I do not have enough permissions to execute this command.",

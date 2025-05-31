@@ -2,6 +2,7 @@ const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 const axios = require('axios');
 require('dotenv').config();
 const msgConfig = require("../../messageConfig.json");
+const { disabled } = require('./translate');
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -12,8 +13,7 @@ module.exports = {
         .toJSON(),
     userPermissions: [],
     botPermissions: [],
-
-
+    disabled: true,
 
     run: async (client, interaction) => {
         await interaction.deferReply({ ephemeral: true });

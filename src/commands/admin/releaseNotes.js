@@ -1,5 +1,5 @@
 //require('dotenv').config();
-const { SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder } = require("discord.js");
+const { SlashCommandBuilder, EmbedBuilder, MessageFlags } = require("discord.js");
 const notes = require("../../schemas/releasenotes");
 const config = require("../../config.json");
 
@@ -12,6 +12,7 @@ module.exports = {
         .toJSON(),
     userPermissions: [],
     botPermissions: [],
+    disabled: true,
 
     run: async (client, interaction) => {
         const { options } = interaction;
@@ -23,7 +24,7 @@ module.exports = {
                 .setColor("Blurple")
                 .setDescription(message);
 
-            await interaction.reply({ embeds: [embed], ephemeral: true })
+            await interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral })
         }
 
         async function updateNotes(update, version) {
@@ -41,7 +42,7 @@ module.exports = {
             case "publish":
                 const developersId = config.developersId;
 
-                if (!developersId.includes(interaction.user.id)) return interaction.reply({ content: "Only DEVs can publish release notes!", ephemeral: true });
+                if (!developersId.includes(interaction.user.id)) return interaction.reply({ content: "Only DEVs can publish release notes!", flags: MessageFlags.Ephemeral });
 
                 const update = options.getString("updated-notes");
                 if (data.length > 0) {

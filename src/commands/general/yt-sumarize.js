@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, EmbedBuilder } = require("discord.js");
+const { SlashCommandBuilder, EmbedBuilder, MessageFlags } = require("discord.js");
 const puppeteer = require("puppeteer");
 
 module.exports = {
@@ -12,12 +12,13 @@ module.exports = {
         .toJSON(),
     userPermissions: [],
     botPermissions: [],
+    disabled: true,
 
     run: async (client, interaction) => {
         const { options } = interaction;
         const url = options.getString("url");
 
-        await interaction.reply({ content: "\`🧠\` Loading your response.. this could take some time", ephemeral: true });
+        await interaction.reply({ content: "\`🧠\` Loading your response.. this could take some time", flags: MessageFlags.Ephemeral });
 
         const browser = await puppeteer.launch();
         const page = await browser.newPage();
@@ -38,7 +39,7 @@ module.exports = {
         text = text.replace("Youtube video", `[Youtube video](${url})`);
 
         setTimeout(async () => {
-            if (text.length == 0) return await interaction.editReply({ content: "There was an error getting that response, try again later!", ephemeral: true });
+            if (text.length == 0) return await interaction.editReply({ content: "There was an error getting that response, try again later!", flags: MessageFlags.Ephemeral });
         }, 30000);
 
         await browser.close();
@@ -47,6 +48,6 @@ module.exports = {
             .setColor("Blurple")
             .setDescription(text);
 
-        await interaction.editReply({ content: "✅ Here is the summary of your video", embeds: [embed], ephemeral: true });
+        await interaction.editReply({ content: "✅ Here is the summary of your video", embeds: [embed], flags: MessageFlags.Ephemeral });
     }
 }

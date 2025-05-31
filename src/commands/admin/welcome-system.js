@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits } = require("discord.js");
+const { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits, MessageFlags } = require("discord.js");
 const welcomeSchema = require("../../schemas/welcome");
 
 module.exports = {
@@ -104,7 +104,7 @@ module.exports = {
             const data = await welcome.findOne({ Guild: interaction.guild.id });
 
             if (!data) {
-                await interaction.reply({ content: `Welcome System is not Setup In **${interaction.guild.name}**`, ephemeral: true });
+                await interaction.reply({ content: `Welcome System is not Setup In **${interaction.guild.name}**`, flags: MessageFlags.Ephemeral });
             } else {
                 await welcomeSchema.findOneAndDelete({
                     Guild: interaction.guild.id,

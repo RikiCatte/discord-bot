@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require("discord.js");
+const { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits, ActionRowBuilder, ButtonBuilder, ButtonStyle, MessageFlags } = require("discord.js");
 const mConfig = require("../../messageConfig.json");
 const moderationSchema = require("../../schemas/moderation");
 
@@ -33,21 +33,21 @@ module.exports = {
                 .setDescription(
                     `\`❌\` This server isn't configured yet.\n\n\`💡\` Use \`/moderatesystem configure\` to start configuring this server`
                 );
-            return interaction.reply({ embeds: [rEmbed], ephemeral: true });
+            return interaction.reply({ embeds: [rEmbed], flags: MessageFlags.Ephemeral });
         }
 
         if (targetMember.id === member.id) {
             rEmbed
                 .setColor(mConfig.embedColorError)
                 .setDescription(`${mConfig.unableToInteractWithYourself}`);
-            return interaction.reply({ embeds: [rEmbed], ephemeral: true });
+            return interaction.reply({ embeds: [rEmbed], flags: MessageFlags.Ephemeral });
         }
 
         if (targetMember.roles.highest.position > member.roles.highest.position) {
             rEmbed
                 .setColor(mConfig.embedColorError)
                 .setDescription(`${mConfig.hasHigherRolePosition}`);
-            return interaction.reply({ embeds: [rEmbed], ephemeral: true });
+            return interaction.reply({ embeds: [rEmbed], flags: MessageFlags.Ephemeral });
         }
 
         const moderationButtons = new ActionRowBuilder().setComponents(

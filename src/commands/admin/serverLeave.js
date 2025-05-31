@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, EmbedBuilder } = require("discord.js");
+const { SlashCommandBuilder, EmbedBuilder, MessageFlags } = require("discord.js");
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -17,7 +17,7 @@ module.exports = {
     run: async (client, interaction) => {
         const { options } = interaction;
         const guild = options.getString("guild");
-        await interaction.deferReply({ ephemeral: true });
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
         async function sendMessage(message) {
             const embed = new EmbedBuilder()
@@ -27,7 +27,7 @@ module.exports = {
             await interaction.editReply({ embeds: [embed] });
         }
 
-        let fetchedGuild = await client.guilds.fetch(guild).catch(err => { });
+        let fetchedGuild = await client.guilds.fetch(guild).catch(err => { console.log(err); });
         let guilds = [];
 
         if (fetchedGuild) {

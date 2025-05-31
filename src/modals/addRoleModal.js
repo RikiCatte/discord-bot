@@ -1,4 +1,4 @@
-const { PermissionFlagsBits, EmbedBuilder } = require("discord.js");
+const { PermissionFlagsBits, EmbedBuilder, MessageFlags } = require("discord.js");
 
 module.exports = {
     customId: "addrole_modal",
@@ -19,7 +19,7 @@ module.exports = {
             const roleId = fields.getTextInputValue("role_id_input");
             const role = guild.roles.cache.get(roleId);
 
-            await interaction.deferReply({ ephemeral: true });
+            await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
             const addedRole = new EmbedBuilder()
                 .setAuthor({
