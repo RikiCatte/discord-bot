@@ -15,6 +15,7 @@ module.exports = {
         .toJSON(),
     userPermissions: [],
     botPermissions: [],
+    disabled: true,
 
     run: async (client, interaction) => {
         const { member, guild, options } = interaction;

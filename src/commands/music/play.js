@@ -12,6 +12,7 @@ module.exports = {
         ),
     userPermissions: [],
     botPermissions: [],
+    disabled: true,
 
     run: async (client, interaction) => {
         const { options, member, guild, channel } = interaction;
