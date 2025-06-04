@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, Client, PermissionFlagsBits, ChannelType, GuildVoice } = require("discord.js");
+const { SlashCommandBuilder, PermissionFlagsBits, ChannelType, MessageFlags } = require("discord.js");
 const schema = require("../../schemas/join-to-create");
 
 module.exports = {
@@ -35,7 +35,7 @@ module.exports = {
                 data.Channel = channel.id;
                 data.UserLimit = userlimit;
                 await data.save();
-                interaction.reply({ content: "\`✅\` The join to create system has been updated!", ephemeral: true });
+                interaction.reply({ content: "\`✅\` The join to create system has been updated!", flags: MessageFlags.Ephemeral });
             } else {
                 // If schema not exists, it creates it
                 data = new schema({
@@ -44,7 +44,7 @@ module.exports = {
                     UserLimit: userlimit
                 });
                 await data.save();
-                interaction.reply({ content: "\`✅\` The join to create system has been set up!", ephemeral: true });
+                interaction.reply({ content: "\`✅\` The join to create system has been set up!", flags: MessageFlags.Ephemeral });
             }
 
         } catch (error) {

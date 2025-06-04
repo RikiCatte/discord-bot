@@ -23,6 +23,7 @@ module.exports = {
             .setAuthor({
                 name: `${targetMember.user.username}`,
                 iconURL: `${targetMember.user.displayAvatarURL({ dynamic: true })}`,
+                url: mConfig.author_link
             })
             .setDescription(
                 `\`❔\` What is the reason to kick ${targetMember.user.username}?\n\`❕\` You have 15 seconds to reply. After this time the moderation will be automatically cancelled.\n\n\`💡\` To continue without a reason, answer with \`-\`.\n\`💡\` To cancel the moderation, answer with \`cancel\`.`
@@ -100,6 +101,7 @@ module.exports = {
                             iconURL: externalMember.user.displayAvatarURL({
                                 dynamic: true,
                             }),
+                            url: mConfig.author_link
                         })
                         .addFields(
                             {
@@ -137,6 +139,7 @@ module.exports = {
             .setAuthor({
                 name: targetMember.user.username,
                 iconURL: targetMember.user.displayAvatarURL({ dynamic: true }),
+                url: mConfig.author_link
             })
             .addFields(
                 { name: "Kicked by", value: `<@${user.id}>`, inline: true },

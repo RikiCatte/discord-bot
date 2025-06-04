@@ -1,5 +1,5 @@
 const crypto = require('crypto');
-const { SlashCommandBuilder, EmbedBuilder, ChatInputCommandInteraction } = require("discord.js");
+const { SlashCommandBuilder, ChatInputCommandInteraction, MessageFlags } = require("discord.js");
 
 async function generateHash(input, algorithm = 'sha512', salt = "") {
     if (salt != "")
@@ -54,6 +54,6 @@ module.exports = {
         if (!algo) algo = "sha512";
 
         const hashedText = await generateHash(text, algo, salt);
-        await interaction.reply({ content: `Your hashed text is ${hashedText}`, ephemeral: true });
+        await interaction.reply({ content: `Your hashed text is ${hashedText}`, flags: MessageFlags.Ephemeral });
     }
 };

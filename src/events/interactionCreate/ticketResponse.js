@@ -1,4 +1,4 @@
-const { ChannelType, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, PermissionFlagsBits, ComponentType } = require("discord.js");
+const { ChannelType, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, PermissionFlagsBits, MessageFlags } = require("discord.js");
 const ticketschema = require("../../schemas/ticket");
 const TicketSetup = require("../../schemas/ticketsetup");
 const msgConfig = require("../../messageConfig.json");
@@ -33,13 +33,13 @@ module.exports = async (client, interaction) => {
     }
 
     if (!guild.members.me.permissions.has(ManageChannels))
-        interaction.reply({ content: "I don't have permissions to do this.", ephemeral: true });
+        interaction.reply({ content: "I don't have permissions to do this.", flags: MessageFlags.Ephemeral });
 
     try {
         const staffRole = guild.roles.cache.get(process.env.staffRole);
 
         if (!staffRole) {
-            return interaction.reply({ content: "Staff role not found, check .env file", ephemeral: true });
+            return interaction.reply({ content: "Staff role not found, check .env file", flags: MessageFlags.Ephemeral });
         }
 
         //
@@ -105,7 +105,7 @@ module.exports = async (client, interaction) => {
             });
 
 
-            interaction.reply({ content: `Succesfully created a ticket! Open it up here 👉 <#${channel.id}>`, ephemeral: true });
+            interaction.reply({ content: `Succesfully created a ticket! Open it up here 👉 <#${channel.id}>`, flags: MessageFlags.Ephemeral });
         });
     } catch (err) {
         return console.log(err);

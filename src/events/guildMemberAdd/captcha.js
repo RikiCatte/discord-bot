@@ -35,7 +35,7 @@ module.exports = async (client, member) => {
             JoinedAt: await frmtDate(),
             ReJoinedTimes: 0,
             Captcha: text,
-            CaptchaSolved: "Pending",
+            CaptchaStatus: "Pending",
             CaptchaExpired: false
         })
     } else { // member has joined server in the past
@@ -88,11 +88,13 @@ module.exports = async (client, member) => {
     const attachment = new AttachmentBuilder(buffer, { name: "captcha.png" });
 
     const capEmbed = new EmbedBuilder()
+        .setAuthor({ name: `${client.user.username}`, iconURL: msgConfig.author_img, url: msgConfig.author_url })
         .setColor("Blue")
         .setImage("attachment://captcha.png")
         .setTitle("Captcha Verification System")
+        .setDescription("🇮🇹 Attenzione alle maiuscole!\n🇬🇧 The challenge is case-sensitive!")
         .addFields({ name: "🇮🇹", value: `Compila il Captcha per entrare nel server ${member.guild.name}` })
-        .addFields({ name: "🇬🇧", value: `Complete Captcha to gain access to the server ${member.guild.name}` })
+        .addFields({ name: "🇬🇧", value: `Complete Captcha to gain access to the server, it's case-sensitive ${member.guild.name}` })
         .setFooter({ text: "Captcha System by RikiCatte", iconURL: msgConfig.footer_iconURL })
 
 
@@ -137,17 +139,28 @@ module.exports = async (client, member) => {
     })
 
     collector.on("end", async collected => {
-        await captchaUsersDataSchema.findOneAndUpdate(
-            { Guild: member.guild.id, UserID: member.user.id },
-            {
-                $set: {
-                    CaptchaStatus: "Expired due to time limit",
-                    CaptchaExpired: true,
+        let userCaptcha = await captchaUsersDataSchema.findOne({ Guild: member.guild.id, UserID: member.user.id });
+
+        if (/*userCaptcha.CaptchaStatus &&*/ userCaptcha.CaptchaStatus === "Pending") { // time is finished and the user didn't solved the captcha
+            await captchaUsersDataSchema.findOneAndUpdate(
+                { Guild: member.guild.id, UserID: member.user.id },
+                {
+                    $set: {
+                        CaptchaStatus: "Expired due to time limit",
+                        CaptchaExpired: true,
+                    }
                 }
-            }
-        );
+            );
+
+            await msg.delete().catch(err => console.log(err));
+            return await member.send({ content: `Your captcha has expired, please contact a **${member.guild.name}** Admin in order to gain the verified role.` })
+        }
 
         await msg.delete().catch(err => console.log(err));
-        return await member.send({ content: "Your captcha has expired, please contact a server Admin in order to gain the verified role." })
+
+        if (userCaptcha.Bypassed) return await member.send({ content: `You get verfication bypassed by user id ${userCaptcha.BypassedBy} in **${member.guild.name}** on \`${await frmtDate()} UTC +1/2\`` });
+
+        // user has correctly submitted captcha and the message will be deleted
+        return await member.send({ content: `You get verified in **${member.guild.name}** on \`${await frmtDate()} UTC +1/2\`` });
     })
 }

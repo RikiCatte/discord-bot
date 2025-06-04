@@ -1,4 +1,4 @@
-const { EmbedBuilder, ModalSubmitInteraction } = require("discord.js");
+const { EmbedBuilder, ModalSubmitInteraction, MessageFlags } = require("discord.js");
 const captchaSchema = require("../../schemas/captchaSetup");
 const captchaUsersDataSchema = require("../../schemas/captchaUsersData");
 const msgConfig = require("../../messageConfig.json");
@@ -13,11 +13,17 @@ module.exports = async (client, interaction) => {
     if (!interaction.isModalSubmit() || interaction.customId !== "captchaModal") return;
 
     const data = await captchaSchema.findOne({ Guild: `${msgConfig.guild}` });
+    if (!data) return;
+
+    const roleId = data.Role;
+    const captchaGuild = await client.guilds.fetch(`${msgConfig.guild}`);
+    const role = await captchaGuild.roles.cache.get(roleId);
+
+    const member = await captchaGuild.members.fetch(interaction.user.id);
 
     let userSchema = await captchaUsersDataSchema.findOne({ Guild: msgConfig.guild, UserID: interaction.user.id });
     let captcha = "";
-    if (!data) return;
-    else if (data.RandomText) {
+    if (data.RandomText) {
         if (!userSchema) return await interaction.reply("There was an error while searching your captcha data in the database, please contact a server admin");
 
         captcha = userSchema.Captcha;
@@ -42,22 +48,19 @@ module.exports = async (client, interaction) => {
 
         await captchaUsersDataSchema.findOneAndUpdate(
             { Guild: member.guild.id, UserID: member.user.id },
-            { $set: { MissedTimes: userSchema.MissedTimes + 1 } }
+            { $set: { MissedTimes: (userSchema.MissedTimes != null ? userSchema.MissedTimes + 1 : 1) } }
         );
+        // if the user miss for the first time userSchema.MissedTimes will be null, so it should be 1 now else it should be incremented
 
-        return await interaction.reply({ content: "❌ That was wrong!, please try again", ephemeral: true });
+        return await interaction.reply({ content: "❌ That was wrong!, please try again", flags: MessageFlags.Ephemeral });
     }
 
-    const roleId = data.Role;
 
-    const captchaGuild = await client.guilds.fetch(`${msgConfig.guild}`);
-    const role = await captchaGuild.roles.cache.get(roleId);
 
-    const member = await captchaGuild.members.fetch(interaction.user.id);
-
-    await member.roles.add(role).catch(err => {
-        return interaction.reply({ content: "🔴 There was an error, please contact server staff to solve!", ephemeral: true });
-    })
+    await member.roles.add(role).catch(async err => {
+        console.log(err);
+        return await interaction.reply({ content: "🔴 There was an error while attempting to add you the verified role, please contact server staff to solve!", flags: MessageFlags.Ephemeral });
+    });
 
     const embed = new EmbedBuilder()
         .setTitle("User Passed Captcha Verification")
@@ -78,5 +81,5 @@ module.exports = async (client, interaction) => {
         }
     );
 
-    return await interaction.reply({ content: `✅ You have been verified in ${captchaGuild.name}`, ephemeral: true });
+    return await interaction.reply({ content: `✅ You have been verified in ${captchaGuild.name}`, flags: MessageFlags.Ephemeral });
 }

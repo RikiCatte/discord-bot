@@ -23,6 +23,7 @@ module.exports = {
 			.setAuthor({
 				name: `${targetMember.user.username}`,
 				iconURL: `${targetMember.user.displayAvatarURL({ dynamic: true })}`,
+				url: mConfig.author_link
 			})
 			.setDescription(
 				`\`❔\` What is the reason to ban ${targetMember.user.username}?\n\`❕\` You have 15 seconds to reply. After this time the moderation will be automatically cancelled.\n\n\`💡\` To continue without a reason, answer with \`-\`.\n\`💡\` To cancel the moderation, answer with \`cancel\`.`
@@ -101,6 +102,7 @@ module.exports = {
 						.setAuthor({
 							name: externalMember.user.username,
 							iconURL: externalMember.user.displayAvatarURL({ dynamic: true }),
+							url: mConfig.author_link
 						})
 						.setDescription(
 							`\`💡\` To unban ${externalMember.user.username}, use \`/unban ${externalMember.user.id}\` to revoke this ban.`
@@ -145,6 +147,7 @@ module.exports = {
 			.setAuthor({
 				name: targetMember.user.username,
 				iconURL: targetMember.user.displayAvatarURL({ dynamic: true }),
+				url: mConfig.author_link
 			})
 			.setDescription(
 				`\`💡\` To unban ${targetMember.user.username}, use \`/unban ${targetMember.user.id}\` to revoke this ban.`

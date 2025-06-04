@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder, MessageFlags } = require('discord.js');
 const { default: axios } = require('axios');
 const msgConfig = require("../../messageConfig.json");
 
@@ -28,12 +28,8 @@ module.exports = {
             emoji = `https://cdn.discordapp.com/emojis/${id}.${type}?quality=lossless`
         }
 
-        if (!emoji.startsWith("http")) {
-            return await interaction.reply({ content: "You can't enlarge default emojis!", ephemeral: true })
-        }
-
-        if (!emoji.startsWith("https")) {
-            return await interaction.reply({ content: "You can't enlarge default emojis!", ephemeral: true })
+        if (!emoji.startsWith("http") || !emoji.startsWith("https")) {
+            return await interaction.reply({ content: "You can't enlarge default emojis!", flags: MessageFlags.Ephemeral });
         }
 
         const embed = new EmbedBuilder()
@@ -43,7 +39,7 @@ module.exports = {
             .setThumbnail(msgConfig.thumbnail)
             .setImage(emoji)
             .setTimestamp()
-            .setFooter({ text: msgConfig.footer_text, iconURL: msgConfig.footer_iconURL});
+            .setFooter({ text: msgConfig.footer_text, iconURL: msgConfig.footer_iconURL });
 
         await interaction.reply({ embeds: [embed] });
     }

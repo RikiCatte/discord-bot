@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder, MessageFlags } = require('discord.js');
 const axios = require('axios');
 require('dotenv').config();
 const msgConfig = require("../../messageConfig.json");
@@ -11,9 +11,10 @@ module.exports = {
         .toJSON(),
     userPermissions: [],
     botPermissions: [],
+    disabled: true,
 
     run: async (client, interaction) => {
-        await interaction.deferReply({ ephemeral: true });
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
         const { options } = interaction;
         const url = options.getString('url');
@@ -46,7 +47,7 @@ module.exports = {
             await interaction.editReply({ embeds: [embed] });
         } catch (e) {
             console.log(e);
-            await interaction.editReply({ content: 'That URL is invalid! Try again with a different URL' })
+            return await interaction.editReply({ content: 'That URL is invalid! Try again with a different URL' })
         }
     }
 }

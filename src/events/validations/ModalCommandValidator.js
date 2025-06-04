@@ -1,6 +1,6 @@
 require("colors");
 
-const { EmbedBuilder } = require("discord.js");
+const { EmbedBuilder, MessageFlags } = require("discord.js");
 const { developersId, testServerId } = require("../../config.json");
 const mConfig = require("../../messageConfig.json");
 const getModals = require("../../utils/getModals");
@@ -20,7 +20,7 @@ module.exports = async (client, interaction) => {
 				const rEmbed = new EmbedBuilder()
 					.setColor(`${mConfig.embedColorError}`)
 					.setDescription(`${mConfig.commandDevOnly}`);
-				interaction.reply({ embeds: [rEmbed], ephemeral: true });
+				interaction.reply({ embeds: [rEmbed], flags: MessageFlags.Ephemeral });
 				return;
 			}
 		}
@@ -30,7 +30,7 @@ module.exports = async (client, interaction) => {
 				const rEmbed = new EmbedBuilder()
 					.setColor(`${mConfig.embedColorError}`)
 					.setDescription(`${mConfig.commandTestMode}`);
-				interaction.reply({ embeds: [rEmbed], ephemeral: true });
+				interaction.reply({ embeds: [rEmbed], flags: MessageFlags.Ephemeral });
 				return;
 			}
 		}
@@ -43,7 +43,7 @@ module.exports = async (client, interaction) => {
 				const rEmbed = new EmbedBuilder()
 					.setColor(`${mConfig.embedColorError}`)
 					.setDescription(`${mConfig.userNoPermissions}`);
-				interaction.reply({ embeds: [rEmbed], ephemeral: true });
+				interaction.reply({ embeds: [rEmbed], flags: MessageFlags.Ephemeral });
 				return;
 			}
 		}
@@ -57,7 +57,7 @@ module.exports = async (client, interaction) => {
 				const rEmbed = new EmbedBuilder()
 					.setColor(`${mConfig.embedColorError}`)
 					.setDescription(`${mConfig.botNoPermissions}`);
-				interaction.reply({ embeds: [rEmbed], ephemeral: true });
+				interaction.reply({ embeds: [rEmbed], flags: MessageFlags.Ephemeral });
 				return;
 			}
 		}

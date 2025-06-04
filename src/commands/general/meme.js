@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, MessageEmbed } = require('discord.js');
+const { SlashCommandBuilder, MessageEmbed, EmbedBuilder } = require('discord.js');
 const fetch = (...args) => import('node-fetch').then(({ default: fetch }) => fetch(...args));
 const msgConfig = require("../../messageConfig.json");
 
@@ -17,13 +17,14 @@ module.exports = {
         .toJSON(),
     userPermissions: [],
     botPermissions: [],
+    disabled: true,
 
     run: async (client, interaction) => {
         const { options } = interaction;
 
         const platform = options.getString("platform");
 
-        const embed = new MessageEmbed();
+        const embed = new EmbedBuilder();
 
         async function redditMeme() {
             const res = await fetch('https://www.reddit.com/r/memes/random/.json');

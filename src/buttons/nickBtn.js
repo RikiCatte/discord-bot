@@ -18,7 +18,7 @@ module.exports = {
         const rEmbed = new EmbedBuilder()
             .setColor("White")
             .setFooter({ text: `${client.user.username} - Moderate user` })
-            .setAuthor({ name: `${targetMember.user.username}`, iconURL: `${targetMember.user.displayAvatarURL({ dynamic: true })}`, })
+            .setAuthor({ name: `${targetMember.user.username}`, iconURL: `${targetMember.user.displayAvatarURL({ dynamic: true })}`, url: mConfig.author_link })
             .setDescription(
                 `\`❔\` What is the reason to moderate the nickname of ${targetMember.user.username}?
          \`❕\` You have 15 seconds to relpy. After this time the moderation action will be automatically cancelled.
@@ -79,7 +79,7 @@ module.exports = {
         const lEmbed = new EmbedBuilder()
             .setColor("White")
             .setTitle("`⛔` Moderated Nickname")
-            .setAuthor({ name: `${targetMember.user.username}`, iconURL: `${targetMember.user.displayAvatarURL({ dynamic: true })}` })
+            .setAuthor({ name: `${targetMember.user.username}`, iconURL: `${targetMember.user.displayAvatarURL({ dynamic: true })}`, url: mConfig.author_link })
             .setDescription(`\`💡\` I moderated the users nickname to - Moderate Nickname ${tagline} \`💡\``)
             .addFields({ name: "Changed by", value: `<@${user.id}>`, inline: true }, { name: "Reason", value: `${reason}`, inline: true })
             .setFooter({ iconURL: `${client.user.displayAvatarURL({ dynamic: true })}`, text: `${client.user.username} - Logging system` });

@@ -1,4 +1,5 @@
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require("discord.js");
+const mConfig = require("../messageConfig.json");
 
 module.exports = {
     customId: "otherBtn",
@@ -17,7 +18,7 @@ module.exports = {
 
             const Oembed = new EmbedBuilder()
                 .setTitle("Other Options")
-                .setAuthor({ name: `${targetMember.user.username}`, iconURL: `${targetMember.user.displayAvatarURL({ dynamic: true })}` })
+                .setAuthor({ name: `${targetMember.user.username}`, iconURL: `${targetMember.user.displayAvatarURL({ dynamic: true })}`, url: mConfig.author_link })
                 .setDescription(`\`❔\` What action do you want to use against ${targetMember.user.username}?`);
 
             const otherRow = new ActionRowBuilder().addComponents(

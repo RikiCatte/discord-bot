@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits } = require("discord.js");
+const { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits, MessageFlags } = require("discord.js");
 const welcomeSchema = require("../../schemas/welcome");
 
 module.exports = {
@@ -63,7 +63,7 @@ module.exports = {
                 const welcomeSetupEmbed = new EmbedBuilder()
                     .setColor("Random")
                     .setTimestamp()
-                    .setAuthor({ name: "Welcome Setup Update", iconURL: interaction.guild.iconURL() })
+                    .setAuthor({ name: "Welcome Setup Update", iconURL: interaction.guild.iconURL(), url: msgConfig.author_link })
                     .setDescription(`Welcome Channel Set As ${channel}, Role As <@${role}> And Rule Channel As <#${rule}>, Welcome Message: ${message}`)
 
                 await interaction.reply({ embeds: [welcomeSetupEmbed] });
@@ -104,7 +104,7 @@ module.exports = {
             const data = await welcome.findOne({ Guild: interaction.guild.id });
 
             if (!data) {
-                await interaction.reply({ content: `Welcome System is not Setup In **${interaction.guild.name}**`, ephemeral: true });
+                await interaction.reply({ content: `Welcome System is not Setup In **${interaction.guild.name}**`, flags: MessageFlags.Ephemeral });
             } else {
                 await welcomeSchema.findOneAndDelete({
                     Guild: interaction.guild.id,

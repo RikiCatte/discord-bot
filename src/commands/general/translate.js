@@ -1,4 +1,4 @@
-const { SlashCommandBuilder } = require("discord.js");
+const { SlashCommandBuilder, MessageFlags } = require("discord.js");
 const axios = require('axios');
 require('dotenv').config();
 
@@ -24,12 +24,12 @@ module.exports = {
         .toJSON(),
     userPermissions: [],
     botPermissions: [],
+    disabled: true,
 
     run: async (client, interaction) => {
-        await interaction.deferReply({ ephemeral: true });
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
         const { options } = interaction;
-        const text = options.getString('text');
 
         const encodedParams = new URLSearchParams();
         encodedParams.set('q', options.getString("text"));
@@ -50,7 +50,7 @@ module.exports = {
 
         try {
             const response = await axios.request(request);
-            await interaction.editReply({ content: response.data.data.translations[0].translatedText, ephemeral: true })
+            await interaction.editReply({ content: response.data.data.translations[0].translatedText, flags: MessageFlags.ephemeral })
         } catch (error) {
             console.error(error);
         }

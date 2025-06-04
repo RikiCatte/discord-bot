@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder, MessageFlags } = require('discord.js');
 const msgConfig = require("../../messageConfig.json");
 
 module.exports = {
@@ -35,11 +35,11 @@ module.exports = {
         const timestamp = options.getBoolean('timestamp');
 
         if (image) {
-            if (!image.startsWith('http')) return await interaction.reply({ content: "You cannot make this as your image", ephemeral: true })
+            if (!image.startsWith('http')) return await interaction.reply({ content: "You cannot make this as your image", flags: MessageFlags.Ephemeral })
         }
 
         if (thumbnail) {
-            if (!thumbnail.startsWith('http')) return await interaction.reply({ content: "You cannot make this as your thumbnail", ephemeral: true })
+            if (!thumbnail.startsWith('http')) return await interaction.reply({ content: "You cannot make this as your thumbnail", flags: MessageFlags.Ephemeral })
         }
 
         const embed = new EmbedBuilder()
@@ -57,7 +57,7 @@ module.exports = {
             embed.setTimestamp()
         }
 
-        await interaction.reply({ content: "Your embed has been sent below", ephemeral: true });
+        await interaction.reply({ content: "Your embed has been sent below", flags: MessageFlags.Ephemeral });
 
         await interaction.channel.send({ embeds: [embed] });
     }

@@ -1,4 +1,4 @@
-const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require("discord.js");
+const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, MessageFlags } = require("discord.js");
 const msgConfig = require("../../messageConfig.json");
 const bugReportSchema = require("../../schemas/bugreport");
 
@@ -41,5 +41,5 @@ module.exports = async (client, interaction) => {
         Solved: false,
     })
 
-    return await interaction.reply({ content: "✅ Your report has been sent. Our DEVs will look into this issue, and reach out with any further questions", ephemeral: true });
+    return await interaction.reply({ content: "✅ Your report has been sent. Our DEVs will look into this issue, and reach out with any further questions", flags: MessageFlags.Ephemeral });
 }

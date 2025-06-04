@@ -1,6 +1,6 @@
 require("colors");
 
-const { EmbedBuilder } = require("discord.js");
+const { EmbedBuilder, MessageFlags } = require("discord.js");
 const { developersId, testServerId } = require("../../config.json");
 const mConfig = require("../../messageConfig.json");
 const getButtons = require("../../utils/getButtons");
@@ -15,17 +15,17 @@ module.exports = async (client, interaction) => {
         if (!buttonObject) { // -> If statement added to implement Bug Report System
             try {
                 buttonObject = buttons.find((btn) => btn.customId.includes("bugSolved"));
-            } catch { return interaction.reply({ content: "Please contact DEVs: Error in buttonValidator.js", ephemeral: true }) };
+            } catch { return interaction.reply({ content: "Please contact DEVs: Error in buttonValidator.js", flags: MessageFlags.Ephemeral }) };
         }
 
-        if (!buttonObject) return interaction.reply({ content: "Something went wrong while validating this button, please contact DEVs", ephemeral: true });
+        if (!buttonObject) return interaction.reply({ content: "Something went wrong while validating this button, please contact DEVs", flags: MessageFlags.Ephemeral });
 
         if (buttonObject.devOnly) {
             if (!developersId.includes(interaction.member.id)) {
                 const rEmbed = new EmbedBuilder()
                     .setColor(`${mConfig.embedColorError}`)
                     .setDescription(`${mConfig.commandDevOnly}`);
-                interaction.reply({ embeds: [rEmbed], ephemeral: true });
+                interaction.reply({ embeds: [rEmbed], flags: MessageFlags.Ephemeral });
                 return;
             };
         };
@@ -35,7 +35,7 @@ module.exports = async (client, interaction) => {
                 const rEmbed = new EmbedBuilder()
                     .setColor(`${mConfig.embedColorError}`)
                     .setDescription(`${mConfig.commandTestMode}`);
-                interaction.reply({ embeds: [rEmbed], ephemeral: true });
+                interaction.reply({ embeds: [rEmbed], flags: MessageFlags.Ephemeral });
                 return;
             };
         };
@@ -48,7 +48,7 @@ module.exports = async (client, interaction) => {
                 const rEmbed = new EmbedBuilder()
                     .setColor(`${mConfig.embedColorError}`)
                     .setDescription(`${mConfig.userNoPermissions}`);
-                interaction.reply({ embeds: [rEmbed], ephemeral: true });
+                interaction.reply({ embeds: [rEmbed], flags: MessageFlags.Ephemeral });
                 return;
             };
         };
@@ -62,7 +62,7 @@ module.exports = async (client, interaction) => {
                 const rEmbed = new EmbedBuilder()
                     .setColor(`${mConfig.embedColorError}`)
                     .setDescription(`${mConfig.botNoPermissions}`);
-                interaction.reply({ embeds: [rEmbed], ephemeral: true });
+                interaction.reply({ embeds: [rEmbed], flags: MessageFlags.Ephemeral });
                 return;
             };
         };
@@ -72,7 +72,7 @@ module.exports = async (client, interaction) => {
                 const rEmbed = new EmbedBuilder()
                     .setColor(`${mConfig.embedColorError}`)
                     .setDescription(`${mConfig.cannotUseButton}`);
-                interaction.reply({ embeds: [rEmbed], ephemeral: true });
+                interaction.reply({ embeds: [rEmbed], flags: MessageFlags.Ephemeral });
                 return;
             };
         };

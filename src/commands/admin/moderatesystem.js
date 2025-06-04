@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, PermissionFlagsBits, ChannelType, EmbedBuilder } = require("discord.js");
+const { SlashCommandBuilder, PermissionFlagsBits, ChannelType, EmbedBuilder, MessageFlags } = require("discord.js");
 const moderationSchema = require("../../schemas/moderation");
 const mConfig = require("../../messageConfig.json");
 const suspiciousUsers = require("../../suspiciousUsers.json"); // Level 3
@@ -79,7 +79,7 @@ module.exports = {
                     await interaction.reply({
                         embeds: [rEmbed],
                         fetchReply: true,
-                        ephemeral: true,
+                        flags: MessageFlags.Ephemeral,
                     });
 
                     dataGD = new moderationSchema({
@@ -115,7 +115,7 @@ module.exports = {
                         );
 
                     setTimeout(() => {
-                        interaction.editReply({ embeds: [rEmbed], ephemeral: true });
+                        interaction.editReply({ embeds: [rEmbed], flags: MessageFlags.Ephemeral });
                     }, 2_000);
 
                     //Level 3
@@ -137,6 +137,7 @@ module.exports = {
                                 .setAuthor({
                                     name: suspiciousUser.username,
                                     iconURL: suspiciousUser.displayAvatarURL({ dynamic: true }),
+                                    url: mConfig.author_link
                                 })
                                 .addFields(
                                     {
@@ -195,7 +196,7 @@ module.exports = {
                             }
                         );
 
-                    interaction.reply({ embeds: [rEmbed], ephemeral: true });
+                    interaction.reply({ embeds: [rEmbed], flags: MessageFlags.Ephemeral });
                 }
                 break;
             case "remove":
@@ -215,7 +216,7 @@ module.exports = {
                             `\`❌\` This server isn't configured yet.\n\n\`💡\` Use \`/moderatesystem configure\` to start configuring this server`
                         );
                 }
-                interaction.reply({ embeds: [rEmbed], ephemeral: true });
+                interaction.reply({ embeds: [rEmbed], flags: MessageFlags.Ephemeral });
                 break;
         }
     },

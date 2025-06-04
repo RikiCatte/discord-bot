@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder } = require("discord.js");
+const { SlashCommandBuilder, ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder, MessageFlags } = require("discord.js");
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -9,7 +9,7 @@ module.exports = {
     botPermissions: [],
 
     run: async (client, interaction) => {
-        if (!interaction.guild) return await interaction.reply({ content: "⚠️ Please report this bug within a server", ephemeral: true })
+        if (!interaction.guild) return await interaction.reply({ content: "⚠️ Please report this bug within a server", flags: MessageFlags.Ephemeral })
 
         const modal = new ModalBuilder()
             .setTitle("Bug & Command Abuse Reporting")

@@ -1,10 +1,16 @@
-const { EmbedBuilder } = require("discord.js");
+const { EmbedBuilder, ChatInputCommandInteraction } = require("discord.js");
 
 require('dotenv').config();
 const msgConfig = require("../../messageConfig.json");
 
+/**
+ * 
+ * @param {Client} client 
+ * @param {ChatInputCommandInteraction} interaction 
+ * @returns 
+ */
 module.exports = async (client, interaction) => {
-    if (!interaction || !interaction.isChatInputCommand()) return;
+    if (!interaction || !interaction.isChatInputCommand() || !interaction.inGuild()) return;
 
     const channelToWrite = await client.channels.cache.get(msgConfig.commandsUsedLogsChannel);
     const server = interaction.guild.name;

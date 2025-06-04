@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, PermissionFlagsBits } = require("discord.js");
+const { SlashCommandBuilder, PermissionFlagsBits, MessageFlags } = require("discord.js");
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -36,15 +36,15 @@ module.exports = {
 
         try {
             if (anon) {
-                await user.send(message);
-                return await interaction.reply({ content: `Anonim message sent to ${user}`, ephemeral: true });
+                await user.send(`*Someone from \`${interaction.guild.name}\` wants to told you:* ${message}`);
+                return await interaction.reply({ content: `Anonim message sent to ${user}`, flags: MessageFlags.Ephemeral });
             }
 
-            await user.send(`*User ${interaction.user} from ${interaction.guild.name} wants to told you:* ` + message);
-            return await interaction.reply({ content: `Message sent to ${user}`, ephemeral: true });
+            await user.send(`*User ${interaction.user} from ${interaction.guild.name} wants to told you:* ${message}`);
+            return await interaction.reply({ content: `Message sent to ${user}`, flags: MessageFlags.Ephemeral });
         } catch (err) {
             console.log(err);
-            return await interaction.reply({ content: "User hasn't enabled DMs or your message is too long!", ephemeral: true });
+            return await interaction.reply({ content: "User hasn't enabled DMs or your message is too long!", flags: MessageFlags.Ephemeral });
         }
     }
 }

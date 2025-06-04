@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, ChannelType, PermissionFlagsBits } = require("discord.js");
+const { SlashCommandBuilder, ChannelType, PermissionFlagsBits, MessageFlags } = require("discord.js");
 const greetingSchema = require("../../schemas/greeting");
 const { profileImage } = require("discord-arts");
 
@@ -100,7 +100,7 @@ module.exports = {
     botPermissions: [PermissionFlagsBits.SendMessages],
 
     run: async (client, interaction) => {
-        await interaction.deferReply({ ephemeral: true });
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
         const { options, guildId, user } = interaction;
 
@@ -170,55 +170,55 @@ module.exports = {
                     })
                 } catch (e) {
                     console.error(e);
-                    return await interaction.editReply({ content: `An error occurred: ${e.message}`, ephemeral: true });
+                    return await interaction.editReply({ content: `An error occurred: ${e.message}`, flags: MessageFlags.Ephemeral });
                 }
 
                 newData
-                    ? await interaction.editReply({ content: `the ${type.toLowerCase()} message have been created.\nHere is the preview of the image:`, files: [image], ephemeral: true })
-                    : await interaction.editReply({ content: `the ${type.toLowerCase()} message have been updated.\nHere is the preview of the image:`, files: [image], ephemeral: true });
+                    ? await interaction.editReply({ content: `the ${type.toLowerCase()} message have been created.\nHere is the preview of the image:`, files: [image], flags: MessageFlags.Ephemeral })
+                    : await interaction.editReply({ content: `the ${type.toLowerCase()} message have been updated.\nHere is the preview of the image:`, files: [image], flags: MessageFlags.Ephemeral });
 
                 break;
 
             case "enable":
                 if (!data) {
-                    return await interaction.editReply({ content: "This server has not set up this system yet. Use \`/greetingsystem welcome configure\` or \`/greetingsystem goodbye configure\` to get started", ephemeral: true });
+                    return await interaction.editReply({ content: "This server has not set up this system yet. Use \`/greetingsystem welcome configure\` or \`/greetingsystem goodbye configure\` to get started", flags: MessageFlags.Ephemeral });
                 }
 
                 if (data[type].Enabled) {
-                    return await interaction.editReply({ content: `The ${type.toLowerCase()} messages are already enabled`, ephemeral: true });
+                    return await interaction.editReply({ content: `The ${type.toLowerCase()} messages are already enabled`, flags: MessageFlags.Ephemeral });
                 }
 
                 type === "Welcome"
                     ? await greetingSchema.findOneAndUpdate({ Guild: guildId }, { "Welcome.Enabled": true })
                     : await greetingSchema.findOneAndUpdate({ Guild: guildId }, { "Goodbye.Enabled": true });
 
-                await interaction.editReply({ content: `The ${type.toLowerCase()} messages have been enabled`, ephemeral: true });
+                await interaction.editReply({ content: `The ${type.toLowerCase()} messages have been enabled`, flags: MessageFlags.Ephemeral });
                 break;
 
             case "disable":
                 if (!data) {
-                    return await interaction.editReply({ content: "This server has not set up this system yet. Use \`/greetingsystem welcome configure\` or \`/greetingsystem goodbye configure\` to get started", ephemeral: true });
+                    return await interaction.editReply({ content: "This server has not set up this system yet. Use \`/greetingsystem welcome configure\` or \`/greetingsystem goodbye configure\` to get started", flags: MessageFlags.Ephemeral });
                 }
 
                 if (data[type].Enabled) {
-                    return await interaction.editReply({ content: `The ${type.toLowerCase()} messages are already disabled`, ephemeral: true });
+                    return await interaction.editReply({ content: `The ${type.toLowerCase()} messages are already disabled`, flags: MessageFlags.Ephemeral });
                 }
 
                 type === "Welcome"
                     ? await greetingSchema.findOneAndUpdate({ Guild: guildId }, { "Welcome.Enabled": false })
                     : await greetingSchema.findOneAndUpdate({ Guild: guildId }, { "Goodbye.Enabled": false });
 
-                await interaction.editReply({ content: `The ${type.toLowerCase()} messages have been disabled`, ephemeral: true });
+                await interaction.editReply({ content: `The ${type.toLowerCase()} messages have been disabled`, flags: MessageFlags.Ephemeral });
                 break;
 
             case "remove":
                 if (!data) {
-                    return await interaction.editReply({ content: "This server has not set up this system yet. Use \`/greetingsystem welcome configure\` or \`/greetingsystem goodbye configure\` to get started", ephemeral: true });
+                    return await interaction.editReply({ content: "This server has not set up this system yet. Use \`/greetingsystem welcome configure\` or \`/greetingsystem goodbye configure\` to get started", flags: MessageFlags.Ephemeral });
                 }
 
                 await greetingSchema.findOneAndDelete({ Guild: guildId });
 
-                await interaction.editReply({ content: "The greeting system has been removed from this server", ephemeral: true });
+                await interaction.editReply({ content: "The greeting system has been removed from this server", flags: MessageFlags.Ephemeral });
                 break;
         }
     }

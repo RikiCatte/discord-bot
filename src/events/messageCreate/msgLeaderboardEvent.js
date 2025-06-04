@@ -3,7 +3,8 @@ const lb = require("../../schemas/msgleaderboard");
 module.exports = async (client, message) => {
     if (message.author.bot) return;
 
-    var data = await lb.findOne({ Guild: message.guild.id, USer: message.author.id });
+    if (!message.guild) return;
+    var data = await lb.findOne({ Guild: message.guild.id, User: message.author.id });
     if (!data) {
         await lb.create({
             Guild: message.guild.id,

@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, PermissionFlagsBits, ChannelType, StringSelectMenuBuilder, StringSelectMenuOptionBuilder, ComponentType } = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, PermissionFlagsBits, ChannelType, StringSelectMenuBuilder, StringSelectMenuOptionBuilder, MessageFlags } = require('discord.js');
 const TicketSetup = require("../../schemas/ticketsetup");
 const msgConfig = require("../../messageConfig.json");
 
@@ -137,7 +137,7 @@ module.exports = {
 
             await TicketSetup.findOneAndUpdate({ GuildID: guild.id }, { MessageId: msgId });
 
-            interaction.reply({ content: `Ticket message has been sent here 👉 <#${channel.id}>`, ephemeral: true });
+            interaction.reply({ content: `Ticket message has been sent here 👉 <#${channel.id}>`, flags: MessageFlags.Ephemeral });
         } catch (err) {
             console.log(err);
             const errEmbed = new EmbedBuilder()
@@ -147,7 +147,7 @@ module.exports = {
                 .setDescription("\`❌\` Something went wrong...")
                 .setFooter({ text: msgConfig.footer_text, iconURL: msgConfig.footer_iconURL });
 
-            return interaction.reply({ embeds: [errEmbed], ephemeral: true });
+            return interaction.reply({ embeds: [errEmbed], flags: MessageFlags.Ephemeral });
         }
     }
 }

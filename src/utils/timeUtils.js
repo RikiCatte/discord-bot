@@ -15,7 +15,7 @@ async function formattedMsToSecs(ms) {
 }
 
 async function secsToMs(secs) {
-    return ms(secs);
+    return secs * 1000;
 }
 
 module.exports = {

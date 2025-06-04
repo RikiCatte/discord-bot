@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder, MessageFlags } = require('discord.js');
 const msgConfig = require("../../messageConfig.json");
 
 module.exports = {
@@ -47,6 +47,6 @@ module.exports = {
             throw err;
         });
 
-        interaction.reply({ content: "\`✅\` Your suggestion has been succesfully sent.", ephemeral: true });
+        interaction.reply({ content: "\`✅\` Your suggestion has been succesfully sent.", flags: MessageFlags.Ephemeral });
     }
 }

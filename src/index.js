@@ -40,6 +40,32 @@ process.on('uncaughtExceptionMonitor', (err, origin) => {
 });
 // Exceptions Handling
 
+// Handling termination signals
+// process.on('SIGTERM', () => {
+//     console.log('Received SIGTERM, shutting down gracefully...');
+//     client.destroy();
+//     process.exit(0);
+// });
+
+// process.on('SIGINT', () => {
+//     console.log('Received SIGINT, shutting down gracefully...');
+//     client.destroy();
+//     process.exit(0);
+// });
+// Handling termination signals
+
+const EventEmitter = require('events');
+
+// Set a maximum number of listeners to identify when the limit is exceeded
+EventEmitter.defaultMaxListeners = 15; // Temporarily increase the limit per test
+
+process.on('warning', (warning) => {
+    if (warning.name === 'MaxListenersExceededWarning') {
+        console.warn(`Warning: ${warning.message}`);
+        console.trace(); // Shows stack trace to identify where listeners are added
+    }
+});
+
 // Music Handling
 const { DisTube } = require("distube");
 const { SpotifyPlugin } = require('@distube/spotify');
@@ -49,8 +75,8 @@ const { YtDlpPlugin } = require("@distube/yt-dlp");
 
 client.distube = new DisTube(client, {
     emitNewSongOnly: true,
-    emitAddListWhenCreatingQueue: true,
-    emitAddSongWhenCreatingQueue: true,
+    emitAddListWhenCreatingQueue: false,
+    emitAddSongWhenCreatingQueue: false,
     plugins: [new YouTubePlugin(), new SpotifyPlugin(), new SoundCloudPlugin(), new YtDlpPlugin()]
 });
 
@@ -117,5 +143,28 @@ eventHandler(client);
 
 console.log(`[INFO] Node.js Version: ${process.version}`.magenta);
 
-//console.log(process.env.TOKEN);
-client.login(process.env.TOKEN);
+let retryAttempts = 0;
+const maxRetries = 5;
+
+function loginBot() {
+    //console.log(process.env.TOKEN);
+    client.login(process.env.TOKEN)
+        .then(() => {
+            console.log(`[INFO] ${client.user.username} is online.`.blue);
+            retryAttempts = 0; // Reset retry attempts on successful login
+        })
+        .catch((error) => {
+            console.error('Failed to login:', error);
+            if (retryAttempts < maxRetries) {
+                retryAttempts++;
+                const retryDelay = Math.pow(2, retryAttempts) * 1000; // Exponential backoff
+                console.log(`Retrying in ${retryDelay / 1000} seconds...`);
+                setTimeout(loginBot, retryDelay);
+            } else {
+                console.error('Max retry attempts reached. Exiting...');
+                process.exit(1);
+            }
+        });
+}
+
+loginBot();

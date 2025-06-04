@@ -5,6 +5,7 @@
   "embedErrorMessage": "`❌` An error occurred!",
   "commandDevOnly": "`❌` This command can only be executed by developers.",
   "commandTestMode": "`❌` This is in development and cannot be executed in this server.",
+  "commandDisabled": "`❌` This command has been disabled by DEVs and no one can use it.",
   "commandPremiumOnly": "`❌` This command can only be executed by premium users.",
   "userNoPermissions": "`❌` You do not have enough permissions to execute this command.",
   "botNoPermissions": "`❌` I do not have enough permissions to execute this command.",
@@ -13,6 +14,7 @@
   "cannotUseButton": "`❌` You cannot use this button.",
   "_comment_": "ER MELONS TTV SERVER CUSTOM LABELS",
   "author_img": "https://i.imgur.com/ALU7BNO.jpeg",
+  "author_link": "https://rikicatte.it",
   "thumbnail": "https://i.imgur.com/QCZZDjB.gif",
   "footer_text": "|   Il Bot del Catelone",
   "footer_iconURL": "https://i.imgur.com/orIPOGE.png",
@@ -61,5 +63,8 @@
   "highRisk": "🔴 High Risk",
   "raidRisk": "🟣 Raid / Spam Risk",
   "info": "🔵 No Risk, Just Info",
-  "error": "🔴 Discord API Error"
+  "discordApiError": "⚫ Discord API Error",
+  "freeGamesChannel": "1318688104739242114",
+  "githubUpdatesChannelId": "1329193746893504583",
+  "httpServerPort": 3000
 }

@@ -1,9 +1,13 @@
+THIS IS THE DEVELOP BRANCH! 
+
+This means that this version will be updated more frequently but may be more unstable than the "main" branch version.
+
 USAGE:
 
 install node.js -> https://nodejs.org/en
 
-git clone https://github.com/RikiCatte/discord-bot-STABLE.git
-cd discord-bot-STABLE
+git clone https://github.com/RikiCatte/discord-bot-TESTING.git
+cd discord-bot-TESTING
 npm install
 
 to test if the bot is working you can use '/ping' command on a discord text based channel

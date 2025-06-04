@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, PermissionFlagsBits, ChannelType, EmbedBuilder } = require("discord.js");
+const { SlashCommandBuilder, PermissionFlagsBits, ChannelType, EmbedBuilder, MessageFlags } = require("discord.js");
 const boostSchema = require("../../schemas/boostSchema");
 
 module.exports = {
@@ -23,7 +23,7 @@ module.exports = {
 
     run: async (client, interaction) => {
         try {
-            await interaction.deferReply({ ephemeral: true });
+            await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
             const { options, guild } = interaction;
 
@@ -38,7 +38,7 @@ module.exports = {
             });
 
             if (boostData) {
-                return await interaction.editReply({ content: "The boost event has already been setup.", ephemeral: true });
+                return await interaction.editReply({ content: "The boost event has already been setup.", flags: MessageFlags.Ephemeral });
             } else {
                 boostData = await boostSchema.create({
                     guildID: guild.id,

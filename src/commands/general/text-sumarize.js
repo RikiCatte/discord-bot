@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, EmbedBuilder } = require('discord.js')
+const { SlashCommandBuilder, EmbedBuilder, MessageFlags } = require('discord.js')
 const axios = require('axios');
 require('dotenv').config();
 const msgConfig = require("../../messageConfig.json");
@@ -13,7 +13,7 @@ module.exports = {
     botPermissions: [],
 
     run: async (client, interaction) => {
-        await interaction.deferReply({ ephemeral: true });
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
         const { options } = interaction;
         const text = options.getString('text');
@@ -50,7 +50,11 @@ module.exports = {
             await interaction.editReply({ embeds: [embed] });
         } catch (e) {
             console.log(e);
-            await interaction.editReply({ content: 'There was an error, please contact DEVs or try again later' });
+            if (e.response && e.response.status === 503) {
+                await interaction.editReply({ content: 'The sumarization service is currently unavailable, try again later or contact DEVs' });
+            } else {
+                await interaction.editReply({ content: 'There was an error, please contact DEVs or try again later' });
+            }
         }
     }
 }

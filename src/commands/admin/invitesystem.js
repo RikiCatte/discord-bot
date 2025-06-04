@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, PermissionFlagsBits, ChannelType, EmbedBuilder } = require("discord.js");
+const { SlashCommandBuilder, PermissionFlagsBits, ChannelType, EmbedBuilder, MessageFlags } = require("discord.js");
 const invitesystemSchema = require("../../schemas/invitesSetup");
 const inviteSchema = require("../../schemas/invite");
 const mConfig = require("../../messageConfig.json");
@@ -53,7 +53,7 @@ module.exports = {
                 .setColor(mConfig.embedColorError)
                 .setDescription("`❌` The system is not yet set up. Use `/invites configure` to configure it.");
 
-            return interaction.reply({ embeds: [rEmbed], ephemeral: true });
+            return interaction.reply({ embeds: [rEmbed], flags: MessageFlags.Ephemeral });
         }
 
         try {
@@ -63,12 +63,12 @@ module.exports = {
                     if (setupData) {
                         await invitesystemSchema.findOneAndUpdate({ GuildID: guildId }, { ChannelID: channel.id });
 
-                        return interaction.reply({ content: `\`⚠️\` The invite tracker has been changed. Invites will now be tracked in <#${channel.id}>.`, ephemeral: true });
+                        return interaction.reply({ content: `\`⚠️\` The invite tracker has been changed. Invites will now be tracked in <#${channel.id}>.`, flags: MessageFlags.Ephemeral });
                     } else {
                         setupData = new invitesystemSchema({ GuildID: guildId, ChannelID: channel.id });
                         await setupData.save();
 
-                        return interaction.reply({ content: `\`✅\` The invite tracker has been set up. Invites will now be tracked in <#${channel.id}>.`, ephemeral: true });
+                        return interaction.reply({ content: `\`✅\` The invite tracker has been set up. Invites will now be tracked in <#${channel.id}>.`, flags: MessageFlags.Ephemeral });
                     }
                 }
                 case "delete": {
@@ -80,7 +80,7 @@ module.exports = {
                         .setTitle("Code Removed")
                         .setDescription(`\`✅\` The invite code \`${code}\` has been removed.`);
 
-                    await interaction.reply({ embeds: [rEmbed], ephemeral: true });
+                    await interaction.reply({ embeds: [rEmbed], flags: MessageFlags.Ephemeral });
                     break;
                 }
                 case "reset": {
@@ -95,7 +95,7 @@ module.exports = {
                         .setDescription(`\`🗑️\` The invite count for ${member.user.username} has been reset.`)
                         .setTimestamp();
 
-                    await interaction.reply({ embeds: [rEmbed], ephemeral: true });
+                    await interaction.reply({ embeds: [rEmbed], flags: MessageFlags.Ephemeral });
                     break;
                 }
             }

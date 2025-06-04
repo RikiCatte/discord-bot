@@ -1,4 +1,4 @@
-const { EmbedBuilder, SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
+const { EmbedBuilder, SlashCommandBuilder, PermissionFlagsBits, MessageFlags } = require('discord.js');
 const msgConfig = require("../../messageConfig.json");
 
 module.exports = {
@@ -30,7 +30,7 @@ module.exports = {
                 .setFooter({ text: msgConfig.footer_text, iconURL: msgConfig.footer_iconURL });
 
             if (!newName)
-                return await message.reply({ content: '\`❌\` Missing arguments!', ephemeral: true });
+                return await message.reply({ content: '\`❌\` Missing arguments!', flags: MessageFlags.Ephemeral });
             else {
                 await interaction.channel.setName(newName);
                 return await interaction.reply({ embeds: [successEmbed] });

@@ -9,7 +9,11 @@ let captchaUsersDataSchema = new Schema({
     Captcha: String,
     CaptchaStatus: String,
     CaptchaExpired: Boolean,
-    MissedTimes: Number
+    MissedTimes: Number,
+    Resent: Boolean,
+    ResentBy: String,
+    Bypassed: Boolean,
+    BypassedBy: String,
 });
 
 module.exports = model("captchas-data", captchaUsersDataSchema)

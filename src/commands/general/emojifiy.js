@@ -1,4 +1,4 @@
-const { SlashCommandBuilder } = require("discord.js");
+const { SlashCommandBuilder, MessageFlags } = require("discord.js");
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -43,6 +43,6 @@ module.exports = {
 
         if (emojiText.length >= 2000) emojiText = "I can't emojify this text because it is too long!";
 
-        await interaction.reply({ content: emojiText, ephemeral: hidden });
+        await interaction.reply({ content: emojiText, flags: MessageFlags.Ephemeral });
     }
 }

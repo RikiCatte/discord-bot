@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, MessageFlags } = require('discord.js');
 const axios = require('axios');
 require('dotenv').config();
 
@@ -12,7 +12,7 @@ module.exports = {
     botPermissions: [],
 
     run: async (client, interaction) => {
-        await interaction.deferReply({ ephemeral: true })
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral })
 
         const { options } = interaction;
         const link = options.getString('link');
@@ -47,6 +47,10 @@ module.exports = {
             await interaction.editReply({ embeds: [embed], components: [button] });
         } catch (e) {
             console.log(e);
+
+            if (e.response && e.response.status === 502) 
+                return await interaction.editReply({ content: `\`⚠️\` The service API is currently unavailable, try again later or contact DEVs` });
+
             await interaction.editReply({ content: `\`⚠️\` That link does not exist! Provide a correct one!` });
         }
     }
