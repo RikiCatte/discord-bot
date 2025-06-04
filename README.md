@@ -6,8 +6,8 @@ USAGE:
 
 install node.js -> https://nodejs.org/en
 
-git clone https://github.com/RikiCatte/discord-bot-TESTING.git
-cd discord-bot-TESTING
+git clone --branch develop https://github.com/RikiCatte/discord-bot.git
+cd discord-bot
 npm install
 
 to test if the bot is working you can use '/ping' command on a discord text based channel
