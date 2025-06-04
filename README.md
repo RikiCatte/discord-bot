@@ -1,13 +1,13 @@
-THIS IS THE DEVELOP BRANCH! 
+THIS IS THE MAIN BRANCH! 
 
-This means that this version will be updated more frequently but may be more unstable than the "main" branch version.
+This means that this version will contain less "beta" features but may be more stable than the "develop" branch version. Choose the version that suits you best.
 
 USAGE:
 
 install node.js -> https://nodejs.org/en
 
-git clone https://github.com/RikiCatte/discord-bot-TESTING.git
-cd discord-bot-TESTING
+git clone https://github.com/RikiCatte/discord-bot.git
+cd discord-bot
 npm install
 
 to test if the bot is working you can use '/ping' command on a discord text based channel
