@@ -138,7 +138,6 @@ module.exports = {
                         pages.push(pageEmbed);
                     }
 
-                    console.log("interaction: ", interaction, " pages: ", pages)
                     await buttonPagination(interaction, pages);
                     break;
                 }
@@ -205,7 +204,7 @@ module.exports = {
                 }
             }
         } catch (error) {
-            console.error(error);
+            console.log(error);
         }
     }
 }
