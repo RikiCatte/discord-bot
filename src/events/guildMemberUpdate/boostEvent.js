@@ -1,5 +1,5 @@
 const { EmbedBuilder, Client, GuildMember } = require('discord.js');
-const boostSchema = require('../../schemas/boostSchema');
+const botConfigCache = require("../../utils/BotConfig/botConfigCache");
 
 /**
  * @param {Client} client
@@ -8,21 +8,37 @@ const boostSchema = require('../../schemas/boostSchema');
  */
 
 module.exports = async (client, oldMember, newMember) => {
-	if (!oldMember.premiumSince && newMember.premiumSince) {
-		const boostData = await boostSchema.findOne({
-			guildID: oldMember.guild.id,
-		});
-		if (!boostData) return;
+	const config = await botConfigCache.getConfig(oldMember.guild.id);
+	const serviceConfig = config?.services?.nitroboost;
 
-		const boostChannel = oldMember.guild.channels.cache.get(boostData.boostingChannelID);
-		if (!boostChannel) return;
+	if (!serviceConfig || !serviceConfig.enabled) return;
 
-		const boostEmbed = new EmbedBuilder()
-			.setTitle(boostData.boostEmbedTitle)
-			.setColor(boostData.boostEmbedColor)
-			.setDescription(boostData.boostEmbedMsg.replace('[m]', oldMember.toString()))
-			.setFooter({ text: `We now have ${oldMember.guild.premiumSubscriptionCount} boosts!` });
+	try {
+		if (!oldMember.premiumSince && newMember.premiumSince) {
+			if (!serviceConfig.channelID) {
+                console.log(`[NITROBOOST] Please specify channelID in nitroboost service for guild ${oldMember.guild.id}`);
+                return;
+            }
 
-		boostChannel.send({ content: boostData.boostMsg.replace('[m]', oldMember.toString()), embeds: [boostEmbed] });
+			const channelId = serviceConfig.channelID.replace(/[<#>]/g, "");
+            const boostChannel = oldMember.guild.channels.cache.get(channelId);
+            if (!boostChannel) {
+                console.log(`[NITROBOOST] The configured boost channel (${serviceConfig.channelID}) does not anymore exist for guild ${oldMember.guild.id}`);
+                return;
+            }
+
+            const boostEmbed = new EmbedBuilder()
+                .setTitle(serviceConfig.embedTitle || "New Booster 🎉")
+                .setColor(serviceConfig.embedColor || "#f47fff")
+                .setDescription((serviceConfig.embedMessage || "Thank you for boosting the server!").replace('[m]', oldMember.toString()))
+                .setFooter({ text: `We now have ${oldMember.guild.premiumSubscriptionCount} boosts!` });
+
+            boostChannel.send({
+                content: (serviceConfig.boostMessage || "Thanks for boosting [m]!").replace('[m]', oldMember.toString()),
+                embeds: [boostEmbed]
+            });
+		}
+	} catch (error) {
+		console.log(`[NITROBOOST] Error occurred while handling nitroboost event: ${error.message}`);
 	}
 };

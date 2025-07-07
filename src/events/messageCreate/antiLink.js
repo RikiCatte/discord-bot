@@ -1,6 +1,6 @@
 const { Message } = require("discord.js");
-const linkSchema = require("../../schemas/antiLink");
-const linkSchemaWL = require("../../schemas/antiLinkWL");
+const botConfigCache = require("../../utils/BotConfig/botConfigCache");
+const antiLinkWL = require("../../schemas/antiLinkWL");
 
 /**
  * 
@@ -11,19 +11,20 @@ const linkSchemaWL = require("../../schemas/antiLinkWL");
 module.exports = async (client, message) => {
     if (!message.guild) return; // DM message
 
-    if (message.content.startsWith("http") || message.content.includes("http") || message.content.startsWith("discord.gg")) {
+    if (message.content.includes("http") || message.content.includes("discord.gg")) {
+        const config = await botConfigCache.getConfig(message.guild.id);
+        const serviceConfig = config?.services?.antilink;
 
-        const data = await linkSchema.findOne({ Guild: message.guild.id });
-        const userData = await linkSchemaWL.findOne({ Guild: message.guild.id, UserID: message.author.id });
+        if (!serviceConfig || !serviceConfig.enabled) return;
 
-        if (!data) return;
+        const bypassPermission = serviceConfig.Permissions;
+        if (!bypassPermission) return;
 
-        const memberPerms = data.Permissions;
+        const userData = await antiLinkWL.findOne({ Guild: message.guild.id, UserID: message.author.id });
+        if (userData) return;
 
-        const user = message.author;
-        const member = message.guild.members.cache.get(user.id);
-
-        if (member.permissions.has(memberPerms) || userData) return;
+        const member = message.guild.members.cache.get(message.author.id);
+        if (member && member.permissions.has(bypassPermission)) return;
 
         await message.channel.send({ content: `${message.author}, you can't send links here!` }).then(msg => {
             setTimeout(() => msg.delete(), 3000)

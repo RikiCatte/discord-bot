@@ -1,66 +1,36 @@
-const { SlashCommandBuilder, PermissionFlagsBits, ChannelType, EmbedBuilder, MessageFlags } = require("discord.js");
-const boostSchema = require("../../schemas/boostSchema");
+const { SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder, MessageFlags } = require("discord.js");
+const BotConfig = require("../../schemas/BotConfig");
+const replyNoConfigFound = require("../../utils/BotConfig/replyNoConfigFound");
+const replyServiceAlreadyEnabledOrDisabled = require("../../utils/BotConfig/replyServiceAlreadyEnabledOrDisabled");
 
 module.exports = {
     data: new SlashCommandBuilder()
-        .setName("boost-setup")
-        .setDescription("Setup the boost event")
-        .addChannelOption((option) =>
-            option.setName("boost-channel")
-                .setDescription("The channel to send the boost message to.")
-                .setRequired(true)
-                .addChannelTypes(ChannelType.GuildText)
-        )
-        .addStringOption((option) =>
-            option.setName("embed-color").setDescription("The color of the embed.").setRequired(true).setMaxLength(7)
-        )
-        .addStringOption((option) => option.setName("embed-title").setDescription("The title of the embed.").setRequired(true))
-        .addStringOption((option) => option.setName("embed-message").setDescription("The message to send in the embed.").setRequired(true))
-        .addStringOption((option) => option.setName("message").setDescription("The message to send. (Use [m] to ping the member)").setRequired(true))
-        .toJSON(),
+        .setName("boost-check")
+        .setDescription("Shows the current boost event setup"),
     userPermissions: [PermissionFlagsBits.Administrator],
-    botPermissions: [],
+    botPermissions: [PermissionFlagsBits.Administrator],
 
     run: async (client, interaction) => {
         try {
-            await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+            const config = await BotConfig.findOne({ GuildID: interaction.guild.id });
+            const serviceConfig = config?.services?.nitroboost;
 
-            const { options, guild } = interaction;
+            if (!serviceConfig) return await replyNoConfigFound(interaction, "boost");
+            if (!serviceConfig.enabled) return await replyServiceAlreadyEnabledOrDisabled(interaction, "boost", "disabled", false);
 
-            const boostChannel = options.getChannel("boost-channel");
-            const embedColor = options.getString("embed-color");
-            const embedTitle = options.getString("embed-title");
-            const embedMessage = options.getString("embed-message");
-            const boostMessage = options.getString("message");
+            const embed = new EmbedBuilder()
+                .setTitle(serviceConfig.embedTitle || "Boost Setup")
+                .setColor(serviceConfig.embedColor || "#5865F2")
+                .setDescription(serviceConfig.embedMessage || "No embed message configured.")
+                .addFields(
+                    { name: "Boost Channel", value: serviceConfig.channelID ? `${serviceConfig.channelID}` : "Not Configured.", inline: true },
+                    { name: "Boost Message", value: serviceConfig.boostMessage || "Not Configured.", inline: false }
+                );
 
-            let boostData = await boostSchema.findOne({
-                guildID: guild.id
-            });
-
-            if (boostData) {
-                return await interaction.editReply({ content: "The boost event has already been setup.", flags: MessageFlags.Ephemeral });
-            } else {
-                boostData = await boostSchema.create({
-                    guildID: guild.id,
-                    boostingChannelID: boostChannel.id,
-                    boostEmbedColor: embedColor,
-                    boostEmbedTitle: embedTitle,
-                    boostEmbedMsg: embedMessage,
-                    boostMsg: boostMessage,
-                });
-
-                const boostEmbed = new EmbedBuilder()
-                    .setTitle(embedTitle)
-                    .setColor(embedColor)
-                    .setDescription(embedMessage);
-
-                return await interaction.editReply({
-                    content: `The boost event has been setup. The boost message will be sent in ${boostChannel}.`,
-                    embeds: [boostEmbed],
-                })
-            }
+            await interaction.reply({ content: "\`🔧\` Here is the current configuration of the boost system:", embeds: [embed], flags: MessageFlags.Ephemeral });
         } catch (err) {
-            console.error(err);
+            console.log(err);
+            return await interaction.reply({ content: `\`❌\` An unexpected error occurred while processing your request.`, flags: MessageFlags.Ephemeral });
         }
     }
 }

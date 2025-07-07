@@ -4,6 +4,7 @@ const { EmbedBuilder, ButtonBuilder, ButtonStyle, ActionRowBuilder, ComponentTyp
 const { developersId, testServerId } = require("../../config.json");
 const mConfig = require("../../messageConfig.json");
 const getLocalCommands = require("../../utils/getLocalCommands");
+const botConfigCache = require("../../utils/BotConfig/botConfigCache");
 
 /**
  * 
@@ -16,10 +17,24 @@ module.exports = async (client, interaction) => {
 	if (!interaction.isChatInputCommand()) return;
 	const localCommands = getLocalCommands();
 
-	try {
-		const commandObject = localCommands.find((cmd) => cmd.data.name === interaction.commandName);
-		if (!commandObject) return;
+	const commandObject = localCommands.find((cmd) => cmd.data.name === interaction.commandName);
+	if (!commandObject) return;
 
+	// Recover the config from the cache
+	const config = await botConfigCache.getConfig(interaction.guild.id);
+
+	// Defining if the config is invalid
+	const configInvalid = !config || !config.services || Object.keys(config.services).length === 0;
+
+	// Allow only command that are in setup folder when the config is invalid
+	if (configInvalid && commandObject.category !== "setup") {
+		return interaction.reply({
+			content: "\`⚠️\` The bot is not configured or the configuration is incomplete. Use `/bot-setup` or `/bot-set-service` to complete the setup.",
+			flags: MessageFlags.Ephemeral
+		});
+	}
+
+	try {
 		if (commandObject.devOnly) {
 			if (!developersId.includes(interaction.member.id)) {
 				const rEmbed = new EmbedBuilder()
@@ -76,11 +91,7 @@ module.exports = async (client, interaction) => {
 		};
 
 		await commandObject.run(client, interaction);
-	} // catch (err) { -> ORIGINAL CATCH STATEMENT
-	// 	console.log(`An error occurred! ${err}`.red);
-	// };
-	// ERRORS FLAG SYSTEM
-	catch (error) {
+	} catch (error) {
 		if (!interaction.inGuild())
 			return await interaction.reply({ content: "You can't use slash commands in DMs!", flags: MessageFlags.Ephemeral });
 
@@ -117,21 +128,6 @@ module.exports = async (client, interaction) => {
 			componentType: ComponentType.Button,
 			time
 		})
-
-		// let member = interaction.member;
-		// let channel = interaction.channel;
-		// collector.on("collect", async i => { // -> HANDLED IN buttons/fetchUserInfoBtn
-		// 	if (i.customid == "fetchErrorUserInfo") {
-		// 		const userEmbed = new EmbedBuilder()
-		// 			.setColor("Blurple")
-		// 			.setDescription("This user has triggered a slash command error while using one of the commands listed above")
-		// 			.addFields({ name: "Error User", value: `${member} (${member.id})` })
-		// 			.addFields({ name: "Error Command Channel", value: `${channel} (${channel.id})` })
-		// 			.setTimestamp();
-
-		// 		await i.reply({ embeds: [userEmbed], flags: MessageFlags.Ephemeral });
-		// 	}
-		// })
 
 		collector.on("end", async () => {
 			button.setDisabled(true);
