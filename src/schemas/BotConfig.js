@@ -34,7 +34,6 @@ const botConfigSchema = new mongoose.Schema({
             enabled: { type: Boolean, default: false },
             RoleID: String,
             ReJoinLimit: Number,
-            RandomText: Boolean,
             ExpireInMS: Number,
             Captcha: String,
             users: [captchaUserSchema]

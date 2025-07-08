@@ -4,7 +4,6 @@ let captchaSetupSchema = new Schema({
     Guild: String,
     Role: String,
     ReJoinLimit: Number,
-    RandomText: Boolean,
     ExpireInMS: Number,
     Captcha: String,
 });

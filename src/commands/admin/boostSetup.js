@@ -15,8 +15,8 @@ module.exports = {
             const config = await BotConfig.findOne({ GuildID: interaction.guild.id });
             const serviceConfig = config?.services?.nitroboost;
 
-            if (!serviceConfig) return await replyNoConfigFound(interaction, "boost");
-            if (!serviceConfig.enabled) return await replyServiceAlreadyEnabledOrDisabled(interaction, "boost", "disabled", false);
+            if (!serviceConfig) return await replyNoConfigFound(interaction, "nitroboost");
+            if (!serviceConfig.enabled) return await replyServiceAlreadyEnabledOrDisabled(interaction, "nitroboost", "disabled", false);
 
             const embed = new EmbedBuilder()
                 .setTitle(serviceConfig.embedTitle || "Boost Setup")

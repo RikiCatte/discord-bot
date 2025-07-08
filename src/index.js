@@ -213,7 +213,7 @@ async function ensureAllServicesInConfig() {
         }
     }
     if (!anyUpdated) {
-        console.log("[CONFIG FIX] All services and fields are already present in the config, no updates needed.");  
+        console.log("[CONFIG FIX] All services and fields are already present in the config, no updates needed.");
     }
 }
 
@@ -229,7 +229,7 @@ async function checkBotConfigOnStartup(client) {
 function loginBot() {
     //console.log(process.env.TOKEN);
     client.login(process.env.TOKEN)
-        .then(async() => {
+        .then(async () => {
             console.log(`[INFO] ${client.user.username} is online.`.blue);
             retryAttempts = 0; // Reset retry attempts on successful login
             await ensureAllServicesInConfig();
