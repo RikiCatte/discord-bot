@@ -125,7 +125,7 @@ module.exports = {
                         boostMessage: values.boostMessage
                     });
 
-                    await modalInteraction.reply({ content: `\`✅\` ${service} service setup in ${values.channelID}`, flags: MessageFlags.Ephemeral });
+                    await modalInteraction.reply({ content: `\`✅\` ${service} service setup in <#${values.channelID}>`, flags: MessageFlags.Ephemeral });
                     return;
                 } else if (action === "disable") {
                     if (!config.services[service]?.enabled) {
