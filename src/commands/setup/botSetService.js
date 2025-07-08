@@ -1,6 +1,5 @@
 const { SlashCommandBuilder, PermissionFlagsBits, MessageFlags, ActionRowBuilder, StringSelectMenuBuilder, ModalBuilder, TextInputBuilder, TextInputStyle } = require("discord.js");
 const BotConfig = require("../../schemas/BotConfig");
-const botConfigCache = require("../../utils/BotConfig/botConfigCache");
 const updateServiceConfig = require("../../utils/BotConfig/updateServiceConfig");
 const replyServiceAlreadyEnabledOrDisabled = require("../../utils/BotConfig/replyServiceAlreadyEnabledOrDisabled");
 const createSelectMenu = require("../../utils/BotConfig/createSelectMenu");
@@ -82,7 +81,6 @@ module.exports = {
                     if (!success) return;
 
                     await updateServiceConfig(config, service, { enabled: true, Permissions: select.values[0] });
-                    botConfigCache.refreshConfig(guild.id);
                     await select.update({ content: `\`✅\` Permission set to \`${select.values[0]}\``, components: [] });
                     return;
                 } else if (action === "disable") {
@@ -91,7 +89,6 @@ module.exports = {
                         return;
                     }
                     await updateServiceConfig(config, service, { enabled: false });
-                    botConfigCache.refreshConfig(guild.id);
                     await replySuccessfullyDisabledService(interaction, service);
                     return;
                 }
@@ -128,9 +125,7 @@ module.exports = {
                         boostMessage: values.boostMessage
                     });
 
-                    botConfigCache.refreshConfig(guild.id);
-
-                    await modalInteraction.reply({ content: `\`✅\` Nitro Boost service setup in ${values.channelID}`, flags: MessageFlags.Ephemeral });
+                    await modalInteraction.reply({ content: `\`✅\` ${service} service setup in ${values.channelID}`, flags: MessageFlags.Ephemeral });
                     return;
                 } else if (action === "disable") {
                     if (!config.services[service]?.enabled) {
@@ -139,19 +134,58 @@ module.exports = {
                     }
 
                     await updateServiceConfig(config, service, { enabled: false });
-                    botConfigCache.refreshConfig(guild.id);
-
                     await replySuccessfullyDisabledService(interaction, service);
                     return;
                 }
-                // ...altre azioni...
                 break;
-            // altri servizi...
+            case "captcha":
+                if (action === "enable" || action === "edit") {
+                    if (action === "enable" && config.services[service]?.enabled) {
+                        await replyServiceAlreadyEnabledOrDisabled(interaction, service, "enabled");
+                        return;
+                    }
+
+                    const fields = [
+                        { customId: "roleID", label: "Role ID to assign after captcha verification", style: TextInputStyle.Short, placeholder: "Input the role ID" },
+                        { customId: "logChannelID", label: "Log Channel ID", style: TextInputStyle.Short, placeholder: "Input the log channel ID" },
+                        { customId: "reJoinLimit", label: "Rejoin Limit", style: TextInputStyle.Short, placeholder: "Number of rejoin attempts before kick", value: "3" },
+                        { customId: "expireInMS", label: "Captcha Expiration Time (ms)", style: TextInputStyle.Short, placeholder: "600000 (10 minutes)", value: "600000" },
+                        { customId: "captchaText", label: "Captcha Text (type Random for random)", style: TextInputStyle.Paragraph, placeholder: "Type the captcha text here" }
+                    ];
+
+                    const { success, values, modalInteraction } = await createModal(interaction, {
+                        customId: "captcha-setup",
+                        title: "Setup Captcha",
+                        fields
+                    }, 300_000); // 5 minutes timeout
+
+                    if (!success) return;
+
+                    await updateServiceConfig(config, service, {
+                        enabled: true,
+                        RoleID: values.roleID,
+                        LogChannelID: values.logChannelID,
+                        ReJoinLimit: parseInt(values.reJoinLimit),
+                        ExpireInMS: parseInt(values.expireInMS),
+                        Captcha: values.captchaText
+                    });
+
+                    await modalInteraction.reply({ content: `\`✅\` ${service} service setup with role <@&${values.roleID}>, captcha logs will be sent in <#${values.logChannelID}>`, flags: MessageFlags.Ephemeral });
+                    return;
+                } else if (action === "disable") {
+                    if (!config.services[service]?.enabled) {
+                        await replyServiceAlreadyEnabledOrDisabled(interaction, service, "disabled");
+                        return;
+                    }
+
+                    await updateServiceConfig(config, service, { enabled: false });
+                    await replySuccessfullyDisabledService(interaction, service);
+                    return;
+                }
             default:
                 await interaction.reply({ content: "\`⚠️\` Unrecognised service.", flags: MessageFlags.Ephemeral });
         }
 
-        botConfigCache.refreshConfig(guild.id);
         await interaction.reply({ content: `\`✅\` Service \`${service}\` updated with action \`${action}\`.`, flags: MessageFlags.Ephemeral });
     }
 }

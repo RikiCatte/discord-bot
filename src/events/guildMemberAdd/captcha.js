@@ -1,7 +1,6 @@
 const { CaptchaGenerator } = require("captcha-canvas");
 const { AttachmentBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ModalBuilder, TextInputBuilder, ButtonStyle, TextInputStyle, GuildMember } = require("discord.js");
-const captchaSchema = require("../../schemas/captchaSetup");
-const captchaUsersDataSchema = require("../../schemas/captchaUsersData");
+const BotConfig = require("../../schemas/BotConfig");
 const msgConfig = require("../../messageConfig.json");
 const frmtDate = require("../../utils/formattedDate");
 const rndStr = require("../../utils/randomString");
@@ -14,72 +13,67 @@ const rndStr = require("../../utils/randomString");
  */
 module.exports = async (client, member) => {
     if (member.bot) return;
-    const data = await captchaSchema.findOne({ Guild: member.guild.id });
-    if (!data) return; // captcha system disabled
 
-    const userData = await captchaUsersDataSchema.findOne({ Guild: member.guild.id, UserID: member.user.id });
+    const config = await BotConfig.findOne({ GuildID: member.guild.id });
+    const serviceConfig = config?.services?.captcha;
 
-    let text = "", length;
-    if (!userData) { // user never joined the server before so we create a new schema
-        if (data.RandomText) { // randomize captcha text
-            length = Math.floor(Math.random() * 8) + 5; // string between 5 and 12 chars (both included)
-            text = await rndStr(length);
+    if (!serviceConfig || !serviceConfig.enabled) return;
+
+    let userData = serviceConfig.users?.find(u => u.UserID === member.id);
+    if (!userData) { // user never joined the server before so we create new data for him
+        let captchaText = "";
+        if (serviceConfig.Captcha && serviceConfig.Captcha.toLowerCase() === "random") {
+            const length = Math.floor(Math.random() * 8) + 5;
+            captchaText = await rndStr(length);
         } else {
-            text = data.Captcha;
+            captchaText = serviceConfig.Captcha;
         }
 
-        await captchaUsersDataSchema.create({
-            Guild: member.guild.id,
-            UserID: member.user.id,
+        userData = {
+            UserID: member.id,
             Username: member.user.username,
             JoinedAt: await frmtDate(),
             ReJoinedTimes: 0,
-            Captcha: text,
+            Captcha: captchaText,
             CaptchaStatus: "Pending",
-            CaptchaExpired: false
-        })
+            CaptchaExpired: false,
+            MissedTimes: 0,
+            Resent: false,
+            ResentBy: null,
+            Bypassed: false,
+            BypassedBy: null
+        };
+        serviceConfig.users.push(userData);
+        await config.save();
     } else { // member has joined server in the past
+        userData.ReJoinedTimes = (userData.ReJoinedTimes || 0) + 1;
 
-        if (data.RandomText) { // randomize captcha text
-            length = Math.floor(Math.random() * 8) + 5; // string between 5 and 12 chars (both included)
+        if (serviceConfig.Captcha && serviceConfig.Captcha.toLowerCase() === "random") {
+            length = Math.floor(Math.random() * 8) + 5;
             text = await rndStr(length);
         } else {
-            text = data.Captcha;
+            text = serviceConfig.Captcha;
         }
-
-        await captchaUsersDataSchema.findOneAndUpdate(
-            { Guild: member.guild.id, UserID: member.user.id },
-            {
-                $set: {
-                    ReJoinedTimes: userData.ReJoinedTimes + 1,
-                    Captcha: text
-                }
-            }
-        );
+        userData.Captcha = text;
 
         let staffChannel = client.channels.cache.get(msgConfig.staffChannel);
-        if (userData.ReJoinedTimes + 1 >= data.ReJoinLimit) {
-            await captchaUsersDataSchema.findOneAndUpdate(
-                { Guild: member.guild.id, UserID: member.user.id },
-                {
-                    $set: {
-                        CaptchaStatus: "User Kicked due to rejoin limit exceeded",
-                        CaptchaExpired: true,
-                    }
-                }
-            );
+        if (userData.ReJoinedTimes >= serviceConfig.ReJoinLimit) {
+            userData.CaptchaStatus = "User Kicked due to rejoin limit exceeded";
+            userData.CaptchaExpired = true;
+            await config.save();
 
             await member.send(`You Re-Joined ${member.guild.name} too many times so you can't receive the verified role! Please contact server Admins.`);
-            await staffChannel.send({ content: `@here Warning! User **${member.user.username}** (${member.user.id}) rejoined the server for ${userData.ReJoinedTimes + 1} times!` });
-            return await member.kick(`User **${member.user.username}** (${member.user.id}) has been kicked because he/has has rejoined the server ${userData.ReJoinedTimes} !`);
+            await staffChannel.send({ content: `@here Warning! User **${member.user.username}** (${member.user.id}) rejoined the server for ${userData.ReJoinedTimes} times!` });
+            return await member.kick(`User **${member.user.username}** (${member.user.id}) has been kicked because he/she has rejoined the server ${userData.ReJoinedTimes} times!`);
         }
 
-        await staffChannel.send({ content: `@here Warning! User **${member.user.username}** (${member.user.id}) rejoined the server for ${userData.ReJoinedTimes + 1} times!` });
+        await config.save();
+        await staffChannel.send({ content: `@here Warning! User **${member.user.username}** (${member.user.id}) rejoined the server for ${userData.ReJoinedTimes} times!` });
     }
 
     const captcha = new CaptchaGenerator()
         .setDimension(150, 450)
-        .setCaptcha({ text: `${text}`, size: 60, color: "green" })
+        .setCaptcha({ text: `${userData.Captcha}`, size: 60, color: "green" })
         .setDecoy({ opacity: 0.5 })
         .setTrace({ color: "green" })
 
@@ -98,7 +92,7 @@ module.exports = async (client, member) => {
         .setFooter({ text: "Captcha System by RikiCatte", iconURL: msgConfig.footer_iconURL })
 
 
-    const endTime = Math.floor((new Date().getTime() + data.ExpireInMS) / 1000);
+    const endTime = Math.floor((new Date().getTime() + serviceConfig.ExpireInMS) / 1000);
     const alertEmbed = new EmbedBuilder()
         .setColor("Blue")
         .setTitle(`\`⚠️\` <t:${endTime}:R> you have to solve the captcha, otherwise you need to contact a server Admin in order to get verification`);
@@ -130,7 +124,7 @@ module.exports = async (client, member) => {
         return console.log(err);
     })
 
-    const collector = msg.createMessageComponentCollector({ time: data.ExpireInMS });
+    const collector = msg.createMessageComponentCollector({ time: serviceConfig.ExpireInMS });
 
     collector.on("collect", async i => {
         if (i.customId === "captchaButton") {
@@ -139,28 +133,21 @@ module.exports = async (client, member) => {
     })
 
     collector.on("end", async collected => {
-        let userCaptcha = await captchaUsersDataSchema.findOne({ Guild: member.guild.id, UserID: member.user.id });
+        const freshConfig = await BotConfig.findOne({ GuildID: member.guild.id });
+        let userCaptcha = freshConfig.services?.captcha?.users?.find(u => u.UserID === member.id);
 
-        if (/*userCaptcha.CaptchaStatus &&*/ userCaptcha.CaptchaStatus === "Pending") { // time is finished and the user didn't solved the captcha
-            await captchaUsersDataSchema.findOneAndUpdate(
-                { Guild: member.guild.id, UserID: member.user.id },
-                {
-                    $set: {
-                        CaptchaStatus: "Expired due to time limit",
-                        CaptchaExpired: true,
-                    }
-                }
-            );
+        console.log(`[CAPTCHA COLLECTOR] Stato attuale per utente ${member.id}: ${userCaptcha?.CaptchaStatus}`);
+
+        if (userCaptcha && userCaptcha.CaptchaStatus === "Pending") {
+            userCaptcha.CaptchaStatus = "Expired due to time limit";
+            userCaptcha.CaptchaExpired = true;
+            await freshConfig.save();
+            console.log(`[CAPTCHA COLLECTOR] Stato aggiornato a "Expired due to time limit" per utente ${member.id}`);
 
             await msg.delete().catch(err => console.log(err));
-            return await member.send({ content: `Your captcha has expired, please contact a **${member.guild.name}** Admin in order to gain the verified role.` })
+            return await member.send({ content: `Your captcha has expired, please contact a **${member.guild.name}** Admin in order to gain the verified role.` });
         }
 
         await msg.delete().catch(err => console.log(err));
-
-        if (userCaptcha.Bypassed) return await member.send({ content: `You get verfication bypassed by user id ${userCaptcha.BypassedBy} in **${member.guild.name}** on \`${await frmtDate()} UTC +1/2\`` });
-
-        // user has correctly submitted captcha and the message will be deleted
-        return await member.send({ content: `You get verified in **${member.guild.name}** on \`${await frmtDate()} UTC +1/2\`` });
-    })
+    });
 }

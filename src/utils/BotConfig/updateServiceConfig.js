@@ -1,5 +1,4 @@
 const BotConfig = require("../../schemas/BotConfig");
-const botConfigCache = require("./botConfigCache");
 
 module.exports = async function updateServiceConfig(config, service, updates) {
     await BotConfig.findOneAndUpdate(
@@ -9,7 +8,4 @@ module.exports = async function updateServiceConfig(config, service, updates) {
         ) },
         { upsert: true }
     );
-    
-    // Update the cache after modifying the config
-    await botConfigCache.refreshConfig(config.GuildID);
 }

@@ -1,5 +1,5 @@
 const { EmbedBuilder, Client, GuildMember } = require('discord.js');
-const botConfigCache = require("../../utils/BotConfig/botConfigCache");
+const BotConfig = require("../../schemas/BotConfig");
 
 /**
  * @param {Client} client
@@ -8,7 +8,7 @@ const botConfigCache = require("../../utils/BotConfig/botConfigCache");
  */
 
 module.exports = async (client, oldMember, newMember) => {
-	const config = await botConfigCache.getConfig(oldMember.guild.id);
+	const config = await BotConfig.findOne({ GuildID: oldMember.guild.id });
 	const serviceConfig = config?.services?.nitroboost;
 
 	if (!serviceConfig || !serviceConfig.enabled) return;

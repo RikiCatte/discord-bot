@@ -1,6 +1,6 @@
 const { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits, Client, ChatInputCommandInteraction, MessageFlags } = require("discord.js");
+const BotConfig = require("../../schemas/BotConfig");
 const antiLinkWL = require("../../schemas/antiLinkWL");
-const botConfigCache = require("../../utils/BotConfig/botConfigCache");
 const buttonPagination = require("../../utils/buttonPagination");
 const replyNoConfigFound = require("../../utils/BotConfig/replyNoConfigFound");
 const replyServiceAlreadyEnabledOrDisabled = require("../../utils/BotConfig/replyServiceAlreadyEnabledOrDisabled");
@@ -52,19 +52,18 @@ module.exports = {
         const sub = options.getSubcommand();
 
         switch (sub) {
-            case "check":
-                const config = await botConfigCache.getConfig(interaction.guild.id);
+            case "check": {
+                const config = await BotConfig.findOne({ GuildID: interaction.guild.id });
                 const serviceConfig = config?.services?.antilink;
 
                 if (!serviceConfig) return await replyNoConfigFound(interaction, "antilink");
-
                 if (!serviceConfig.enabled) return await replyServiceAlreadyEnabledOrDisabled(interaction, "antilink", "enabled", false);
 
                 const permissions = serviceConfig.Permissions;
-
                 if (!permissions) return await interaction.reply({ content: "\`⚠️\` No bypass permission is set for the anti-link system.", flags: MessageFlags.Ephemeral });
 
                 return await interaction.reply({ content: `\`✅\` The anti-link system is enabled. People with the **${permissions}** permission can bypass the system.`, flags: MessageFlags.Ephemeral });
+            }
             case "whitelist":
                 user = options.getUser("user");
 

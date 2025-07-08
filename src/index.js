@@ -146,7 +146,6 @@ console.log(`[INFO] Node.js Version: ${process.version}`.magenta);
 let retryAttempts = 0;
 const maxRetries = 5;
 
-const botConfigCache = require('./utils/BotConfig/botConfigCache.js');
 const BotConfig = require('./schemas/BotConfig.js');
 
 function getDefaultServicesFromSchema() {
@@ -220,7 +219,7 @@ async function ensureAllServicesInConfig() {
 async function checkBotConfigOnStartup(client) {
     const guilds = client.guilds.cache.map(g => g.id);
     for (const guildId of guilds) {
-        const config = await botConfigCache.getConfig(guildId);
+        const config = await BotConfig.findOne({ GuildID: guildId });
         if (!config || !config.services || Object.keys(config.services).length === 0)
             console.log(`[ERROR] Missing or incomplete configuration for guild ${guildId}. The bot won't work until it's configured with /bot-setup.`.red);
     }

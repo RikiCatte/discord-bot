@@ -1,6 +1,5 @@
 const { EmbedBuilder, ModalSubmitInteraction, MessageFlags } = require("discord.js");
-const captchaSchema = require("../../schemas/captchaSetup");
-const captchaUsersDataSchema = require("../../schemas/captchaUsersData");
+const BotConfig = require("../../schemas/BotConfig"); // Usa direttamente il modello Mongoose
 const msgConfig = require("../../messageConfig.json");
 
 /**
@@ -12,28 +11,24 @@ const msgConfig = require("../../messageConfig.json");
 module.exports = async (client, interaction) => {
     if (!interaction.isModalSubmit() || interaction.customId !== "captchaModal") return;
 
-    const data = await captchaSchema.findOne({ Guild: `${msgConfig.guild}` });
-    if (!data) return;
+    // Recupera la config aggiornata direttamente dal DB
+    const config = await BotConfig.findOne({ GuildID: msgConfig.guild });
+    const serviceConfig = config?.services?.captcha;
+    if (!serviceConfig || !serviceConfig.enabled) return;
 
-    const roleId = data.Role;
-    const captchaGuild = await client.guilds.fetch(`${msgConfig.guild}`);
-    const role = await captchaGuild.roles.cache.get(roleId);
-
+    const verifiedRoleId = serviceConfig.RoleID;
+    const captchaGuild = await client.guilds.fetch(msgConfig.guild);
+    const verifiedRole = await captchaGuild.roles.cache.get(verifiedRoleId);
     const member = await captchaGuild.members.fetch(interaction.user.id);
 
-    let userSchema = await captchaUsersDataSchema.findOne({ Guild: msgConfig.guild, UserID: interaction.user.id });
-    let captcha = "";
-    if (data.RandomText) {
-        if (!userSchema) return await interaction.reply("There was an error while searching your captcha data in the database, please contact a server admin");
+    let userData = serviceConfig.users?.find(u => u.UserID === interaction.user.id);
+    if (!userData) return await interaction.reply({ content: "There was an error while searching your captcha data, please contact a server admin", flags: MessageFlags.Ephemeral });
 
-        captcha = userSchema.Captcha;
-    } else {
-        captcha = data.Captcha;
-    }
+    let captcha = userData.Captcha;
 
     const answer = interaction.fields.getTextInputValue("answer");
+    const logChannel = await client.channels.cache.get(serviceConfig.LogChannelID);
 
-    const logChannel = await client.channels.cache.get(`${msgConfig.captchaLogsChannelId}`);
     if (answer != `${captcha}`) {
         const embed = new EmbedBuilder()
             .setTitle("User Missed Captcha Verification")
@@ -46,21 +41,20 @@ module.exports = async (client, interaction) => {
 
         await logChannel.send({ embeds: [embed] });
 
-        await captchaUsersDataSchema.findOneAndUpdate(
-            { Guild: member.guild.id, UserID: member.user.id },
-            { $set: { MissedTimes: (userSchema.MissedTimes != null ? userSchema.MissedTimes + 1 : 1) } }
-        );
-        // if the user miss for the first time userSchema.MissedTimes will be null, so it should be 1 now else it should be incremented
+        userData.MissedTimes = (userData.MissedTimes != null ? userData.MissedTimes + 1 : 1);
+        await config.save();
 
-        return await interaction.reply({ content: "❌ That was wrong!, please try again", flags: MessageFlags.Ephemeral });
+        return await interaction.reply({ content: "\`❌\` That was wrong!, please try again", flags: MessageFlags.Ephemeral });
     }
 
-
-
-    await member.roles.add(role).catch(async err => {
+    // Se la risposta è corretta, assegna il ruolo verified
+    await member.roles.add(verifiedRole).catch(async err => {
         console.log(err);
-        return await interaction.reply({ content: "🔴 There was an error while attempting to add you the verified role, please contact server staff to solve!", flags: MessageFlags.Ephemeral });
+        await interaction.reply({ content: "\`🔴\` There was an error while attempting to add you the verified role, please contact server staff to solve!", flags: MessageFlags.Ephemeral });
+        return;
     });
+
+    if (interaction.replied || interaction.deferred) return; // evita doppie risposte
 
     const embed = new EmbedBuilder()
         .setTitle("User Passed Captcha Verification")
@@ -71,15 +65,9 @@ module.exports = async (client, interaction) => {
 
     await logChannel.send({ embeds: [embed] });
 
-    await captchaUsersDataSchema.findOneAndUpdate(
-        { Guild: member.guild.id, UserID: member.user.id },
-        {
-            $set: {
-                CaptchaStatus: "Submitted",
-                CaptchaExpired: true
-            }
-        }
-    );
-
-    return await interaction.reply({ content: `✅ You have been verified in ${captchaGuild.name}`, flags: MessageFlags.Ephemeral });
+    userData.CaptchaStatus = "Submitted";
+    userData.CaptchaExpired = true;
+    await config.save();
+    console.log(`[CAPTCHA EVENT] Stato aggiornato a "Submitted" per utente ${interaction.user.id} (${interaction.user.username})`);
+    return await interaction.reply({ content: `\`✅\` You have been verified in ${captchaGuild.name}`, flags: MessageFlags.Ephemeral });
 }

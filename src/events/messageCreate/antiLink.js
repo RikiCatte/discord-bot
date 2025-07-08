@@ -1,5 +1,5 @@
 const { Message } = require("discord.js");
-const botConfigCache = require("../../utils/BotConfig/botConfigCache");
+const BotConfig = require("../../schemas/BotConfig");
 const antiLinkWL = require("../../schemas/antiLinkWL");
 
 /**
@@ -12,7 +12,7 @@ module.exports = async (client, message) => {
     if (!message.guild) return; // DM message
 
     if (message.content.includes("http") || message.content.includes("discord.gg")) {
-        const config = await botConfigCache.getConfig(message.guild.id);
+        const config = await BotConfig.findOne({ GuildID: message.guild.id });
         const serviceConfig = config?.services?.antilink;
 
         if (!serviceConfig || !serviceConfig.enabled) return;

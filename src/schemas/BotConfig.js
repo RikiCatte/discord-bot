@@ -1,20 +1,5 @@
 const mongoose = require('mongoose');
 
-const captchaUserSchema = new mongoose.Schema({
-    UserID: String,
-    Username: String,
-    JoinedAt: String,
-    ReJoinedTimes: { type: Number, default: 0 },
-    Captcha: String,
-    CaptchaStatus: String,
-    CaptchaExpired: { type: Boolean, default: false },
-    MissedTimes: { type: Number, default: 0 },
-    Resent: { type: Boolean, default: false },
-    ResentBy: String,
-    Bypassed: { type: Boolean, default: false },
-    BypassedBy: String,
-});
-
 const botConfigSchema = new mongoose.Schema({
     GuildID: { type: String, required: true, unique: true },
     services: {
@@ -33,10 +18,24 @@ const botConfigSchema = new mongoose.Schema({
         captcha: {
             enabled: { type: Boolean, default: false },
             RoleID: String,
+            LogChannelID: String, // Where success or failure captcha attempts are logged
             ReJoinLimit: Number,
             ExpireInMS: Number,
             Captcha: String,
-            users: [captchaUserSchema]
+            users: [{
+                UserID: String,
+                Username: String,
+                JoinedAt: String,
+                ReJoinedTimes: { type: Number, default: 0 },
+                Captcha: String,
+                CaptchaStatus: String,
+                CaptchaExpired: { type: Boolean, default: false },
+                MissedTimes: { type: Number, default: 0 },
+                Resent: { type: Boolean, default: false },
+                ResentBy: String,
+                Bypassed: { type: Boolean, default: false },
+                BypassedBy: String,
+            }]
         },
         ban: {
             enabled: { type: Boolean, default: false },
