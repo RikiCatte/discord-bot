@@ -4,7 +4,7 @@ const { EmbedBuilder, ButtonBuilder, ButtonStyle, ActionRowBuilder, ComponentTyp
 const { developersId, testServerId } = require("../../config.json");
 const mConfig = require("../../messageConfig.json");
 const getLocalCommands = require("../../utils/getLocalCommands");
-const botConfigCache = require("../../utils/BotConfig/botConfigCache");
+const BotConfig = require("../../schemas/BotConfig");
 
 /**
  * 
@@ -21,7 +21,7 @@ module.exports = async (client, interaction) => {
 	if (!commandObject) return;
 
 	// Recover the config from the cache
-	const config = await botConfigCache.getConfig(interaction.guild.id);
+	const config = await BotConfig.findOne({ GuildID: interaction.guild.id });
 
 	// Defining if the config is invalid
 	const configInvalid = !config || !config.services || Object.keys(config.services).length === 0;
