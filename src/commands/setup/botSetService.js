@@ -8,19 +8,6 @@ const handleSelectMenuInteraction = require("../../utils/BotConfig/handleSelectM
 const createModal = require("../../utils/BotConfig/createModal");
 const replySuccessfullyDisabledService = require("../../utils/BotConfig/replySuccessfullyDisabledService");
 
-module.exports.autocomplete = async (interaction) => {
-    const config = await BotConfig.findOne({ GuildID: interaction.guild.id });
-    const allServices = config ? Object.keys(config.services || {}) : [];
-
-    const focusedValue = interaction.options.getFocused();
-    const filtered = allServices.filter(s =>
-        s.toLowerCase().includes(focusedValue.toLowerCase())
-    );
-    await interaction.respond(
-        filtered.slice(0, 25).map(s => ({ name: s, value: s })) // Discord allows a maximum of 25 choices
-    );
-};
-
 module.exports = {
     data: new SlashCommandBuilder()
         .setName("bot-set-service")
@@ -29,10 +16,6 @@ module.exports = {
             option.setName("service")
                 .setDescription("Select the service to set up")
                 .setRequired(true)
-                // .addChoices(
-                //     { name: "AntiLink", value: "antilink" },
-                //     { name: "NitroBoost", value: "nitroboost" }
-                // )
                 .setAutocomplete(true)
         )
         .addStringOption(option =>
@@ -49,6 +32,16 @@ module.exports = {
     userPermissions: [PermissionFlagsBits.Administrator],
     botPermissions: [PermissionFlagsBits.Administrator],
     category: "setup",
+
+    autocomplete: async (interaction) => {
+        const allServices = Object.keys(BotConfig.schema.obj.services);
+        const focusedValue = interaction.options.getFocused();
+        const filtered = allServices.filter(s =>
+            s.toLowerCase().includes(focusedValue.toLowerCase())
+        );
+
+        await interaction.respond(filtered.slice(0, 25).map(s => ({ name: s, value: s })));
+    },
 
     run: async (client, interaction) => {
         const { guild, options } = interaction;
