@@ -1,5 +1,6 @@
 const { EmbedBuilder, ModalSubmitInteraction, MessageFlags } = require("discord.js");
-const BotConfig = require("../../schemas/BotConfig"); // Usa direttamente il modello Mongoose
+const frmtDate = require("../../utils/formattedDate");
+const BotConfig = require("../../schemas/BotConfig");
 const msgConfig = require("../../messageConfig.json");
 
 /**
@@ -11,7 +12,6 @@ const msgConfig = require("../../messageConfig.json");
 module.exports = async (client, interaction) => {
     if (!interaction.isModalSubmit() || interaction.customId !== "captchaModal") return;
 
-    // Recupera la config aggiornata direttamente dal DB
     const config = await BotConfig.findOne({ GuildID: msgConfig.guild });
     const serviceConfig = config?.services?.captcha;
     if (!serviceConfig || !serviceConfig.enabled) return;
@@ -47,14 +47,13 @@ module.exports = async (client, interaction) => {
         return await interaction.reply({ content: "\`❌\` That was wrong!, please try again", flags: MessageFlags.Ephemeral });
     }
 
-    // Se la risposta è corretta, assegna il ruolo verified
     await member.roles.add(verifiedRole).catch(async err => {
         console.log(err);
         await interaction.reply({ content: "\`🔴\` There was an error while attempting to add you the verified role, please contact server staff to solve!", flags: MessageFlags.Ephemeral });
         return;
     });
 
-    if (interaction.replied || interaction.deferred) return; // evita doppie risposte
+    if (interaction.replied || interaction.deferred) return; // avoid replying again if already replied or deferred
 
     const embed = new EmbedBuilder()
         .setTitle("User Passed Captcha Verification")
@@ -68,6 +67,13 @@ module.exports = async (client, interaction) => {
     userData.CaptchaStatus = "Submitted";
     userData.CaptchaExpired = true;
     await config.save();
-    console.log(`[CAPTCHA EVENT] Stato aggiornato a "Submitted" per utente ${interaction.user.id} (${interaction.user.username})`);
-    return await interaction.reply({ content: `\`✅\` You have been verified in ${captchaGuild.name}`, flags: MessageFlags.Ephemeral });
+
+    let verifyMsg;
+    if (userData.Bypassed) {
+        verifyMsg = `You got verification bypassed by user id ${userData.BypassedBy} in **${member.guild.name}** on \`${await frmtDate()} UTC +1/2\``;
+    } else {
+        verifyMsg = `You got verified in **${member.guild.name}** on \`${await frmtDate()} UTC +1/2\``;
+    }
+
+    await interaction.reply({ content: "\`✅\` " + verifyMsg });
 }

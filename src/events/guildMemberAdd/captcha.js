@@ -136,13 +136,10 @@ module.exports = async (client, member) => {
         const freshConfig = await BotConfig.findOne({ GuildID: member.guild.id });
         let userCaptcha = freshConfig.services?.captcha?.users?.find(u => u.UserID === member.id);
 
-        console.log(`[CAPTCHA COLLECTOR] Stato attuale per utente ${member.id}: ${userCaptcha?.CaptchaStatus}`);
-
         if (userCaptcha && userCaptcha.CaptchaStatus === "Pending") {
             userCaptcha.CaptchaStatus = "Expired due to time limit";
             userCaptcha.CaptchaExpired = true;
             await freshConfig.save();
-            console.log(`[CAPTCHA COLLECTOR] Stato aggiornato a "Expired due to time limit" per utente ${member.id}`);
 
             await msg.delete().catch(err => console.log(err));
             return await member.send({ content: `Your captcha has expired, please contact a **${member.guild.name}** Admin in order to gain the verified role.` });

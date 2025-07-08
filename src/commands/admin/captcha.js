@@ -102,8 +102,8 @@ module.exports = {
      * @returns 
      */
     run: async (client, interaction) => {
-        const config = await BotConfig.findOne({ GuildID: interaction.guild.id });
-        const serviceConfig = config?.services?.captcha;
+        let config = await BotConfig.findOne({ GuildID: interaction.guild.id });
+        let serviceConfig = config?.services?.captcha;
 
         if (!serviceConfig) return await replyNoConfigFound(interaction, "captcha");
         if (!serviceConfig.enabled) return await replyServiceAlreadyEnabledOrDisabled(interaction, "captcha", "disabled", false);
@@ -117,8 +117,6 @@ module.exports = {
             case "resend":
                 user = options.getUser("user");
 
-                let config = await BotConfig.findOne({ GuildID: interaction.guild.id });
-                let serviceConfig = config?.services?.captcha;
                 userData = serviceConfig.users?.find(u => u.UserID === user.id);
 
                 if (!userData) return await interaction.reply({ content: `\`⚠️\` Unable to find ${user}'s CAPTCHA in the DB`, flags: MessageFlags.Ephemeral });
@@ -265,7 +263,7 @@ module.exports = {
 
                 role = serviceConfig.RoleID;
 
-                if (guildMember.roles.cache.has(role)) return await interaction.reply({ content: "\`❓\` This user already has verified role", flags: MessageFlags.Ephemeral });
+                if (guildMember.roles.cache.has(role)) return await interaction.reply({ content: "\`❓\` This user already has verified role, if you want to revoke it and send him a new captcha challenge please run \`/captcha resend\` command.", flags: MessageFlags.Ephemeral });
 
                 await guildMember.roles.add(role).catch(async err => {
                     console.log(err);
