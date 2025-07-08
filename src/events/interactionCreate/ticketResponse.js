@@ -5,6 +5,7 @@ const msgConfig = require("../../messageConfig.json");
 require('dotenv').config();
 
 module.exports = async (client, interaction) => {
+    if (!interaction.isStringSelectMenu()) return;
 
     var selectedCategory;
     if (interaction.values && interaction.values[0]) { // If interaction cames from StringSelectMenuBuilder
@@ -16,8 +17,6 @@ module.exports = async (client, interaction) => {
     const { guild, member, customId } = interaction;
     const { ViewChannel, SendMessages, ManageChannels, ReadMessageHistory } = PermissionFlagsBits;
     const ticketId = Math.floor(Math.random() * 9000) + 10000;
-
-    if (!interaction.isStringSelectMenu()) return;
 
     const data = await TicketSetup.findOne({ GuildID: guild.id });
     const messageId = data.MessageId;
