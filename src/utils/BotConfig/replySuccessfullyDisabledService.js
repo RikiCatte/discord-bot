@@ -1,3 +1,5 @@
+const { MessageFlags } = require("discord.js");
+
 module.exports = async function successfullyDisabledService(interaction, service) {
     try {
         return await interaction.reply({ content: `\`⏸️\` Service \`${service}\` successfully disabled.`, flags: MessageFlags.Ephemeral });
