@@ -1,5 +1,5 @@
 const { SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder, MessageFlags } = require("discord.js");
-const BotConfig = require("../../schemas/BotConfig");
+const botConfigCache = require("../../utils/BotConfig/botConfigCache");
 const replyNoConfigFound = require("../../utils/BotConfig/replyNoConfigFound");
 const replyServiceAlreadyEnabledOrDisabled = require("../../utils/BotConfig/replyServiceAlreadyEnabledOrDisabled");
 
@@ -12,7 +12,7 @@ module.exports = {
 
     run: async (client, interaction) => {
         try {
-            const config = await BotConfig.findOne({ GuildID: interaction.guild.id });
+            const config = await botConfigCache.getConfig(interaction.guild.id);
             const serviceConfig = config?.services?.nitroboost;
 
             if (!serviceConfig) return await replyNoConfigFound(interaction, "nitroboost");
