@@ -1310,6 +1310,8 @@ module.exports = (client) => {
      *               B) not all deletions create a log. examples: self-deletes or deletions by bots
      */
     client.on(Events.MessageDelete, async (message) => {
+        if (!message.guild) return; // Ignore DMs
+
         const mes = message.content;
 
         if (!mes) return;
