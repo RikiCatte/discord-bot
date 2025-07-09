@@ -56,19 +56,25 @@ module.exports = async (client, member) => {
         }
         userData.Captcha = text;
 
-        let staffChannel = client.channels.cache.get(msgConfig.staffChannel);
         if (userData.ReJoinedTimes >= serviceConfig.ReJoinLimit) {
             userData.CaptchaStatus = "User Kicked due to rejoin limit exceeded";
             userData.CaptchaExpired = true;
             await config.save();
 
             await member.send(`You Re-Joined ${member.guild.name} too many times so you can't receive the verified role! Please contact server Admins.`);
-            await staffChannel.send({ content: `@here Warning! User **${member.user.username}** (${member.user.id}) rejoined the server for ${userData.ReJoinedTimes} times!` });
             return await member.kick(`User **${member.user.username}** (${member.user.id}) has been kicked because he/she has rejoined the server ${userData.ReJoinedTimes} times!`);
         }
 
         await config.save();
-        await staffChannel.send({ content: `@here Warning! User **${member.user.username}** (${member.user.id}) rejoined the server for ${userData.ReJoinedTimes} times!` });
+
+        let logChannel = null;
+        if (serviceConfig.LogChannelID) {
+            logChannel = client.channels.cache.get(serviceConfig.LogChannelID);
+        }
+
+        if (logChannel) {
+            await logChannel.send({ content: `@here Warning! User **${member.user.username}** (${member.user.id}) rejoined the server for ${userData.ReJoinedTimes} times!` });
+        }
     }
 
     const captcha = new CaptchaGenerator()
