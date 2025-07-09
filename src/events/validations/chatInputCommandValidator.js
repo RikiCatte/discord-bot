@@ -17,6 +17,8 @@ module.exports = async (client, interaction) => {
 	if (!interaction.isChatInputCommand()) return;
 	const localCommands = getLocalCommands();
 
+	if (!interaction.guild) return await interaction.reply({ content: "\`⚠️\` Sorry, this bot does not support slash commands in DMs by now.", flags: MessageFlags.Ephemeral });
+
 	const commandObject = localCommands.find((cmd) => cmd.data.name === interaction.commandName);
 	if (!commandObject) return;
 
