@@ -1,4 +1,5 @@
-const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, PermissionFlagsBits, ChannelType, StringSelectMenuBuilder, StringSelectMenuOptionBuilder, MessageFlags } = require('discord.js');
+const { SlashCommandBuilder, PermissionFlagsBits, ChannelType, MessageFlags } = require('discord.js');
+const { buildTicketEmbed } = require("../../utils/ticketEmbed");
 const TicketSetup = require("../../schemas/ticketsetup");
 const msgConfig = require("../../messageConfig.json");
 
@@ -51,7 +52,7 @@ module.exports = {
         )
         .addStringOption(option =>
             option.setName("emojis")
-                .setDescription("Enter emojis, separated by commas. Use only default emojis due to discord limitations!")
+                .setDescription("Enter emojis, separated by commas. Use only default emojis!")
                 .setRequired(true)
         )
         .toJSON(),
@@ -76,27 +77,6 @@ module.exports = {
             const categories = options.getString("ticket-categories").split(",");
 
             const emojis = options.getString("emojis").split(",").map(emoji => emoji.trim());
-
-            let categoriesEmojiArray = [];
-            const components = (state) => [
-                new ActionRowBuilder().addComponents(
-                    new StringSelectMenuBuilder()
-                        .setCustomId("ticket-stringMenu")
-                        .setPlaceholder("Select a Category to Create a Ticket")
-                        .setDisabled(state)
-                        .addOptions(
-                            categories.map((category, index) => {
-                                const emoji = emojis[index % emojis.length] || "";
-                                categoriesEmojiArray.push({ [category]: emoji });
-                                return new StringSelectMenuOptionBuilder()
-                                    .setLabel(category)
-                                    .setDescription(`Create a ${category} Type Ticket.`)
-                                    .setValue(category)
-                                    .setEmoji(emoji);
-                            })
-                        )
-                ),
-            ];
 
             await TicketSetup.findOneAndUpdate(
                 { GuildID: guild.id },
@@ -123,21 +103,16 @@ module.exports = {
                 }
             );
 
-            const embed = new EmbedBuilder()
-                .setColor(`${color}`)
-                .setAuthor({ name: `${client.user.username}`, iconURL: msgConfig.author_img })
-                .setThumbnail(msgConfig.thumbnail)
-                .setDescription(description)
-                .setFooter({ text: msgConfig.footer_text, iconURL: msgConfig.footer_iconURL });
-
-            const msgId = await guild.channels.cache.get(channel.id).send({
+            const setupDoc = await TicketSetup.findOne({ GuildID: guild.id });
+            const { embed, components } = buildTicketEmbed(setupDoc, client, false);
+            const msg = await guild.channels.cache.get(channel.id).send({
                 embeds: [embed],
-                components: components(false)
+                components
             });
 
-            await TicketSetup.findOneAndUpdate({ GuildID: guild.id }, { MessageId: msgId });
+            await TicketSetup.findOneAndUpdate({ GuildID: guild.id }, { MessageId: msg.id });
 
-            interaction.reply({ content: `Ticket message has been sent here 👉 <#${channel.id}>`, flags: MessageFlags.Ephemeral });
+            interaction.reply({ content: `\`✅\` Ticket message has been sent here 👉 <#${channel.id}>`, flags: MessageFlags.Ephemeral });
         } catch (err) {
             console.log(err);
             const errEmbed = new EmbedBuilder()
