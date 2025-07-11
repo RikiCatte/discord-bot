@@ -7,7 +7,17 @@ module.exports = async function replyServiceAlreadyEnabledOrDisabled(interaction
             return await interaction.reply({ content: "\`❌\` An error occurred while processing your request. Please contact DEVs and try again later.", flags: MessageFlags.Ephemeral });
         }
 
-        return await interaction.reply({ content: `\`ℹ️\` The \`${service}\` service is${alreadyEnabled ? " already" : ""} ${enabled}. Please run \`/bot-set-service\` \`${service}\` and select *${enabled === "enabled" ? "Disable" : "Enable"}* or *Edit* action.`, flags: MessageFlags.Ephemeral });
+        if (enabled === "disabled") {
+            return await interaction.reply({
+                content: `\`ℹ️\` The \`${service}\` service is already disabled. Please run \`/bot-set-service\` \`${service}\` and select *Enable* action to activate it.`,
+                flags: MessageFlags.Ephemeral
+            });
+        }
+
+        return await interaction.reply({
+            content: `\`ℹ️\` The \`${service}\` service is${alreadyEnabled ? " already" : ""} enabled. Please run \`/bot-set-service\` \`${service}\` and select *Disable* or *Edit* action.`,
+            flags: MessageFlags.Ephemeral
+        });
     } catch (err) {
         console.log("Error in replyServiceAlreadyEnabledOrDisabled:", err);
         return await interaction.reply({ content: "\`❌\` An unexpected error occurred while processing your request. Please contact DEVs and try again later.", flags: MessageFlags.Ephemeral });
