@@ -7,6 +7,7 @@ const handleSelectMenuInteraction = require("../../utils/BotConfig/handleSelectM
 const createModal = require("../../utils/BotConfig/createModal");
 const replySuccessfullyDisabledService = require("../../utils/BotConfig/replySuccessfullyDisabledService");
 const successfullyReEnabledService = require("../../utils/BotConfig/replySuccesfullyRe-EnabledService");
+const replyServiceNotEnabled = require("../../utils/BotConfig/replyServiceNotEnabled");
 
 const antilinkPermissionOptions = [
     { label: "Manage Channels", value: "ManageChannels" },
@@ -31,6 +32,12 @@ const captchaFields = [
     { customId: "reJoinLimit", label: "Rejoin Limit", style: TextInputStyle.Short, placeholder: "Number of rejoin attempts before kick", value: "3" },
     { customId: "expireInMS", label: "Captcha Expiration Time (ms)", style: TextInputStyle.Short, placeholder: "600000 (10 minutes)", value: "600000" },
     { customId: "captchaText", label: "Captcha Text (type Random for random)", style: TextInputStyle.Paragraph, placeholder: "Type the captcha text here" }
+];
+
+const dinamicActivitiesFields = [
+    { customId: "activities", label: "Activities (comma separated)", style: TextInputStyle.Paragraph, placeholder: "Ping, Server Count, User Count, Current Time, Discord Version" },
+    { customId: "status", label: "Status", style: TextInputStyle.Short, placeholder: "online, idle, dnd, invisible", value: "dnd" },
+    { customId: "interval", label: "Interval (ms)", style: TextInputStyle.Short, placeholder: "10000", value: "10000" }
 ];
 
 module.exports = {
@@ -91,46 +98,43 @@ module.exports = {
                     }
 
                     const row = createSelectMenu({
-                        customId: "antilink-permission",
-                        placeholder: "Choose the permission to bypass the AntiLink system",
+                        customId: "antilink-permission-setup",
+                        placeholder: "",
                         options: antilinkPermissionOptions
                     });
 
                     await interaction.reply({
-                        content: `**[ENABLE]** Select a permission to bypass AntiLink system:`,
+                        content: `Select a permission to bypass AntiLink system:`,
                         components: [row],
                         flags: MessageFlags.Ephemeral
                     });
 
-                    const { success, select } = await handleSelectMenuInteraction(interaction, "antilink-permission");
+                    const { success, select } = await handleSelectMenuInteraction(interaction, "antilink-permission-setup");
                     if (!success) return;
 
                     await updateServiceConfig(config, service, { enabled: true, Permissions: select.values[0] });
                     await select.update({ content: `\`✅\` Permission set to \`${select.values[0]}\``, components: [] });
                     return;
                 } else if (action === "edit") {
-                    if (config.services[service]?.enabled) {
-                        await replyServiceAlreadyEnabledOrDisabled(interaction, service, "enabled");
-                        return;
-                    }
+                    if (!config.services[service]?.enabled) return await replyServiceNotEnabled(interaction, service);
 
                     const row = createSelectMenu({
-                        customId: "antilink-permission",
-                        placeholder: "Choose the new permission to bypass the AntiLink system",
+                        customId: "antilink-permission-edit",
+                        placeholder: "",
                         options: antilinkPermissionOptions
                     });
 
                     await interaction.reply({
-                        content: `**[EDIT]** Choose the new permission to bypass the AntiLink system:`,
+                        content: `Select the new permission to bypass the AntiLink system:`,
                         components: [row],
                         flags: MessageFlags.Ephemeral
                     });
 
-                    const { success, select } = await handleSelectMenuInteraction(interaction, "antilink-permission");
+                    const { success, select } = await handleSelectMenuInteraction(interaction, "antilink-permission-edit");
                     if (!success) return;
 
                     await updateServiceConfig(config, service, { enabled: true, Permissions: select.values[0] });
-                    await select.update({ content: `\`✅\` Permission set to \`${select.values[0]}\``, components: [] });
+                    await select.update({ content: `\`✅\` Permission updated to \`${select.values[0]}\``, components: [] });
                     return;
                 } else if (action === "disable") {
                     if (!config.services[service]?.enabled) {
@@ -157,27 +161,7 @@ module.exports = {
 
                     const { success, values, modalInteraction } = await createModal(interaction, {
                         customId: "nitroboost-setup",
-                        title: "Setup Nitro Boost",
-                        fields: nitroboostFields
-                    }, 300_000); // 5 minutes timeout
-
-                    if (!success) return;
-
-                    await updateServiceConfig(config, service, {
-                        enabled: true,
-                        channelID: values.channelID,
-                        embedColor: values.embedColor,
-                        embedTitle: values.embedTitle,
-                        embedMessage: values.embedMessage,
-                        boostMessage: values.boostMessage
-                    });
-
-                    await modalInteraction.reply({ content: `\`✅\` ${service} service setup in <#${values.channelID}>`, flags: MessageFlags.Ephemeral });
-                    return;
-                } else if (action === "edit") {
-                    const { success, values, modalInteraction } = await createModal(interaction, {
-                        customId: "nitroboost-setup",
-                        title: "Setup Nitro Boost",
+                        title: "Setup Nitro Boost Service",
                         fields: nitroboostFields
                     }, 300_000);
 
@@ -193,6 +177,28 @@ module.exports = {
                     });
 
                     await modalInteraction.reply({ content: `\`✅\` ${service} service setup in <#${values.channelID}>`, flags: MessageFlags.Ephemeral });
+                    return;
+                } else if (action === "edit") {
+                    if (!config.services[service]?.enabled) return await replyServiceNotEnabled(interaction, service);
+
+                    const { success, values, modalInteraction } = await createModal(interaction, {
+                        customId: "nitroboost-edit",
+                        title: "Edit Nitro Boost Service",
+                        fields: nitroboostFields
+                    }, 300_000);
+
+                    if (!success) return;
+
+                    await updateServiceConfig(config, service, {
+                        enabled: true,
+                        channelID: values.channelID,
+                        embedColor: values.embedColor,
+                        embedTitle: values.embedTitle,
+                        embedMessage: values.embedMessage,
+                        boostMessage: values.boostMessage
+                    });
+
+                    await modalInteraction.reply({ content: `\`✅\` ${service} service updated in <#${values.channelID}>`, flags: MessageFlags.Ephemeral });
                     return;
                 } else if (action === "disable") {
                     if (!config.services[service]?.enabled) {
@@ -211,7 +217,7 @@ module.exports = {
                         await replyServiceAlreadyEnabledOrDisabled(interaction, service, "enabled");
                         return;
                     }
-                    
+
                     if (config.services[service]) {
                         await updateServiceConfig(config, service, { enabled: true });
                         await successfullyReEnabledService(interaction, service);
@@ -220,9 +226,9 @@ module.exports = {
 
                     const { success, values, modalInteraction } = await createModal(interaction, {
                         customId: "captcha-setup",
-                        title: "Setup Captcha",
+                        title: "Setup Captcha Service",
                         fields: captchaFields
-                    }, 300_000); // 5 minutes timeout
+                    }, 300_000);
 
                     if (!success) return;
 
@@ -238,11 +244,13 @@ module.exports = {
                     await modalInteraction.reply({ content: `\`✅\` ${service} service setup with role <@&${values.roleID}>, captcha logs will be sent in <#${values.logChannelID}>`, flags: MessageFlags.Ephemeral });
                     return;
                 } else if (action === "edit") {
+                    if (!config.services[service]?.enabled) return await replyServiceNotEnabled(interaction, service);
+
                     const { success, values, modalInteraction } = await createModal(interaction, {
-                        customId: "captcha-setup",
-                        title: "Setup Captcha",
+                        customId: "captcha-edit",
+                        title: "Edit Captcha Service",
                         fields: captchaFields
-                    }, 300_000); // 5 minutes timeout
+                    }, 300_000);
 
                     if (!success) return;
 
@@ -255,8 +263,67 @@ module.exports = {
                         Captcha: values.captchaText
                     });
 
-                    await modalInteraction.reply({ content: `\`✅\` ${service} service setup with role <@&${values.roleID}>, captcha logs will be sent in <#${values.logChannelID}>`, flags: MessageFlags.Ephemeral });
+                    await modalInteraction.reply({ content: `\`✅\` ${service} service updated with role <@&${values.roleID}>, captcha logs will be sent in <#${values.logChannelID}>`, flags: MessageFlags.Ephemeral });
                     return;
+                } else if (action === "disable") {
+                    if (!config.services[service]?.enabled) {
+                        await replyServiceAlreadyEnabledOrDisabled(interaction, service, "disabled");
+                        return;
+                    }
+
+                    await updateServiceConfig(config, service, { enabled: false });
+                    await replySuccessfullyDisabledService(interaction, service);
+                    return;
+                }
+                break;
+            case "dinamic_activities":
+                if (action === "enable") {
+                    if (config.services[service]?.enabled) {
+                        await replyServiceAlreadyEnabledOrDisabled(interaction, service, "enabled");
+                        return;
+                    }
+
+                    if (config.services[service]) {
+                        await updateServiceConfig(config, service, { enabled: true });
+                        await successfullyReEnabledService(interaction, service);
+                        return;
+                    }
+
+                    const { success, values, modalInteraction } = await createModal(interaction, {
+                        customId: "dinamic-activities-setup",
+                        title: "Setup Dinamic Activities",
+                        fields: dinamicActivitiesFields
+                    }, 300_000);
+
+                    if (!success) return;
+
+                    await updateServiceConfig(config, service, {
+                        enabled: true,
+                        activities: values.activities.split(",").map(activity => activity.trim()),
+                        status: values.status,
+                        interval: parseInt(values.interval)
+                    });
+
+                    return await modalInteraction.reply({ content: `\`✅\` ${service} service setup with activities: \`${values.activities}\`, status: \`${values.status}\`, interval: \`${values.interval}\`ms. Please restart the bot to apply changes.`, flags: MessageFlags.Ephemeral });
+                } else if (action === "edit") {
+                    if (!config.services[service]?.enabled) return await replyServiceNotEnabled(interaction, service);
+
+                    const { success, values, modalInteraction } = await createModal(interaction, {
+                        customId: "dinamic-activities-edit",
+                        title: "Edit Dinamic Activities",
+                        fields: dinamicActivitiesFields
+                    }, 300_000);
+
+                    if (!success) return;
+
+                    await updateServiceConfig(config, service, {
+                        enabled: true,
+                        activities: values.activities.split(",").map(activity => activity.trim()),
+                        status: values.status,
+                        interval: parseInt(values.interval)
+                    });
+
+                    return await modalInteraction.reply({ content: `\`✅\` ${service} service updated with activities: \`${values.activities}\`, status: \`${values.status}\`, interval: \`${values.interval}\`ms. Please restart the bot to apply changes.`, flags: MessageFlags.Ephemeral });
                 } else if (action === "disable") {
                     if (!config.services[service]?.enabled) {
                         await replyServiceAlreadyEnabledOrDisabled(interaction, service, "disabled");

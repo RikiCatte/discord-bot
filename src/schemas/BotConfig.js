@@ -197,6 +197,22 @@ const botConfigSchema = new mongoose.Schema({
             Message: String,
             RoleID: String,
             RulesChannelID: String
+        },
+        dinamic_activities: {
+            enabled: { type: Boolean, default: false },
+            activities: {
+                type: [String],
+                default: [
+                    'Watching the stars',
+                    'Listening to the wind',
+                    'Coding in the dark',
+                    'Playing with shadows',
+                    'Exploring the unknown',
+                    'Ping'
+                ]
+            },
+            status: { type: String, default: 'dnd' }, // 'online', 'idle', 'dnd', 'invisible'
+            interval: { type: Number, default: 10000 }
         }
     },
     lastUpdated: { type: Date, default: Date.now }
