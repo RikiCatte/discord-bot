@@ -482,6 +482,23 @@ module.exports = (client) => {
             .then(async (audit) => {
                 const { executor } = audit.entries.first();
 
+                const BotConfig = require("../schemas/BotConfig");
+                const config = await BotConfig.findOne({ GuildID: guildBan.guild.id });
+                if (config && config.services?.ban) {
+                    const banEntry = {
+                        UserID: guildBan.user.id,
+                        BannedBy: executor?.id || "Unknown",
+                        Reason: guildBan.reason || "No reason",
+                        BannedAt: new Date()
+                    };
+                    config.services.ban.Bans = config.services.ban.Bans || [];
+                    // Avoid duplicate entries
+                    if (!config.services.ban.Bans.some(b => b.UserID === banEntry.UserID)) {
+                        config.services.ban.Bans.push(banEntry);
+                        await config.save();
+                    }
+                }
+
                 const embed = new EmbedBuilder()
                     .setColor("Red")
                     .setTitle("\`🔴\` Member Banned")

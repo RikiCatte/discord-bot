@@ -39,9 +39,12 @@ const botConfigSchema = new mongoose.Schema({
         },
         ban: {
             enabled: { type: Boolean, default: false },
-            UserID: String,
-            Reason: String,
-            BannedAt: { type: Date, default: Date.now }
+            Bans: [{
+                UserID: String,
+                BannedBy: String,
+                Reason: String,
+                BannedAt: Date
+            }]
         },
         bugreport: {
             enabled: { type: Boolean, default: false },
