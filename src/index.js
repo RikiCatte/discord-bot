@@ -229,7 +229,7 @@ function loginBot() {
     //console.log(process.env.TOKEN);
     client.login(process.env.TOKEN)
         .then(async () => {
-            console.log(`[INFO] ${client.user.username} is online.`.blue);
+            console.log(`[INFO] ${client.user.username} is online.`.red);
             retryAttempts = 0; // Reset retry attempts on successful login
             await ensureAllServicesInConfig();
             await checkBotConfigOnStartup(client);
