@@ -8,6 +8,7 @@ const getDifferences = require("../utils/getDifferences.js");
 const getPermissionDifferences = require("../utils/getPermissionDifferences.js");
 const formatPermissions = require("../utils/formatPermissions.js");
 const validateEmbedFields = require("../utils/validateEmbedFields.js");
+const updateServiceConfig = require("../utils/BotConfig/updateServiceConfig");
 
 module.exports = (client) => {
     /**
@@ -480,22 +481,39 @@ module.exports = (client) => {
         guildBan.guild
             .fetchAuditLogs({ type: AuditLogEvent.GuildBanAdd })
             .then(async (audit) => {
-                const { executor } = audit.entries.first();
-
                 const BotConfig = require("../schemas/BotConfig");
                 const config = await BotConfig.findOne({ GuildID: guildBan.guild.id });
+                let bannedBy = "Unknown", reason = "None";
+
                 if (config && config.services?.ban) {
-                    const banEntry = {
-                        UserID: guildBan.user.id,
-                        BannedBy: executor?.id || "Unknown",
-                        Reason: guildBan.reason || "No reason",
-                        BannedAt: new Date()
-                    };
-                    config.services.ban.Bans = config.services.ban.Bans || [];
-                    // Avoid duplicate entries
-                    if (!config.services.ban.Bans.some(b => b.UserID === banEntry.UserID)) {
+                    // Check in the DB if there is an unban for this user, if so we remove it before banning
+                    if (config?.services?.unban?.Unbans) {
+                        config.services.unban.Unbans = config.services.unban.Unbans.filter(u => u.UserID !== guildBan.user.id);
+                        await updateServiceConfig(config, "unban", { Unbans: config.services.unban.Unbans });
+                    }
+
+                    // Find the ban entry in the database, if it exists get the BannedBy field
+                    const banDbEntry = config.services.ban.Bans?.find(b => b.UserID === guildBan.user.id);
+
+                    if (banDbEntry && banDbEntry.Reason)
+                        reason = banDbEntry.Reason;
+                    else
+                        reason = guildBan.reason || "No reason";
+
+                    if (banDbEntry && banDbEntry.BannedBy && banDbEntry.BannedBy !== "Unknown") bannedBy = `<@${banDbEntry.BannedBy}>`;
+
+                    // If it doesn't exist, add the ban as manual/external
+                    if (!banDbEntry) {
+                        const banEntry = {
+                            UserID: guildBan.user.id,
+                            BannedBy: "Unknown",
+                            Reason: guildBan.reason || "No reason",
+                            BannedAt: new Date()
+                        };
+
+                        config.services.ban.Bans = config.services.ban.Bans || [];
                         config.services.ban.Bans.push(banEntry);
-                        await config.save();
+                        await updateServiceConfig(config, "ban", { Bans: config.services.ban.Bans });
                     }
                 }
 
@@ -504,9 +522,9 @@ module.exports = (client) => {
                     .setTitle("\`🔴\` Member Banned")
                     .addFields({ name: "Member - Member Username", value: `${guildBan.user} - ${guildBan.user.username}`, inline: false })
                     .addFields({ name: "Member ID", value: `${guildBan.user.id}`, inline: true })
-                    .addFields({ name: "Banned By", value: `<@${executor.id}> (${executor.tag})`, inline: false })
-                    .addFields({ name: "Reason", value: guildBan.reason || "None", inline: false })
-                    .addFields({ name: "Risk", value: msgConfig.highRisk })
+                    .addFields({ name: "Banned By", value: bannedBy, inline: false })
+                    .addFields({ name: "Reason", value: reason || "None", inline: false })
+                    .addFields({ name: "Risk", value: msgConfig.highRisk });
 
                 return sendLog(embed);
             });
@@ -520,16 +538,48 @@ module.exports = (client) => {
         guildBan.guild
             .fetchAuditLogs({ type: AuditLogEvent.GuildBanRemove })
             .then(async (audit) => {
-                const { executor } = audit.entries.first();
+                const BotConfig = require("../schemas/BotConfig");
+                const config = await BotConfig.findOne({ GuildID: guildBan.guild.id });
+                let unbannedBy = "Unknown", reason = "None";
+
+                if (config && config.services?.unban) {
+                    if (config?.services?.ban?.Bans) {
+                        config.services.ban.Bans = config.services.ban.Bans.filter(b => b.UserID !== guildBan.user.id);
+                        await updateServiceConfig(config, "ban", { Bans: config.services.ban.Bans });
+                    }
+
+                    const unbanDbEntry = config.services.unban.Unbans?.find(u => u.UserID === guildBan.user.id);
+
+                    if (unbanDbEntry && unbanDbEntry.Reason)
+                        reason = unbanDbEntry.Reason;
+                    else
+                        reason = guildBan.reason || "No reason";
+
+                    if (unbanDbEntry && unbanDbEntry.UnbannedBy && unbanDbEntry.UnbannedBy !== "Unknown") unbannedBy = `<@${unbanDbEntry.UnbannedBy}>`;
+                    
+
+                    if (!unbanDbEntry) {
+                        const unbanEntry = {
+                            UserID: guildBan.user.id,
+                            UnbannedBy: "Unknown",
+                            Reason: guildBan.reason || "No reason",
+                            UnbannedAt: new Date()
+                        };
+
+                        config.services.unban.Unbans = config.services.unban.Unbans || [];
+                        config.services.unban.Unbans.push(unbanEntry);
+                        await updateServiceConfig(config, "unban", { Unbans: config.services.unban.Unbans });
+                    }
+                }
 
                 const embed = new EmbedBuilder()
                     .setColor("Red")
                     .setTitle("\`🔴\` Member Unbanned")
                     .addFields({ name: "Member - Member Username", value: `${guildBan.user} - ${guildBan.user.username}`, inline: false })
                     .addFields({ name: "Member ID", value: `${guildBan.user.id}`, inline: true })
-                    .addFields({ name: "Unbanned By", value: `<@${executor.id}> (${executor.tag})`, inline: false })
-                    .addFields({ name: "Reason", value: guildBan.reason || "None", inline: false })
-                    .addFields({ name: "Risk", value: msgConfig.highRisk })
+                    .addFields({ name: "Unbanned By", value: unbannedBy, inline: false })
+                    .addFields({ name: "Reason", value: reason || "None", inline: false })
+                    .addFields({ name: "Risk", value: msgConfig.highRisk });
 
                 return sendLog(embed);
             });

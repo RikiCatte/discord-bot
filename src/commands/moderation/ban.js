@@ -1,6 +1,7 @@
 const { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits, MessageFlags } = require('discord.js');
 const BotConfig = require("../../schemas/BotConfig");
 const msgConfig = require("../../messageConfig.json");
+const updateServiceConfig = require("../../utils/BotConfig/updateServiceConfig");
 const replyNoConfigFound = require("../../utils/BotConfig/replyNoConfigFound");
 const replyServiceNotEnabled = require('../../utils/BotConfig/replyServiceNotEnabled');
 
@@ -81,7 +82,22 @@ module.exports = {
                 if (!serviceConfig) return await replyNoConfigFound(interaction, "ban");
                 if (!serviceConfig.enabled) return await replyServiceNotEnabled(interaction, "ban");
 
+                // Check in the DB if there is an unban for this user, if so we remove it before banning
+                if (config?.services?.unban?.Unbans) {
+                    config.services.unban.Unbans = config.services.unban.Unbans.filter(u => u.UserID !== targetMember.id);
+                    await updateServiceConfig(config, "unban", { Unbans: config.services.unban.Unbans });
+                }
+
                 await targetMember.ban({ reason: reason });
+
+                serviceConfig.Bans = serviceConfig.Bans || [];
+                serviceConfig.Bans.push({
+                    UserID: targetMember.id,
+                    BannedBy: member.id,
+                    Reason: reason,
+                    BannedAt: new Date()
+                });
+                await updateServiceConfig(config, "ban", { Bans: serviceConfig.Bans });
 
                 const embed = new EmbedBuilder()
                     .setDescription(`\`⚖️\` Successfully banned ${user} with reason: ${reason}`)
@@ -114,7 +130,7 @@ module.exports = {
                 // If you don't have permissions, only show those from the DB
             }
 
-            // Create a map to avoid duplicates
+            // We create a map to avoid duplicates
             const dbBanIDs = dbBans.map(b => b.UserID);
             const onlyDiscordBans = discordBans.filter(b => !dbBanIDs.includes(b.user.id));
 

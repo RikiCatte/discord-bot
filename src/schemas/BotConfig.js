@@ -41,7 +41,7 @@ const botConfigSchema = new mongoose.Schema({
             enabled: { type: Boolean, default: false },
             Bans: [{
                 UserID: String,
-                BannedBy: String,
+                BannedBy: String, // Could be inaccurate (Discord does not provide a direct way to get who banned, this is a workaround)
                 Reason: String,
                 BannedAt: Date
             }]
@@ -186,6 +186,15 @@ const botConfigSchema = new mongoose.Schema({
                 Type: String,
                 Claimed: Boolean,
                 ClaimedBy: String
+            }]
+        },
+        unban: {
+            enabled: { type: Boolean, default: false },
+            Unbans: [{
+                UserID: String,
+                UnbannedBy: String, // Could be inaccurate (Discord does not provide a direct way to get who unbanned, this is a workaround)
+                Reason: String,
+                UnbannedAt: Date
             }]
         },
         warning: {
