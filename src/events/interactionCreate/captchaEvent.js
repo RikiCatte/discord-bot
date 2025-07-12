@@ -1,7 +1,8 @@
 const { EmbedBuilder, ModalSubmitInteraction, MessageFlags } = require("discord.js");
 const frmtDate = require("../../utils/formattedDate");
 const BotConfig = require("../../schemas/BotConfig");
-const msgConfig = require("../../messageConfig.json");
+const msgConfig = require("../../messageConfig.json")
+const updateServiceConfig = require("../../utils/BotConfig/updateServiceConfig");
 
 /**
  * 
@@ -42,7 +43,7 @@ module.exports = async (client, interaction) => {
         await logChannel.send({ embeds: [embed] });
 
         userData.MissedTimes = (userData.MissedTimes != null ? userData.MissedTimes + 1 : 1);
-        await config.save();
+        await updateServiceConfig(config, "captcha", { users: serviceConfig.users });
 
         return await interaction.reply({ content: "\`❌\` That was wrong!, please try again", flags: MessageFlags.Ephemeral });
     }
@@ -66,14 +67,11 @@ module.exports = async (client, interaction) => {
 
     userData.CaptchaStatus = "Submitted";
     userData.CaptchaExpired = true;
-    await config.save();
+    await updateServiceConfig(config, "captcha", { users: serviceConfig.users });
 
     let verifyMsg;
-    if (userData.Bypassed) {
-        verifyMsg = `You got verification bypassed by user id ${userData.BypassedBy} in **${member.guild.name}** on \`${await frmtDate()} UTC +1/2\``;
-    } else {
-        verifyMsg = `You got verified in **${member.guild.name}** on \`${await frmtDate()} UTC +1/2\``;
-    }
+    if (userData.Bypassed) verifyMsg = `You got verification bypassed by user id ${userData.BypassedBy} in **${member.guild.name}** on \`${await frmtDate()} UTC +1/2\``;
+    else verifyMsg = `You got verified in **${member.guild.name}** on \`${await frmtDate()} UTC +1/2\``;
 
     await interaction.reply({ content: "\`✅\` " + verifyMsg });
 }

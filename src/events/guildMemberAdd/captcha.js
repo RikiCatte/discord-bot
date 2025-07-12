@@ -2,6 +2,7 @@ const { CaptchaGenerator } = require("captcha-canvas");
 const { AttachmentBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ModalBuilder, TextInputBuilder, ButtonStyle, TextInputStyle, GuildMember } = require("discord.js");
 const BotConfig = require("../../schemas/BotConfig");
 const msgConfig = require("../../messageConfig.json");
+const updateServiceConfig = require("../../utils/BotConfig/updateServiceConfig");
 const frmtDate = require("../../utils/formattedDate");
 const rndStr = require("../../utils/randomString");
 
@@ -25,9 +26,7 @@ module.exports = async (client, member) => {
         if (serviceConfig.Captcha && serviceConfig.Captcha.toLowerCase() === "random") {
             const length = Math.floor(Math.random() * 8) + 5;
             captchaText = await rndStr(length);
-        } else {
-            captchaText = serviceConfig.Captcha;
-        }
+        } else captchaText = serviceConfig.Captcha;
 
         userData = {
             UserID: member.id,
@@ -44,37 +43,46 @@ module.exports = async (client, member) => {
             BypassedBy: null
         };
         serviceConfig.users.push(userData);
-        await config.save();
+        await updateServiceConfig(config, "captcha", { users: serviceConfig.users });
     } else { // member has joined server in the past
+        Object.assign(userData, {
+            Captcha: null,
+            CaptchaStatus: null,
+            CaptchaExpired: null,
+            MissedTimes: 0,
+            Resent: false,
+            ResentBy: null,
+            Bypassed: false,
+            BypassedBy: null
+        });
+
         userData.ReJoinedTimes = (userData.ReJoinedTimes || 0) + 1;
 
+        let text = "";
         if (serviceConfig.Captcha && serviceConfig.Captcha.toLowerCase() === "random") {
             length = Math.floor(Math.random() * 8) + 5;
             text = await rndStr(length);
-        } else {
-            text = serviceConfig.Captcha;
-        }
+        } else text = serviceConfig.Captcha;
+        
         userData.Captcha = text;
+        userData.CaptchaStatus = "Pending";
+        userData.CaptchaExpired = false;
 
         if (userData.ReJoinedTimes >= serviceConfig.ReJoinLimit) {
             userData.CaptchaStatus = "User Kicked due to rejoin limit exceeded";
             userData.CaptchaExpired = true;
-            await config.save();
+            await updateServiceConfig(config, "captcha", { users: serviceConfig.users });
 
             await member.send(`You Re-Joined ${member.guild.name} too many times so you can't receive the verified role! Please contact server Admins.`);
             return await member.kick(`User **${member.user.username}** (${member.user.id}) has been kicked because he/she has rejoined the server ${userData.ReJoinedTimes} times!`);
         }
 
-        await config.save();
+        await updateServiceConfig(config, "captcha", { users: serviceConfig.users });
 
         let logChannel = null;
-        if (serviceConfig.LogChannelID) {
-            logChannel = client.channels.cache.get(serviceConfig.LogChannelID);
-        }
+        if (serviceConfig.LogChannelID) logChannel = client.channels.cache.get(serviceConfig.LogChannelID);
 
-        if (logChannel) {
-            await logChannel.send({ content: `@here Warning! User **${member.user.username}** (${member.user.id}) rejoined the server for ${userData.ReJoinedTimes} times!` });
-        }
+        if (logChannel) await logChannel.send({ content: `@here Warning! User **${member.user.username}** (${member.user.id}) rejoined the server for ${userData.ReJoinedTimes} times!` });
     }
 
     const captcha = new CaptchaGenerator()
@@ -126,17 +134,11 @@ module.exports = async (client, member) => {
 
     captchaModal.addComponents(firstActionRow);
 
-    const msg = await member.send({ embeds: [capEmbed, alertEmbed], files: [attachment], components: [captchaButton] }).catch(err => {
-        return console.log(err);
-    })
+    const msg = await member.send({ embeds: [capEmbed, alertEmbed], files: [attachment], components: [captchaButton] }).catch(err => { return console.log(err); })
 
     const collector = msg.createMessageComponentCollector({ time: serviceConfig.ExpireInMS });
 
-    collector.on("collect", async i => {
-        if (i.customId === "captchaButton") {
-            i.showModal(captchaModal);
-        }
-    })
+    collector.on("collect", async i => { if (i.customId === "captchaButton") i.showModal(captchaModal); });
 
     collector.on("end", async collected => {
         const freshConfig = await BotConfig.findOne({ GuildID: member.guild.id });
@@ -145,7 +147,7 @@ module.exports = async (client, member) => {
         if (userCaptcha && userCaptcha.CaptchaStatus === "Pending") {
             userCaptcha.CaptchaStatus = "Expired due to time limit";
             userCaptcha.CaptchaExpired = true;
-            await freshConfig.save();
+            await updateServiceConfig(freshConfig, "captcha", { users: freshConfig.services.captcha.users });
 
             await msg.delete().catch(err => console.log(err));
             return await member.send({ content: `Your captcha has expired, please contact a **${member.guild.name}** Admin in order to gain the verified role.` });

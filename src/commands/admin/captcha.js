@@ -3,8 +3,9 @@ const { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits, ChatInputCommand
 const msgConfig = require("../../messageConfig.json");
 const rndStr = require("../../utils/randomString");
 const frmtDate = require("../../utils/formattedDate");
-const { secsToMs, msToSecs } = require("../../utils/timeUtils");
+const { msToSecs } = require("../../utils/timeUtils");
 const BotConfig = require("../../schemas/BotConfig");
+const updateServiceConfig = require("../../utils/BotConfig/updateServiceConfig");
 const replyNoConfigFound = require("../../utils/BotConfig/replyNoConfigFound");
 const replyServiceAlreadyEnabledOrDisabled = require("../../utils/BotConfig/replyServiceAlreadyEnabledOrDisabled");
 
@@ -12,47 +13,6 @@ module.exports = {
     data: new SlashCommandBuilder()
         .setName("captcha")
         .setDescription("Setup the CAPTCHA verification system")
-        // .addSubcommand(command =>
-        //     command
-        //         .setName("setup")
-        //         .setDescription("Setup the CAPTCHA verification system")
-        //         .addRoleOption(option =>
-        //             option
-        //                 .setName("role")
-        //                 .setDescription("The role you want to be given on verification")
-        //                 .setRequired(true)
-        //         )
-        //         .addIntegerOption(option =>
-        //             option
-        //                 .setName("limit")
-        //                 .setDescription("The number of times that one user can rejoin the server")
-        //                 .setRequired(true)
-        //         )
-        //         .addStringOption((o) =>
-        //             o
-        //                 .setName("time")
-        //                 .setDescription("The time to make automatically expire the CAPTCHA.")
-        //                 .setChoices(
-        //                     { name: "60 Seconds", value: `${60}` },
-        //                     { name: "5 Minutes", value: `${60 * 5}` },
-        //                     { name: "10 Minutes", value: `${60 * 10}` },
-        //                     { name: "1 Hour", value: `${60 * 60}` },
-        //                     { name: "1 Day", value: `${60 * 60 * 24}` }
-        //                 )
-        //                 .setRequired(true)
-        //         )
-        //         .addStringOption(option =>
-        //             option
-        //                 .setName("text")
-        //                 .setDescription("The CAPTCHA text you want in the CAPTCHA image, leave empty to generate a random text every time")
-        //                 .setRequired(false)
-        //         )
-        // )
-        // .addSubcommand(command =>
-        //     command
-        //         .setName("disable")
-        //         .setDescription("Disable the CAPTCHA verification system")
-        // )
         .addSubcommand(command =>
             command
                 .setName("resend")
@@ -174,7 +134,7 @@ module.exports = {
                     userData.Resent = true;
                     userData.ResentBy = interaction.user.id;
 
-                    await config.save();
+                    await updateServiceConfig(config, "captcha", { users: serviceConfig.users });
 
                     // Send the new captcha
                     const captcha = new CaptchaGenerator()
@@ -243,7 +203,7 @@ module.exports = {
                         if (latestUserData && latestUserData.CaptchaStatus === "Pending") {
                             latestUserData.CaptchaStatus = "Expired due to time limit";
                             latestUserData.CaptchaExpired = true;
-                            await latestConfig.save();
+                            await updateServiceConfig(latestConfig, "captcha", { users: latestServiceConfig.users });
 
                             await msg.delete().catch(err => console.log(err));
                             return await user.send({ content: "\`⚠️\` Your captcha has expired, please contact a server Admin in order to gain the verified role." });
@@ -292,7 +252,7 @@ module.exports = {
                     bypassUserData.BypassedBy = interaction.user.id;
                 }
 
-                await config.save();
+                await updateServiceConfig(config, "captcha", { users: serviceConfig.users });
 
                 await interaction.reply({ content: `\`🟢\` You bypassed ${guildMember} (${guildMember.id}) from captcha verification`, flags: MessageFlags.Ephemeral });
                 break;
