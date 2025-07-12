@@ -34,6 +34,8 @@ module.exports = {
     run: async (client, interaction) => {
         const { options, guild, member } = interaction;
         const subcommand = options.getSubcommand();
+        const config = await BotConfig.findOne({ GuildID: guild.id });
+        const serviceConfig = config?.services?.unban;
 
         if (subcommand === "user") {
             const userId = options.getString("userid");
@@ -56,9 +58,6 @@ module.exports = {
                     errEmbed.setDescription(`\`❌\` This user is not banned or the ID is invalid.`);
                     return interaction.reply({ embeds: [errEmbed], flags: MessageFlags.Ephemeral });
                 }
-
-                const config = await BotConfig.findOne({ GuildID: guild.id });
-                const serviceConfig = config?.services?.unban;
 
                 if (!serviceConfig) return await replyNoConfigFound(interaction, "unban");
                 if (!serviceConfig.enabled) return await replyServiceNotEnabled(interaction, "unban");
@@ -97,8 +96,7 @@ module.exports = {
         if (subcommand === "check") {
             await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
-            const config = await BotConfig.findOne({ GuildID: guild.id });
-            const dbUnbans = config?.services?.unban?.Unbans || [];
+            const dbUnbans = serviceConfig?.Unbans || [];
 
             let description = "";
 

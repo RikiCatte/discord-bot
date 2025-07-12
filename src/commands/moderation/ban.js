@@ -35,6 +35,9 @@ module.exports = {
         const { options, guild, member } = interaction;
         const subcommand = options.getSubcommand();
 
+        const config = await BotConfig.findOne({ GuildID: guild.id });
+        const serviceConfig = config?.services?.ban;
+
         if (subcommand === "user") {
             const user = options.getUser("target");
             const reason = options.getString("reason") || "No reason provided";
@@ -76,9 +79,6 @@ module.exports = {
             }
 
             try {
-                const config = await BotConfig.findOne({ GuildID: guild.id });
-                const serviceConfig = config?.services?.ban;
-
                 if (!serviceConfig) return await replyNoConfigFound(interaction, "ban");
                 if (!serviceConfig.enabled) return await replyServiceNotEnabled(interaction, "ban");
 
@@ -118,8 +118,7 @@ module.exports = {
             await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
             // Get bans from DB
-            const config = await BotConfig.findOne({ GuildID: guild.id });
-            const dbBans = config?.services?.ban?.Bans || [];
+            const dbBans = serviceConfig?.Bans || [];
 
             // Get bans from Discord guild
             let discordBans = [];
