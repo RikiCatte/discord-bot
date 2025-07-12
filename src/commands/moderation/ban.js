@@ -2,7 +2,6 @@ const { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits, MessageFlags } =
 const BotConfig = require("../../schemas/BotConfig");
 const msgConfig = require("../../messageConfig.json");
 const replyNoConfigFound = require("../../utils/BotConfig/replyNoConfigFound");
-const updateServiceConfig = require("../../utils/BotConfig/updateServiceConfig");
 const replyServiceNotEnabled = require('../../utils/BotConfig/replyServiceNotEnabled');
 
 module.exports = {
@@ -126,9 +125,7 @@ module.exports = {
                 description += dbBans.map(b =>
                     `• <@${b.UserID}> | By: <@${b.BannedBy}> | Reason: ${b.Reason || "No reason"} | At: <t:${Math.floor(new Date(b.BannedAt).getTime() / 1000)}:f>`
                 ).join("\n");
-            } else {
-                description += "No bans found in the database.\n";
-            }
+            } else description += "No bans found in the database.\n";
 
             if (onlyDiscordBans.length) {
                 description += "\n\n**Bans present only on Discord:**\n";
