@@ -5,17 +5,18 @@ const replyServiceAlreadyEnabledOrDisabled = require("../../utils/BotConfig/repl
 const createSelectMenu = require("../../utils/BotConfig/createSelectMenu");
 const handleSelectMenuInteraction = require("../../utils/BotConfig/handleSelectMenuInteraction");
 const createModal = require("../../utils/BotConfig/createModal");
+const getTextChannelOptions = require("../../utils/getTextChannelOptions");
 const replySuccessfullyDisabledService = require("../../utils/BotConfig/replySuccessfullyDisabledService");
 const successfullyReEnabledService = require("../../utils/BotConfig/replySuccesfullyRe-EnabledService");
 const replyServiceNotEnabled = require("../../utils/BotConfig/replyServiceNotEnabled");
 
 const antilinkPermissionOptions = [
-    { label: "Manage Channels", value: "ManageChannels" },
-    { label: "Manage Server", value: "ManageGuild" },
-    { label: "Embed Links", value: "EmbedLinks" },
-    { label: "Attach Files", value: "AttachFiles" },
-    { label: "ManageMessages", value: "ManageMessages" },
-    { label: "Administrator", value: "Administrator" }
+    { label: "Manage Channels", value: "ManageChannels", emoji: "📁" },
+    { label: "Manage Server", value: "ManageGuild", emoji: "🏢" },
+    { label: "Embed Links", value: "EmbedLinks", emoji: "🔗" },
+    { label: "Attach Files", value: "AttachFiles", emoji: "📎" },
+    { label: "ManageMessages", value: "ManageMessages", emoji: "📝" },
+    { label: "Administrator", value: "Administrator", emoji: "🛡️" }
 ];
 
 const nitroboostFields = [
@@ -395,6 +396,57 @@ module.exports = {
                 }
 
                 if (action === "disable") {
+                    if (!config.services[service]?.enabled) {
+                        await replyServiceAlreadyEnabledOrDisabled(interaction, service, "disabled");
+                        return;
+                    }
+
+                    await updateServiceConfig(config, service, { enabled: false });
+                    await replySuccessfullyDisabledService(interaction, service);
+                    return;
+                }
+                break;
+            case "bugreport":
+                if (action === "enable") {
+                    if (config.services[service]?.enabled) {
+                        await replyServiceAlreadyEnabledOrDisabled(interaction, service, "enabled");
+                        return;
+                    }
+
+                    if (config.services[service]) {
+                        await updateServiceConfig(config, service, { enabled: true });
+                        await successfullyReEnabledService(interaction, service);
+                        return;
+                    }
+
+                    const { success, values, modalInteraction } = await createModal(interaction, {
+                        customId: "bugreport-channel-setup",
+                        title: "Setup Bug Report Channel",
+                        fields: [{ customId: "channelID", label: "The channel ID", style: TextInputStyle.Short, placeholder: "Input the channel ID" }]
+                    }, 300_000);
+
+                    if (!success) return;
+
+                    await updateServiceConfig(config, service, { enabled: true, ReportChannelID: values.channelID });
+
+                    await modalInteraction.reply({ content: `\`✅\` Bug reports will be sent to <#${values.channelID}>`, flags: MessageFlags.Ephemeral });
+                    return;
+                } else if (action === "edit") {
+                    if (!config.services[service]?.enabled) return await replyServiceNotEnabled(interaction, service);
+
+                    const { success, values, modalInteraction } = await createModal(interaction, {
+                        customId: "bugreport-channel-edit",
+                        title: "Edit Bug Report Channel",
+                        fields: [{ customId: "channelID", label: "The new channel ID", style: TextInputStyle.Short, placeholder: "Input the new channel ID" }]
+                    }, 300_000);
+
+                    if (!success) return;
+
+                    await updateServiceConfig(config, service, { enabled: true, ReportChannelID: values.channelID });
+
+                    await modalInteraction.reply({ content: `\`✅\` Bug reports will now be sent to <#${values.channelID}>`, flags: MessageFlags.Ephemeral });
+                    return;
+                } else if (action === "disable") {
                     if (!config.services[service]?.enabled) {
                         await replyServiceAlreadyEnabledOrDisabled(interaction, service, "disabled");
                         return;

@@ -49,12 +49,14 @@ const botConfigSchema = new mongoose.Schema({
         bugreport: {
             enabled: { type: Boolean, default: false },
             ReportChannelID: String,
-            ReportID: String,
-            ReportingMemberID: String,
-            ReportingCommand: String,
-            ReportDescription: String,
-            Solved: { type: Boolean, default: false },
-            FixedBy: String
+            Reports: [{
+                ReportID: String, // ID of the message in the report channel
+                ReportingMemberID: String,
+                ReportingCommand: String,
+                ReportDescription: String,
+                Solved: { type: Boolean, default: false },
+                FixedBy: String
+            }]
         },
         giveaway: {
             enabled: { type: Boolean, default: false },

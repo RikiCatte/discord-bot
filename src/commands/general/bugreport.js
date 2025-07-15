@@ -1,4 +1,7 @@
 const { SlashCommandBuilder, ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder, MessageFlags } = require("discord.js");
+const BotConfig = require("../../schemas/BotConfig");
+const replyNoConfigFound = require("../../utils/BotConfig/replyNoConfigFound");
+const replyServiceNotEnabled = require("../../utils/BotConfig/replyServiceNotEnabled");
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -9,7 +12,13 @@ module.exports = {
     botPermissions: [],
 
     run: async (client, interaction) => {
-        if (!interaction.guild) return await interaction.reply({ content: "⚠️ Please report this bug within a server", flags: MessageFlags.Ephemeral })
+        if (!interaction.guild) return await interaction.reply({ content: "\`⚠️\` Please report this bug within a server", flags: MessageFlags.Ephemeral });
+
+        const config = await BotConfig.findOne({ GuildID: interaction.guild.id });
+        const serviceConfig = config?.services?.bugreport;
+
+        if (!serviceConfig) return await replyNoConfigFound(interaction, "bugreport");
+        if (!serviceConfig.enabled) return await replyServiceNotEnabled(interaction, "bugreport");
 
         const modal = new ModalBuilder()
             .setTitle("Bug & Command Abuse Reporting")
@@ -29,10 +38,15 @@ module.exports = {
             .setLabel("Describe the bug or abuse")
             .setStyle(TextInputStyle.Paragraph);
 
-        const one = new ActionRowBuilder().addComponents(command);
-        const two = new ActionRowBuilder().addComponents(description);
+        modal.addComponents(
+            new ActionRowBuilder().addComponents(command),
+            new ActionRowBuilder().addComponents(description)
+        );
 
-        modal.addComponents(one, two);
-        await interaction.showModal(modal);
+        try {
+            await interaction.showModal(modal);
+        } catch (err) {
+            await interaction.reply({ content: "\`❌\` There was an error showing the modal. Please try again later.", flags: MessageFlags.Ephemeral });
+        }
     }
 }
