@@ -1,4 +1,4 @@
-const { EmbedBuilder } = require("discord.js");
+const { EmbedBuilder, MessageFlags } = require("discord.js");
 
 module.exports = {
     customId: "fetchErrorUserInfo",
@@ -14,6 +14,6 @@ module.exports = {
             .addFields({ name: "Error User", value: `${member} (${member.id})` })
             .setTimestamp();
 
-        await interaction.reply({ embeds: [userEmbed], ephemeral: true });
+        await interaction.reply({ embeds: [userEmbed], Flags: MessageFlags.Ephemeral });
     },
 };

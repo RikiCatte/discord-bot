@@ -1,4 +1,4 @@
-const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require("discord.js")
+const { ActionRowBuilder, ButtonBuilder, ButtonStyle, MessageFlags } = require("discord.js")
 const riskyLogsSchema = require("../schemas/riskyLogs");
 
 module.exports = {
@@ -10,7 +10,7 @@ module.exports = {
         const { message } = interaction;
 
         const log = await riskyLogsSchema.findOne({ RiskyLogID: message.id });
-        if (!log || log.Solved) return interaction.reply({ content: "Log not found in db", ephemeral: true });
+        if (!log || log.Solved) return interaction.reply({ content: "Log not found in db", Flags: MessageFlags.Ephemeral });
 
         if (interaction.customId && interaction.customId == "logSystem") {
             await riskyLogsSchema.updateOne({ RiskyLogID: message.id }, { Solved: true, SolvedBy: interaction.user.id });
@@ -24,7 +24,7 @@ module.exports = {
             );
             message.edit({ content: `This Security issue has been marked solved by ${interaction.user} (${interaction.user.id})`, components: [disabledRow] });
 
-            return await interaction.reply({ content: "✅ Log Marked as Fixed", ephemeral: true });
+            return await interaction.reply({ content: "✅ Log Marked as Fixed", Flags: MessageFlags.Ephemeral });
         }
     },
 };

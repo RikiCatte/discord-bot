@@ -1,3 +1,4 @@
+const { MessageFlags } = require("discord.js");
 const giveawaySchema = require("../schemas/giveaways");
 
 module.exports = {
@@ -9,7 +10,7 @@ module.exports = {
         const { message, user } = interaction;
 
         const giveaway = await giveawaySchema.findOne({ MessageID: message.id });
-        if (!giveaway) return interaction.reply({ content: "This giveaway does not exist!", ephemeral: true });
+        if (!giveaway) return interaction.reply({ content: "This giveaway does not exist!", Flags: MessageFlags.Ephemeral });
 
         if (giveaway.Participants.includes(user.id)) {
             giveaway.Participants = giveaway.Participants.filter((id) => id != user.id);
@@ -23,7 +24,7 @@ module.exports = {
 
             message.edit({ embeds: [embed] });
 
-            return interaction.reply({ content: "You have left the giveaway!", ephemeral: true });
+            return interaction.reply({ content: "You have left the giveaway!", Flags: MessageFlags.Ephemeral });
         }
 
         giveaway.Participants.push(user.id);
@@ -37,6 +38,6 @@ module.exports = {
 
         await giveaway.save().catch((err) => console.log(err));
 
-        return interaction.reply({ content: "You have succesfully entered the giveaway!", ephemeral: true });
+        return interaction.reply({ content: "You have succesfully entered the giveaway!", Flags: MessageFlags.Ephemeral });
     }
 }
