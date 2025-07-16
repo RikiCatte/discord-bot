@@ -1,39 +1,29 @@
 const { SlashCommandBuilder, PermissionFlagsBits, MessageFlags, TextInputStyle } = require("discord.js");
 const BotConfig = require("../../schemas/BotConfig");
-const updateServiceConfig = require("../../utils/BotConfig/updateServiceConfig");
-const replyServiceAlreadyEnabledOrDisabled = require("../../utils/BotConfig/replyServiceAlreadyEnabledOrDisabled");
-const createSelectMenu = require("../../utils/BotConfig/createSelectMenu");
-const handleSelectMenuInteraction = require("../../utils/BotConfig/handleSelectMenuInteraction");
-const createModal = require("../../utils/BotConfig/createModal");
 const getTextChannelOptions = require("../../utils/getTextChannelOptions");
-const replySuccessfullyDisabledService = require("../../utils/BotConfig/replySuccessfullyDisabledService");
-const successfullyReEnabledService = require("../../utils/BotConfig/replySuccesfullyRe-EnabledService");
-const replyServiceNotEnabled = require("../../utils/BotConfig/replyServiceNotEnabled");
+const {
+    updateServiceConfig,
+    replyServiceAlreadyEnabledOrDisabled,
+    createSelectMenu,
+    handleSelectMenuInteraction,
+    createModal,
+    replySuccessfullyDisabledService,
+    successfullyReEnabledService,
+    replyServiceNotEnabled,
+    handleConfigurableService
+} = require("../../utils/BotConfig");
 
-const antilinkPermissionOptions = [
-    { label: "Manage Channels", value: "ManageChannels", emoji: "📁" },
-    { label: "Manage Server", value: "ManageGuild", emoji: "🏢" },
-    { label: "Embed Links", value: "EmbedLinks", emoji: "🔗" },
-    { label: "Attach Files", value: "AttachFiles", emoji: "📎" },
-    { label: "ManageMessages", value: "ManageMessages", emoji: "📝" },
-    { label: "Administrator", value: "Administrator", emoji: "🛡️" }
-];
+const path = require("path");
+const fs = require("fs");
 
-const nitroboostFields = [
-    { customId: "channelID", label: "The channel ID", style: TextInputStyle.Short, placeholder: "Input the channel ID" },
-    { customId: "embedColor", label: "Embed Color (HEX)", style: TextInputStyle.Short, placeholder: "#f47fff" },
-    { customId: "embedTitle", label: "Embed Title", style: TextInputStyle.Short, placeholder: "New Booster 🎉" },
-    { customId: "embedMessage", label: "Embed Message", style: TextInputStyle.Paragraph, placeholder: "Thank you for boosting the server! Use [m] to ping the booster." },
-    { customId: "boostMessage", label: "Boost Message", style: TextInputStyle.Paragraph, placeholder: "Thanks for boosting [m]! Use [m] to ping the booster." }
-];
-
-const captchaFields = [
-    { customId: "roleID", label: "Role ID to assign after captcha verification", style: TextInputStyle.Short, placeholder: "Input the role ID" },
-    { customId: "logChannelID", label: "Log Channel ID", style: TextInputStyle.Short, placeholder: "Input the log channel ID" },
-    { customId: "reJoinLimit", label: "Rejoin Limit", style: TextInputStyle.Short, placeholder: "Number of rejoin attempts before kick", value: "3" },
-    { customId: "expireInMS", label: "Captcha Expiration Time (ms)", style: TextInputStyle.Short, placeholder: "600000 (10 minutes)", value: "600000" },
-    { customId: "captchaText", label: "Captcha Text (type Random for random)", style: TextInputStyle.Paragraph, placeholder: "Type the captcha text here" }
-];
+const serviceConfigs = {};
+const configsPath = path.join(__dirname, "../../utils/BotConfig/serviceConfigs");
+fs.readdirSync(configsPath).forEach(file => {
+    if (file.endsWith(".js")) {
+        const config = require(path.join(configsPath, file));
+        if (config.name) serviceConfigs[config.name] = config;
+    }
+});
 
 const dinamicActivitiesFields = [
     { customId: "activities", label: "Activities (comma separated)", style: TextInputStyle.Paragraph, placeholder: "Ping, Server Count, User Count, Current Time, Discord Version" },
@@ -84,199 +74,26 @@ module.exports = {
         let config = await BotConfig.findOne({ GuildID: guild.id });
         if (!config) config = new BotConfig({ GuildID: guild.id, services: {} });
 
+        // Management of modularized services
+        if (serviceConfigs[service]) {
+            const svc = serviceConfigs[service];
+            await handleConfigurableService({
+                interaction,
+                config,
+                service,
+                action,
+                ...(svc.getSelectMenu && { selectMenu: svc.getSelectMenu(action) }),
+                ...(svc.getModal && { modal: svc.getModal(action) }),
+                ...(svc.fields && { fields: svc.fields }),
+                updateFields: svc.updateFields,
+                replyStrings: svc.replyStrings
+            });
+            return;
+        }
+
+        // Management of non-modularized yet/legacy services
         switch (service) {
-            case "antilink":
-                if (action === "enable") {
-                    if (config.services[service]?.enabled) {
-                        await replyServiceAlreadyEnabledOrDisabled(interaction, service, "enabled");
-                        return;
-                    }
-
-                    if (config.services[service]) {
-                        await updateServiceConfig(config, service, { enabled: true });
-                        await successfullyReEnabledService(interaction, service);
-                        return;
-                    }
-
-                    const row = createSelectMenu({
-                        customId: "antilink-permission-setup",
-                        placeholder: "",
-                        options: antilinkPermissionOptions
-                    });
-
-                    await interaction.reply({
-                        content: `Select a permission to bypass AntiLink system:`,
-                        components: [row],
-                        flags: MessageFlags.Ephemeral
-                    });
-
-                    const { success, select } = await handleSelectMenuInteraction(interaction, "antilink-permission-setup");
-                    if (!success) return;
-
-                    await updateServiceConfig(config, service, { enabled: true, Permissions: select.values[0] });
-                    await select.update({ content: `\`✅\` Permission set to \`${select.values[0]}\``, components: [] });
-                    return;
-                } else if (action === "edit") {
-                    if (!config.services[service]?.enabled) return await replyServiceNotEnabled(interaction, service);
-
-                    const row = createSelectMenu({
-                        customId: "antilink-permission-edit",
-                        placeholder: "",
-                        options: antilinkPermissionOptions
-                    });
-
-                    await interaction.reply({
-                        content: `Select the new permission to bypass the AntiLink system:`,
-                        components: [row],
-                        flags: MessageFlags.Ephemeral
-                    });
-
-                    const { success, select } = await handleSelectMenuInteraction(interaction, "antilink-permission-edit");
-                    if (!success) return;
-
-                    await updateServiceConfig(config, service, { enabled: true, Permissions: select.values[0] });
-                    await select.update({ content: `\`✅\` Permission updated to \`${select.values[0]}\``, components: [] });
-                    return;
-                } else if (action === "disable") {
-                    if (!config.services[service]?.enabled) {
-                        await replyServiceAlreadyEnabledOrDisabled(interaction, service, "disabled");
-                        return;
-                    }
-                    await updateServiceConfig(config, service, { enabled: false });
-                    await replySuccessfullyDisabledService(interaction, service);
-                    return;
-                }
-                break;
-            case "nitroboost":
-                if (action === "enable") {
-                    if (config.services[service]?.enabled) {
-                        await replyServiceAlreadyEnabledOrDisabled(interaction, service, "enabled");
-                        return;
-                    }
-
-                    if (config.services[service]) {
-                        await updateServiceConfig(config, service, { enabled: true });
-                        await successfullyReEnabledService(interaction, service);
-                        return;
-                    }
-
-                    const { success, values, modalInteraction } = await createModal(interaction, {
-                        customId: "nitroboost-setup",
-                        title: "Setup Nitro Boost Service",
-                        fields: nitroboostFields
-                    }, 300_000);
-
-                    if (!success) return;
-
-                    await updateServiceConfig(config, service, {
-                        enabled: true,
-                        channelID: values.channelID,
-                        embedColor: values.embedColor,
-                        embedTitle: values.embedTitle,
-                        embedMessage: values.embedMessage,
-                        boostMessage: values.boostMessage
-                    });
-
-                    await modalInteraction.reply({ content: `\`✅\` ${service} service setup in <#${values.channelID}>`, flags: MessageFlags.Ephemeral });
-                    return;
-                } else if (action === "edit") {
-                    if (!config.services[service]?.enabled) return await replyServiceNotEnabled(interaction, service);
-
-                    const { success, values, modalInteraction } = await createModal(interaction, {
-                        customId: "nitroboost-edit",
-                        title: "Edit Nitro Boost Service",
-                        fields: nitroboostFields
-                    }, 300_000);
-
-                    if (!success) return;
-
-                    await updateServiceConfig(config, service, {
-                        enabled: true,
-                        channelID: values.channelID,
-                        embedColor: values.embedColor,
-                        embedTitle: values.embedTitle,
-                        embedMessage: values.embedMessage,
-                        boostMessage: values.boostMessage
-                    });
-
-                    await modalInteraction.reply({ content: `\`✅\` ${service} service updated in <#${values.channelID}>`, flags: MessageFlags.Ephemeral });
-                    return;
-                } else if (action === "disable") {
-                    if (!config.services[service]?.enabled) {
-                        await replyServiceAlreadyEnabledOrDisabled(interaction, service, "disabled");
-                        return;
-                    }
-
-                    await updateServiceConfig(config, service, { enabled: false });
-                    await replySuccessfullyDisabledService(interaction, service);
-                    return;
-                }
-                break;
-            case "captcha":
-                if (action === "enable") {
-                    if (config.services[service]?.enabled) {
-                        await replyServiceAlreadyEnabledOrDisabled(interaction, service, "enabled");
-                        return;
-                    }
-
-                    if (config.services[service]) {
-                        await updateServiceConfig(config, service, { enabled: true });
-                        await successfullyReEnabledService(interaction, service);
-                        return;
-                    }
-
-                    const { success, values, modalInteraction } = await createModal(interaction, {
-                        customId: "captcha-setup",
-                        title: "Setup Captcha Service",
-                        fields: captchaFields
-                    }, 300_000);
-
-                    if (!success) return;
-
-                    await updateServiceConfig(config, service, {
-                        enabled: true,
-                        RoleID: values.roleID,
-                        LogChannelID: values.logChannelID,
-                        ReJoinLimit: parseInt(values.reJoinLimit),
-                        ExpireInMS: parseInt(values.expireInMS),
-                        Captcha: values.captchaText
-                    });
-
-                    await modalInteraction.reply({ content: `\`✅\` ${service} service setup with role <@&${values.roleID}>, captcha logs will be sent in <#${values.logChannelID}>`, flags: MessageFlags.Ephemeral });
-                    return;
-                } else if (action === "edit") {
-                    if (!config.services[service]?.enabled) return await replyServiceNotEnabled(interaction, service);
-
-                    const { success, values, modalInteraction } = await createModal(interaction, {
-                        customId: "captcha-edit",
-                        title: "Edit Captcha Service",
-                        fields: captchaFields
-                    }, 300_000);
-
-                    if (!success) return;
-
-                    await updateServiceConfig(config, service, {
-                        enabled: true,
-                        RoleID: values.roleID,
-                        LogChannelID: values.logChannelID,
-                        ReJoinLimit: parseInt(values.reJoinLimit),
-                        ExpireInMS: parseInt(values.expireInMS),
-                        Captcha: values.captchaText
-                    });
-
-                    await modalInteraction.reply({ content: `\`✅\` ${service} service updated with role <@&${values.roleID}>, captcha logs will be sent in <#${values.logChannelID}>`, flags: MessageFlags.Ephemeral });
-                    return;
-                } else if (action === "disable") {
-                    if (!config.services[service]?.enabled) {
-                        await replyServiceAlreadyEnabledOrDisabled(interaction, service, "disabled");
-                        return;
-                    }
-
-                    await updateServiceConfig(config, service, { enabled: false });
-                    await replySuccessfullyDisabledService(interaction, service);
-                    return;
-                }
-                break;
+            // TODO: modularize these services and then remove this switch-case if not needed
             case "ban":
                 if (action === "enable") {
                     if (config.services[service]?.enabled) {
