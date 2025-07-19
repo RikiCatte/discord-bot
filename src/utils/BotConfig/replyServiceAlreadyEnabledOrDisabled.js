@@ -9,13 +9,13 @@ module.exports = async function replyServiceAlreadyEnabledOrDisabled(interaction
 
         if (enabled === "disabled") {
             return await interaction.reply({
-                content: `\`ℹ️\` The \`${service}\` service is already disabled. Please run \`/bot-set-service\` \`${service}\` and select *Enable* action to activate it.`,
+                content: `\`ℹ️\` The \`${service}\` service is already **DISABLED**. Please run \`/bot-set-service\` \`${service}\` and select **ENABLE** action to activate it.`,
                 flags: MessageFlags.Ephemeral
             });
         }
 
         return await interaction.reply({
-            content: `\`ℹ️\` The \`${service}\` service is${alreadyEnabled ? " already" : ""} enabled. Please run \`/bot-set-service\` \`${service}\` and select *Disable* or *Edit* action.`,
+            content: `\`ℹ️\` The \`${service}\` service is${alreadyEnabled ? " already" : ""} **ENABLED**. Please run \`/bot-set-service\` \`${service}\` and select **DISABLE** or **EDIT** action.`,
             flags: MessageFlags.Ephemeral
         });
     } catch (err) {
