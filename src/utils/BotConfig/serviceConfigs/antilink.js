@@ -23,7 +23,7 @@ module.exports = {
     getSelectMenu,
     updateFields: (permission) => ({ enabled: true, Permissions: permission }),
     replyStrings: {
-        setupSuccess: (permission) => `\`✅\` Permission set to \`${permission}\``,
-        editSuccess: (permission) => `\`✅\` Permission updated to \`${permission}\``
+        setupSuccess: (permission) => `\`✅\` \`antilink\` service succesfully **ENABLED** with Permission set to \`${permission}\``,
+        editSuccess: (permission) => `\`✅\` \`antilink\` service succesfully **UPDATED** with Permission set to \`${permission}\``
     }
 };

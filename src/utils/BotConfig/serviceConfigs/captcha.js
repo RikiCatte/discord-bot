@@ -29,7 +29,7 @@ module.exports = {
         Captcha: values.captchaText
     }),
     replyStrings: {
-        setupSuccess: (values) => `\`✅\` Captcha service setup with role <@&${values.roleID}>, captcha logs will be sent in <#${values.logChannelID}>`,
-        editSuccess: (values) => `\`✅\` Captcha service updated with role <@&${values.roleID}>, captcha logs will be now sent in <#${values.logChannelID}>`
+        setupSuccess: (values) => `\`✅\` \`captcha\` service succesfully **ENABLED** with role <@&${values.roleID}>, captcha logs will be sent in <#${values.logChannelID}>`,
+        editSuccess: (values) => `\`✅\` \`captcha\` service succesfully **UPDATED** with role <@&${values.roleID}>, captcha logs will be now sent in <#${values.logChannelID}>`
     }
 }

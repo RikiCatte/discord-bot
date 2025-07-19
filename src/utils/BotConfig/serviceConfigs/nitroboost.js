@@ -29,7 +29,7 @@ module.exports = {
         boostMessage: values.boostMessage
     }),
     replyStrings: {
-        setupSuccess: (values) => `\`✅\` Nitro Boost service setup in <#${values.channelID}>`,
-        editSuccess: (values) => `\`✅\` Nitro Boost service updated in <#${values.channelID}>`
+        setupSuccess: (values) => `\`✅\` \`nitroboost\` service succesfully **ENABLED**, when someone boosts the server the message will be sent in <#${values.channelID}>`,
+        editSuccess: (values) => `\`✅\` \`nitroboost\` service succesfully **UPDATED**, when someone boosts the server the message will be sent in <#${values.channelID}>`
     }
 };
