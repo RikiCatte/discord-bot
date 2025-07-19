@@ -86,7 +86,8 @@ module.exports = {
                 ...(svc.getModal && { modal: svc.getModal(action) }),
                 ...(svc.fields && { fields: svc.fields }),
                 updateFields: svc.updateFields,
-                replyStrings: svc.replyStrings
+                replyStrings: svc.replyStrings,
+                ...(svc.silentReEnable && { silentReEnable: svc.silentReEnable })
             });
             return;
         }
@@ -94,41 +95,6 @@ module.exports = {
         // Management of non-modularized yet/legacy services
         switch (service) {
             // TODO: modularize these services and then remove this switch-case if not needed
-            case "ban":
-                if (action === "enable") {
-                    if (config.services[service]?.enabled) {
-                        await replyServiceAlreadyEnabledOrDisabled(interaction, service, "enabled");
-                        return;
-                    }
-
-                    if (config.services[service]) {
-                        await updateServiceConfig(config, service, { enabled: true });
-                        return await interaction.reply({ content: `\`✅\` ${service} service enabled.`, flags: MessageFlags.Ephemeral });
-                    }
-                }
-
-                if (action === "edit") {
-                    if (!config.services[service]?.enabled) return await replyServiceNotEnabled(interaction, service);
-
-                    return await interaction.reply({
-                        content:
-                            `\`⚠️\` The \`${service}\` service is not editable through this command. If you want to disable it run \`/bot-set-service\` \`ban\` \`disable\`. 
-                        If you want to manage bans please use \`/ban\` or \`/unban\` bot commands or use your Discord client.`,
-                        flags: MessageFlags.Ephemeral
-                    });
-                }
-
-                if (action === "disable") {
-                    if (!config.services[service]?.enabled) {
-                        await replyServiceAlreadyEnabledOrDisabled(interaction, service, "disabled");
-                        return;
-                    }
-
-                    await updateServiceConfig(config, service, { enabled: false });
-                    await replySuccessfullyDisabledService(interaction, service);
-                    return;
-                }
-                break;
             case "dinamic_activities":
                 if (action === "enable") {
                     if (config.services[service]?.enabled) {

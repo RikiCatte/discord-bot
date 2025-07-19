@@ -9,7 +9,7 @@ const successfullyReEnabledService = require("./replySuccesfullyRe-EnabledServic
 const replySuccessfullyDisabledService = require("./replySuccessfullyDisabledService");
 
 module.exports = async function handleConfigurableService({
-    interaction, config, service, action, updateFields, replyStrings, selectMenu, modal
+    interaction, config, service, action, updateFields, replyStrings, selectMenu, modal, silentReEnable = false
 }) {
     if (action === "disable") {
         if (!config.services[service]?.enabled) {
@@ -30,7 +30,9 @@ module.exports = async function handleConfigurableService({
 
     if (isEnable && config.services[service]) {
         await updateServiceConfig(config, service, { enabled: true });
-        return await successfullyReEnabledService(interaction, service);
+
+        if (silentReEnable) return await interaction.reply({content: replyStrings.setupSuccess(), flags: MessageFlags.Ephemeral });
+        else return await successfullyReEnabledService(interaction, service);
     }
 
     // If selectMenu is present, handle the menu logic
