@@ -31,7 +31,7 @@ module.exports = async function handleConfigurableService({
     if (isEnable && config.services[service]) {
         await updateServiceConfig(config, service, { enabled: true });
 
-        if (silentReEnable) return await interaction.reply({content: replyStrings.setupSuccess(), flags: MessageFlags.Ephemeral });
+        if (silentReEnable) return await interaction.reply({ content: replyStrings.setupSuccess(), flags: MessageFlags.Ephemeral });
         else return await successfullyReEnabledService(interaction, service);
     }
 
@@ -55,9 +55,10 @@ module.exports = async function handleConfigurableService({
         // Otherwise, handle the classic modal
         const { success, values, modalInteraction } = await createModal(interaction, modal, 300_000);
         if (!success) return;
-        await updateServiceConfig(config, service, updateFields(values, isEnable));
+        const updated = updateFields(values, isEnable);
+        await updateServiceConfig(config, service, updated);
         await modalInteraction.reply({
-            content: isEnable ? replyStrings.setupSuccess(values) : replyStrings.editSuccess(values),
+            content: isEnable ? replyStrings.setupSuccess(updated) : replyStrings.editSuccess(updated),
             flags: MessageFlags.Ephemeral
         });
     }
