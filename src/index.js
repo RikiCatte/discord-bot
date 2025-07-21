@@ -101,16 +101,6 @@ client.on("voiceStateUpdate", (oldState) => {
 module.exports = client;
 // Music Handling
 
-// Giveaways
-const checkGiveaways = require("./utils/giveaways/checkGiveaways.js");
-const deleteExpiredGiveaways = require("./utils/giveaways/deleteExpiredGiveaways.js");
-
-setInterval(async () => {
-    await checkGiveaways(client);
-    await deleteExpiredGiveaways();
-}, 60_000); // The bot will check every 60 seconds for ending giveaways and expired giveaways ready to be deleted.
-// Giveaways
-
 client.commands = new Collection();
 client.config = require('./config.json');
 
