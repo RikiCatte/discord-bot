@@ -1,17 +1,16 @@
-const ms = require("ms");
+function formattedMsToSecs(msValue) {
+    const seconds = Math.floor((msValue / 1000) % 60);
+    const minutes = Math.floor((msValue / (1000 * 60)) % 60);
+    const hours = Math.floor((msValue / (1000 * 60 * 60)) % 24);
+    const days = Math.floor(msValue / (1000 * 60 * 60 * 24));
 
-async function formattedMsToSecs(ms) {
-    // 1 sec = 1000 ms
-    const seconds = Math.floor((ms / 1000) % 60);
-    // 1 min = 60 sec
-    const minutes = Math.floor((ms / (1000 * 60)) % 60);
-    // 1 h = 60 mins
-    const hours = Math.floor((ms / (1000 * 60 * 60)) % 24);
-    // 1 d = 24 h
-    const days = Math.floor(ms / (1000 * 60 * 60 * 24));
+    const parts = [];
+    if (days > 0) parts.push(`${days} day${days !== 1 ? "s" : ""}`);
+    if (hours > 0) parts.push(`${hours} hour${hours !== 1 ? "s" : ""}`);
+    if (minutes > 0) parts.push(`${minutes} minute${minutes !== 1 ? "s" : ""}`);
+    if (seconds > 0 || parts.length === 0) parts.push(`${seconds} second${seconds !== 1 ? "s" : ""}`);
 
-    // return formatted "date"
-    return `${days} days, ${hours} hours, ${minutes} minutes, ${seconds} seconds`;
+    return parts.join(", ");
 }
 
 async function secsToMs(secs) {
@@ -19,6 +18,6 @@ async function secsToMs(secs) {
 }
 
 module.exports = {
-    msToSecs: formattedMsToSecs,
+    formattedMsToSecs,
     secsToMs
 };
