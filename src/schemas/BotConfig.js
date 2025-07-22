@@ -77,15 +77,17 @@ const botConfigSchema = new mongoose.Schema({
         },
         giveaway: {
             enabled: { type: Boolean, default: false },
-            Ended: { type: Boolean, default: false },
-            Paused: { type: Boolean, default: false },
-            ChannelID: String,
-            MessageID: String,
-            EndTimestamp: Number,
-            RemainingTime: Number,
-            Prize: String,
-            Participants: [String],
-            WinnerCount: { type: Number, default: 1 }
+            giveaways: [{
+                ChannelID: String,
+                MessageID: String,
+                EndTimestamp: Number,
+                RemainingTime: Number,
+                Prize: String,
+                Ended: Boolean,
+                Paused: Boolean,
+                Participants: [String],
+                WinnerCount: { type: Number, default: 1 }
+            }],
         },
         greeting: {
             enabled: { type: Boolean, default: false },

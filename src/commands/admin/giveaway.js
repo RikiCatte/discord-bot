@@ -1,6 +1,9 @@
 const { SlashCommandBuilder, EmbedBuilder, ButtonBuilder, ButtonStyle, ActionRowBuilder, PermissionFlagsBits, MessageFlags } = require("discord.js");
 
-const giveawaySchema = require("../../schemas/giveaways");
+const BotConfig = require("../../schemas/BotConfig");
+const { replyNoConfigFound, replyServiceNotEnabled } = require("../../utils/BotConfig");
+const { formattedMsToSecs } = require("../../utils/timeUtils")
+const updateServiceConfig = require("../../utils/BotConfig/updateServiceConfig");
 const shuffleParticipants = require("../../utils/giveaways/shuffleParticipants");
 
 module.exports = {
@@ -27,6 +30,13 @@ module.exports = {
                     option
                         .setName("duration")
                         .setDescription("The duration of the giveaway in minutes")
+                        .setRequired(true)
+                )
+                .addChannelOption((option) =>
+                    option
+                        .setName("channel")
+                        .setDescription("The channel to send the giveaway message in")
+                        .addChannelTypes(0) // 0 is for guild text channels
                         .setRequired(true)
                 )
         )
@@ -90,8 +100,14 @@ module.exports = {
     botPermissions: [],
 
     run: async (client, interaction) => {
+        let config = await BotConfig.findOne({ GuildID: interaction.guild.id });
+        let serviceConfig = config?.services?.giveaway;
+
+        if (!serviceConfig) return await replyNoConfigFound(interaction, "giveaway");
+        if (!serviceConfig.enabled) return await replyServiceNotEnabled(interaction, "giveaway", "disabled", false);
+
         const { options } = interaction;
-        let shuffledParticipants, shuffledWinners, channel, schema;
+        let shuffledParticipants, shuffledWinners, channel, giveaway;
         let mentions, row, embed, messageId, message, remainingTime;
 
         const giveawayDisabledRow = new ActionRowBuilder().addComponents(
@@ -105,11 +121,11 @@ module.exports = {
         if (options.getSubcommand() != "start") {
             messageId = options.getString("message-id");
 
-            schema = await giveawaySchema.findOne({ MessageID: messageId });
-            if (!schema) return interaction.reply({ content: "No giveaway was found with that message ID", flags: MessageFlags.Ephemeral });
+            giveaway = serviceConfig.giveaways.find(g => g.MessageID === messageId);
+            if (!giveaway) return await interaction.reply({ content: "`⚠️` No giveaway found with that message ID", flags: MessageFlags.Ephemeral });
 
-            channel = client.channels.cache.get(schema.ChannelID);
-            message = await channel.messages.fetch(schema.MessageID);
+            channel = client.channels.cache.get(giveaway.ChannelID);
+            message = await channel.messages.fetch(giveaway.MessageID);
         }
 
         let endTimestamp;
@@ -120,11 +136,12 @@ module.exports = {
                 winnerCount = options.getInteger("winners");
                 const time = options.getInteger("duration");
                 const timeInMilliseconds = time * 60_000;
+                const giveawayChannelID = options.getChannel("channel").id;
                 endTimestamp = new Date(new Date().getTime() + timeInMilliseconds).getTime();
 
                 embed = new EmbedBuilder()
-                    .setTitle("🎉 Giveaway 🎉")
-                    .setDescription(`React with 🎉 to enter the giveaway for **${prize}**!\n\n\`⏱\` This giveaway will end <t:${Math.floor(endTimestamp / 1000)}:R>`)
+                    .setTitle("\`🎉\` New Giveaway!")
+                    .setDescription(`React with \`🎉\` to enter the giveaway for **${prize}**!\n\n\`⏱\` This giveaway will end <t:${Math.floor(endTimestamp / 1000)}:R>`)
                     .addFields(
                         { name: "`🙋` Entries", value: "`0`", inline: true },
                         { name: "`🏆` Winners", value: `\`${winnerCount}\``, inline: true }
@@ -139,123 +156,126 @@ module.exports = {
                         .setStyle(ButtonStyle.Secondary)
                 );
 
-                const giveawayMsg = await interaction.channel.send({ embeds: [embed], components: [row] });
+                channel = client.channels.cache.get(giveawayChannelID);
+                const giveawayMsg = await channel.send({ embeds: [embed], components: [row] });
 
-                const giveawayData = new giveawaySchema({
-                    Ended: false,
-                    Paused: false,
-                    GuildID: interaction.guild.id,
-                    ChannelID: interaction.channel.id,
-                    MessageID: `${giveawayMsg.id}`,
+                const newGiveaway = {
+                    ChannelID: giveawayChannelID,
+                    MessageID: giveawayMsg.id,
                     EndTimestamp: endTimestamp,
                     Prize: prize,
+                    Ended: false,
+                    Paused: false,
                     Participants: [],
                     WinnerCount: winnerCount
-                });
+                };
 
-                await giveawayData.save().catch((err) => console.log(err));
+                serviceConfig.giveaways.push(newGiveaway);
 
-                interaction.reply({ content: "Giveaway Started!", flags: MessageFlags.Ephemeral });
+                await updateServiceConfig(config, "giveaway", { giveaways: serviceConfig.giveaways });
+
+                await interaction.reply({ content: `\`✅\` Giveaway Started in <#${giveawayChannelID}>`, flags: MessageFlags.Ephemeral });
                 break;
-
             case "end":
-                if (schema.Ended) return interaction.reply({ content: "Giveaway has already ended!", flags: MessageFlags.Ephemeral });
+                if (giveaway.Ended) return await interaction.reply({ content: "`⚠️` Giveaway is already ended!", flags: MessageFlags.Ephemeral });
 
-                if (schema.Paused) return interaction.reply({ content: "Giveaway is paused!", flags: MessageFlags.Ephemeral });
+                if (giveaway.Paused) return await interaction.reply({ content: "`⚠️` Giveaway is paused, you have to resume it first!", flags: MessageFlags.Ephemeral });
 
-                shuffledParticipants = shuffleParticipants(schema.Participants);
-                shuffledWinners = shuffledParticipants.slice(0, schema.WinnerCount);
+                shuffledParticipants = shuffleParticipants(giveaway.Participants);
+                shuffledWinners = shuffledParticipants.slice(0, giveaway.WinnerCount);
 
                 row = giveawayDisabledRow;
 
                 if (!shuffledWinners.length) {
-                    interaction.reply({ content: "Giveaway Ended!", flags: MessageFlags.Ephemeral });
+                    await interaction.reply({ content: "`⚠️` Giveaway Ended!", flags: MessageFlags.Ephemeral });
 
                     embed = new EmbedBuilder()
                         .setTitle("`🛑` Giveaway ended")
                         .setDescription(`This giveaway ended <t:${Math.floor(new Date().getTime() / 1000)}:R>`)
                         .addFields(
-                            { name: "`🙋` Entries", value: `\`${schema.Participants.length}\``, inline: true },
+                            { name: "`🙋` Entries", value: `\`${giveaway.Participants.length}\``, inline: true },
                             { name: "`🏆` Winners", value: "*No one entered the giveaway*", inline: true }
                         )
                         .setColor("White")
 
                     const endMessage = await message.edit({ embeds: [embed], components: [row] });
 
-                    endMessage.reply("*Giveaway ended, but no one joined the giveaway.*");
+                    await endMessage.reply("`⏱` *Giveaway ended, but no one joined.*");
 
-                    schema.Ended = true;
-                    await schema.save().catch((err) => console.log(err));
+                    giveaway.Ended = true;
+
+                    await updateServiceConfig(config, "giveaway", { giveaways: serviceConfig.giveaways });
                 } else {
-                    interaction.reply({
+                    await interaction.reply({
                         embeds: [
                             new EmbedBuilder()
-                                .setDescription("Ended the giveaway!")
+                                .setDescription("You ended the giveaway!")
                                 .setColor("White")
                                 .setTimestamp()
-                        ], flags: MessageFlags.Ephemeral
+                        ], 
+                        flags: MessageFlags.Ephemeral
                     })
                     mentions = shuffledWinners.map((winner) => `<@${winner}>`).join(", ");
                     embed = new EmbedBuilder()
                         .setTitle("`🛑` Giveaway ended")
                         .setDescription(`This giveaway ended <t:${Math.floor(new Date().getTime() / 1000)}:R>`)
                         .addFields(
-                            { name: "`🙋` Entries", value: `\`${schema.Participants.length}\``, inline: true },
+                            { name: "`🙋` Entries", value: `\`${giveaway.Participants.length}\``, inline: true },
                             { name: "`🏆` Winners", value: `${mentions}`, inline: true }
                         )
                         .setColor("White")
 
                     const endMessage = await message.edit({ embeds: [embed], components: [row] });
 
-                    endMessage.reply({ content: `Congratulations ${mentions}! You won the **${schema.Prize}** giveaway!` });
+                    await endMessage.reply({ content: `Congratulations ${mentions}! You won the **${giveaway.Prize}** giveaway!` });
 
-                    schema.Ended = true;
-                    await schema.save().catch((err) => console.log(err));
+                    giveaway.Ended = true;
+
+                    await updateServiceConfig(config, "giveaway", { giveaways: serviceConfig.giveaways });
                 }
                 break;
-
             case "pause":
-                if (schema.Ended) return interaction.reply({ content: "Giveaway has already ended!", flags: MessageFlags.Ephemeral });
+                if (giveaway.Ended) return await interaction.reply({ content: "`⚠️` Giveaway is ended!", flags: MessageFlags.Ephemeral });
 
-                if (schema.Paused) return interaction.reply({ content: "Giveaway is already paused!", flags: MessageFlags.Ephemeral });
+                if (giveaway.Paused) return await interaction.reply({ content: "`⚠️` Giveaway is already paused!", flags: MessageFlags.Ephemeral });
 
-                remainingTime = schema.EndTimestamp - new Date().getTime();
+                remainingTime = giveaway.EndTimestamp - new Date().getTime();
 
-                schema.RemainingTime = remainingTime;
-                schema.Paused = true;
+                giveaway.RemainingTime = remainingTime;
+                giveaway.Paused = true;
 
-                await schema.save().catch((err) => console.log(err));
+                await updateServiceConfig(config, "giveaway", { giveaways: serviceConfig.giveaways });
 
-                await interaction.reply({ content: "Giveaway paused successfully!", flags: MessageFlags.Ephemeral });
+                await interaction.reply({ content: "`✅` Giveaway paused successfully!", flags: MessageFlags.Ephemeral });
 
+                const timeString = formattedMsToSecs(remainingTime);
                 embed = new EmbedBuilder()
-                    .setTitle("`⏸` Giveaway paused")
+                    .setTitle("`⏸️` Giveaway paused")
                     .setDescription(`This giveaway was paused by: ${interaction.user.displayName}\n
                         Paused: <t:${Math.floor(new Date().getTime() / 1000)}:R>\n
-                        Remaining Time: \`${Math.floor(remainingTime / 1000)} seconds\``
+                        Remaining Time: \`${timeString}\`` // vedere se funziona
                     )
                     .setColor("White");
 
                 row = giveawayDisabledRow;
                 message.edit({ embeds: [embed], components: [row] });
                 break;
-
             case "resume":
-                if (schema.Ended) return interaction.reply({ content: "Giveaway has already ended!", flags: MessageFlags.Ephemeral });
+                if (giveaway.Ended) return await interaction.reply({ content: "`⚠️` Giveaway is ended!", flags: MessageFlags.Ephemeral });
 
-                if (schema.Paused == false) return interaction.reply({ content: "Giveaway is not paused!", flags: MessageFlags.Ephemeral });
+                if (giveaway.Paused == false) return await interaction.reply({ content: "`⚠️` Giveaway is not paused!", flags: MessageFlags.Ephemeral });
 
-                const newEndTimeStamp = new Date().getTime() + schema.RemainingTime;
+                const newEndTimeStamp = new Date().getTime() + giveaway.RemainingTime;
 
-                schema.Paused = false;
-                schema.EndTimestamp = newEndTimeStamp;
-                winnerCount = schema.WinnerCount;
-                delete schema.RemainingTime;
-                await schema.save().catch((err) => console.log(err));
+                giveaway.Paused = false;
+                giveaway.EndTimestamp = newEndTimeStamp;
+                winnerCount = giveaway.WinnerCount;
+                delete giveaway.RemainingTime;
+                await updateServiceConfig(config, "giveaway", { giveaways: serviceConfig.giveaways });
 
                 embed = new EmbedBuilder()
-                    .setTitle("🎉 Giveaway 🎉")
-                    .setDescription(`React with 🎉 to enter the giveaway for **${schema.Prize}**!\n\n\`⏱\` This giveaway will end <t:${Math.floor(newEndTimeStamp / 1000)}:R>`)
+                    .setTitle("\`🎉\` New Giveaway!")
+                    .setDescription(`React with \`🎉\` to enter the giveaway for **${giveaway.Prize}**!\n\n\`⏱\` This giveaway will end <t:${Math.floor(newEndTimeStamp / 1000)}:R>`)
                     .addFields(
                         { name: "`🙋` Entries", value: "`0`", inline: true },
                         { name: "`🏆` Winners", value: `\`${winnerCount}\``, inline: true }
@@ -272,21 +292,24 @@ module.exports = {
 
                 message.edit({ embeds: [embed], components: [row] });
 
-                await interaction.reply({ content: "Giveaway resumed succesfully!", flags: MessageFlags.Ephemeral });
+                await interaction.reply({ content: "`✅` Giveaway resumed successfully!", flags: MessageFlags.Ephemeral });
 
                 break;
-
             case "reroll":
-                if (schema.Ended == false) return interaction.reply({ content: "Giveaway has not already ended!", flags: MessageFlags.Ephemeral });
+                if (giveaway.Ended == false) return await interaction.reply({ content: "`⚠️` Giveaway is not ended yet!", flags: MessageFlags.Ephemeral });
 
-                if (schema.Paused) return interaction.reply({ content: "Giveaway is paused!", flags: MessageFlags.Ephemeral });
+                if (giveaway.Paused) return await interaction.reply({ content: "`⚠️` Giveaway is paused!", flags: MessageFlags.Ephemeral });
 
-                shuffledParticipants = shuffleParticipants(schema.Participants.slice());
-                shuffledWinners = shuffledParticipants.slice(0, schema.WinnerCount);
+                if (giveaway.Participants.length < giveaway.WinnerCount) return await interaction.reply({ content: "`⚠️` Not enough participants to reroll the giveaway!", flags: MessageFlags.Ephemeral });
 
-                if (!shuffledWinners) return interaction.reply({ content: "Rerolled giveaway but no new winners were selected!", flags: MessageFlags.Ephemeral })
+                if (giveaway.Participants.length <= 1) return await interaction.reply({ content: "`⚠️` No participants found in order to reroll the giveaway!", flags: MessageFlags.Ephemeral });
 
-                interaction.reply({ content: "Giveaway rerolled successfully!", flags: MessageFlags.Ephemeral });
+                shuffledParticipants = shuffleParticipants(giveaway.Participants.slice());
+                shuffledWinners = shuffledParticipants.slice(0, giveaway.WinnerCount);
+
+                if (!shuffledWinners) return await interaction.reply({ content: "`⚠️` Rerolled giveaway but no new winners were selected!", flags: MessageFlags.Ephemeral })
+
+                await interaction.reply({ content: "`✅` Giveaway rerolled successfully!", flags: MessageFlags.Ephemeral });
 
                 mentions = shuffledWinners.map((winner) => `<@${winner}>`).join(", ");
 
@@ -302,18 +325,17 @@ module.exports = {
 
                 const rerollMessage = await message.edit({ embeds: [embed], components: [row] });
 
-                rerollMessage.reply({ content: `Congratulations ${mentions}! You won the rerolled giveaway for **${schema.Prize}** giveaway` });
+                await rerollMessage.reply({ content: `Congratulations ${mentions}! You won the rerolled giveaway for **${giveaway.Prize}** giveaway` });
 
                 break;
-
             case "delete":
                 await message.delete();
-                await giveawaySchema.findOneAndDelete({ MessageID: messageId });
 
-                interaction.reply({
-                    content: "Giveaway deleted successfully!",
-                    flags: MessageFlags.Ephemeral,
-                });
+                serviceConfig.giveaways = serviceConfig.giveaways.filter(g => g.MessageID !== messageId);
+
+                await updateServiceConfig(config, "giveaway", { giveaways: serviceConfig.giveaways });
+
+                await interaction.reply({ content: "`✅` Giveaway successfully deleted!", flags: MessageFlags.Ephemeral });
                 break;
         }
     }
