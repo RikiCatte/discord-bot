@@ -1,6 +1,6 @@
 const { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits, Client, ChatInputCommandInteraction, MessageFlags } = require("discord.js");
 const BotConfig = require("../../schemas/BotConfig");
-const antiLinkWL = require("../../schemas/antiLinkWL");
+const updateServiceConfig = require("../../utils/BotConfig/updateServiceConfig");
 const buttonPagination = require("../../utils/buttonPagination");
 const replyNoConfigFound = require("../../utils/BotConfig/replyNoConfigFound");
 const replyServiceAlreadyEnabledOrDisabled = require("../../utils/BotConfig/replyServiceAlreadyEnabledOrDisabled");
@@ -46,7 +46,11 @@ module.exports = {
      * @returns 
      */
     run: async (client, interaction) => {
-        let data, embed, user;
+        const config = await BotConfig.findOne({ GuildID: interaction.guild.id });
+        const serviceConfig = config?.services?.antilink;
+        if (!serviceConfig) return await replyNoConfigFound(interaction, "antilink");
+
+        let embed, user;
         const { options } = interaction;
 
         const sub = options.getSubcommand();
@@ -62,20 +66,20 @@ module.exports = {
                 const permissions = serviceConfig.Permissions;
                 if (!permissions) return await interaction.reply({ content: "\`⚠️\` No bypass permission is set for the anti-link system.", flags: MessageFlags.Ephemeral });
 
-                return await interaction.reply({ content: `\`✅\` The anti-link system is enabled. People with the **${permissions}** permission can bypass the system.`, flags: MessageFlags.Ephemeral });
+                await interaction.reply({ content: `\`✅\` The anti-link system is enabled. People with the **${permissions}** permission can bypass the system.`, flags: MessageFlags.Ephemeral });
+
+                if (serviceConfig.Whitelist.length > 0) await interaction.followUp({ content: `\`ℹ️\` There are currently **${serviceConfig.Whitelist.length}** users whitelisted for bypassing the anti-link system. Use \`/anti-link checkwhitelist\` to see them.`, flags: MessageFlags.Ephemeral });
+
+                return;
             }
             case "whitelist":
                 user = options.getUser("user");
 
-                data = await antiLinkWL.findOne({ Guild: interaction.guild.id, UserID: user.id });
+                if (serviceConfig.Whitelist.some(entry => entry.UserID === user.id))
+                    return await interaction.reply({ content: `\`✅\` ${user} is already whitelisted for bypassing the anti-link system`, flags: MessageFlags.Ephemeral });
 
-                if (data) return await interaction.reply({ content: `\`✅\` ${user} is already whitelisted for bypassing the anti-link system`, flags: MessageFlags.Ephemeral });
-
-                await antiLinkWL.create({
-                    Guild: interaction.guild.id,
-                    UserID: user.id,
-                    WhitelistedBy: interaction.user.id,
-                })
+                serviceConfig.Whitelist.push({ UserID: user.id });
+                await updateServiceConfig(config, "antilink", { Whitelist: serviceConfig.Whitelist });
 
                 embed = new EmbedBuilder()
                     .setColor("Blue")
@@ -84,11 +88,13 @@ module.exports = {
                 return await interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
             case "unwhitelist":
                 user = options.getUser("user");
-                data = await antiLinkWL.findOne({ Guild: interaction.guild.id, UserID: user.id });
 
-                if (!data) return await interaction.reply({ content: `\`❌\` ${user} is already not whitelisted for bypassing the anti-link system`, flags: MessageFlags.Ephemeral });
+                const index = serviceConfig.Whitelist.findIndex(entry => entry.UserID === user.id);
+                if (index === -1)
+                    return await interaction.reply({ content: `\`❌\` ${user} is already not whitelisted for bypassing the anti-link system`, flags: MessageFlags.Ephemeral });
 
-                await antiLinkWL.findOneAndDelete({ Guild: interaction.guild.id, UserID: user.id })
+                serviceConfig.Whitelist.splice(index, 1);
+                await updateServiceConfig(config, "antilink", { Whitelist: serviceConfig.Whitelist });
 
                 embed = new EmbedBuilder()
                     .setColor("Blue")
@@ -96,7 +102,7 @@ module.exports = {
 
                 return await interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
             case "checkwhitelist": {
-                const whitelist = await antiLinkWL.find({ Guild: interaction.guild.id });
+                const whitelist = serviceConfig.Whitelist;
                 if (!whitelist || whitelist.length === 0) {
                     return await interaction.reply({ content: "\`🚫\` No users are currently whitelisted for the anti-link system.", flags: MessageFlags.Ephemeral });
                 }
@@ -115,7 +121,7 @@ module.exports = {
                     pages.push(embed);
                 }
 
-                await buttonPagination(interaction, pages, 60_000); // 60 seconds of timeout
+                await buttonPagination(interaction, pages, 60_000);
                 break;
             }
         }

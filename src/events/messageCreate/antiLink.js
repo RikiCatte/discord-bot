@@ -1,6 +1,5 @@
 const { Message } = require("discord.js");
 const BotConfig = require("../../schemas/BotConfig");
-const antiLinkWL = require("../../schemas/antiLinkWL");
 
 /**
  * 
@@ -20,8 +19,7 @@ module.exports = async (client, message) => {
         const bypassPermission = serviceConfig.Permissions;
         if (!bypassPermission) return;
 
-        const userData = await antiLinkWL.findOne({ Guild: message.guild.id, UserID: message.author.id });
-        if (userData) return;
+        if (serviceConfig.Whitelist?.some(entry => entry.UserID === message.author.id)) return;
 
         const member = message.guild.members.cache.get(message.author.id);
         if (member && member.permissions.has(bypassPermission)) return;
