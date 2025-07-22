@@ -6,6 +6,7 @@ const botConfigSchema = new mongoose.Schema({
         antilink: {
             enabled: { type: Boolean, default: false },
             Permissions: String,
+            Whitelist: [{ UserID: String }],
         },
         nitroboost: {
             enabled: { type: Boolean, default: false },
