@@ -100,8 +100,8 @@ module.exports = {
     botPermissions: [],
 
     run: async (client, interaction) => {
-        let config = await BotConfig.findOne({ GuildID: interaction.guild.id });
-        let serviceConfig = config?.services?.giveaway;
+        const config = await BotConfig.findOne({ GuildID: interaction.guild.id });
+        const serviceConfig = config?.services?.giveaway;
 
         if (!serviceConfig) return await replyNoConfigFound(interaction, "giveaway");
         if (!serviceConfig.enabled) return await replyServiceNotEnabled(interaction, "giveaway", "disabled", false);
