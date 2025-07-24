@@ -1,19 +1,23 @@
-const giveawaySchema = require("../../schemas/giveaways");
+const BotConfig = require("../../schemas/BotConfig");
+const updateServiceConfig = require("../../utils/BotConfig/updateServiceConfig");
 
-module.exports = async () => {
+module.exports = async (client) => {
     try {
-        const giveaways = await giveawaySchema.find({});
-        const expirationTime = new Date(Date.now() - 3 * 60 * 1000);
+        const guilds = client.guilds.cache.map(g => g.id);
 
-        giveaways.forEach(async (giveaway) => {
-            if (giveaway.Ended) {
-                await giveawaySchema.deleteMany({
-                    updatedAt: { $lte: expirationTime },
-                });
+        for (const guildId of guilds) {
+            const config = await BotConfig.findOne({ GuildID: guildId });
+            const serviceConfig = config?.services?.giveaway;
 
-                return;
-            }
-        });
+            if (!config || !serviceConfig?.enabled) continue;
+
+            const giveaways = serviceConfig?.giveaways || [];
+
+            giveaways.forEach(async (giveaway) => {
+                if (giveaway.Ended)
+                    return await updateServiceConfig(config, "giveaway", { giveaways: serviceConfig.giveaways.filter(g => g.MessageID !== giveaway.MessageID) });
+            });
+        }
     } catch (error) {
         console.log(error);
     }

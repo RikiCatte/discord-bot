@@ -11,7 +11,7 @@ module.exports = async (client) => {
 
         setInterval(async () => {
             await checkGiveaways(client);
-            await deleteExpiredGiveaways();
+            await deleteExpiredGiveaways(client);
         }, 120_000); // The bot will check every 2 minutes for ending giveaways and expired giveaways ready to be deleted.
     }
 };

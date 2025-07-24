@@ -86,7 +86,8 @@ const botConfigSchema = new mongoose.Schema({
                 Ended: Boolean,
                 Paused: Boolean,
                 Participants: [String],
-                WinnerCount: { type: Number, default: 1 }
+                WinnerCount: { type: Number, default: 1 },
+                Winners: [String]
             }],
         },
         greeting: {

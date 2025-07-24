@@ -167,7 +167,8 @@ module.exports = {
                     Ended: false,
                     Paused: false,
                     Participants: [],
-                    WinnerCount: winnerCount
+                    WinnerCount: winnerCount,
+                    Winners: []
                 };
 
                 serviceConfig.giveaways.push(newGiveaway);
@@ -230,6 +231,7 @@ module.exports = {
                     await endMessage.reply({ content: `Congratulations ${mentions}! You won the **${giveaway.Prize}** giveaway!` });
 
                     giveaway.Ended = true;
+                    giveaway.Winners = shuffledWinners;
 
                     await updateServiceConfig(config, "giveaway", { giveaways: serviceConfig.giveaways });
                 }
@@ -326,6 +328,9 @@ module.exports = {
                 const rerollMessage = await message.edit({ embeds: [embed], components: [row] });
 
                 await rerollMessage.reply({ content: `Congratulations ${mentions}! You won the rerolled giveaway for **${giveaway.Prize}** giveaway` });
+
+                giveaway.Ended = true;
+                giveaway.Winners = shuffledWinners;
 
                 break;
             case "delete":
