@@ -8,4 +8,5 @@ module.exports = {
     successfullyReEnabledService: require("./replySuccesfullyRe-EnabledService"),
     replyServiceNotEnabled: require("./replyServiceNotEnabled"),
     handleConfigurableService: require("./handleConfigurableService"),
+    promptConfigType: require("./promptConfigType"),
 };

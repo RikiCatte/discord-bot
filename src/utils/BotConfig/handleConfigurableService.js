@@ -9,7 +9,7 @@ const successfullyReEnabledService = require("./replySuccesfullyRe-EnabledServic
 const replySuccessfullyDisabledService = require("./replySuccessfullyDisabledService");
 
 module.exports = async function handleConfigurableService({
-    interaction, config, service, action, updateFields, replyStrings, selectMenu, modal, silentReEnable = false
+    interaction, config, service, action, updateFields, replyStrings, selectMenu, modal, silentReEnable = false, configType
 }) {
     if (action === "disable") {
         if (!config.services[service]?.enabled) {
@@ -55,10 +55,10 @@ module.exports = async function handleConfigurableService({
         // Otherwise, handle the classic modal
         const { success, values, modalInteraction } = await createModal(interaction, modal, 300_000);
         if (!success) return;
-        const updated = updateFields(values, isEnable);
+        const updated = configType ? updateFields(configType, values, isEnable) : updateFields(values, isEnable);
         await updateServiceConfig(config, service, updated);
         await modalInteraction.reply({
-            content: isEnable ? replyStrings.setupSuccess(updated) : replyStrings.editSuccess(updated),
+            content: isEnable ? replyStrings.setupSuccess(configType) : replyStrings.editSuccess(configType),
             flags: MessageFlags.Ephemeral
         });
     }

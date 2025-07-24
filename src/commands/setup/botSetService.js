@@ -1,17 +1,6 @@
 const { SlashCommandBuilder, PermissionFlagsBits, MessageFlags, TextInputStyle } = require("discord.js");
 const BotConfig = require("../../schemas/BotConfig");
-const getTextChannelOptions = require("../../utils/getTextChannelOptions");
-const {
-    updateServiceConfig,
-    replyServiceAlreadyEnabledOrDisabled,
-    createSelectMenu,
-    handleSelectMenuInteraction,
-    createModal,
-    replySuccessfullyDisabledService,
-    successfullyReEnabledService,
-    replyServiceNotEnabled,
-    handleConfigurableService
-} = require("../../utils/BotConfig");
+const { handleConfigurableService, promptConfigType } = require("../../utils/BotConfig");
 
 const path = require("path");
 const fs = require("fs");
@@ -75,16 +64,27 @@ module.exports = {
             config = new BotConfig({ GuildID: guild.id, services: defaultServices });
         }
 
+        const svc = serviceConfigs[service];
+
+        let configType = null;
+        let selectInteraction = null;
+        // If the service has multiple configuration types, prompt the user to select one
+        if (svc.configTypes && svc.configTypes.length > 1) {
+            const result = await promptConfigType(interaction, service, svc.configTypes);
+            configType = result.configType;
+            selectInteraction = result.selectInteraction;
+        }
+
         // Management of modularized services
         if (serviceConfigs[service]) {
-            const svc = serviceConfigs[service];
             await handleConfigurableService({
-                interaction,
+                interaction: selectInteraction || interaction,
                 config,
                 service,
                 action,
+                ...(configType && { configType }),
                 ...(svc.getSelectMenu && { selectMenu: svc.getSelectMenu(action) }),
-                ...(svc.getModal && { modal: svc.getModal(action) }),
+                ...(svc.getModal && { modal: svc.getModal(action, configType) }),
                 ...(svc.fields && { fields: svc.fields }),
                 updateFields: svc.updateFields,
                 replyStrings: svc.replyStrings,
