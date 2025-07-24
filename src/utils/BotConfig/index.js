@@ -7,6 +7,7 @@ module.exports = {
     replySuccessfullyDisabledService: require("./replySuccessfullyDisabledService"),
     successfullyReEnabledService: require("./replySuccesfullyRe-EnabledService"),
     replyServiceNotEnabled: require("./replyServiceNotEnabled"),
+    replyNoConfigFound: require("./replyNoConfigFound"),
     handleConfigurableService: require("./handleConfigurableService"),
     promptConfigType: require("./promptConfigType"),
 };
