@@ -95,14 +95,18 @@ const botConfigSchema = new mongoose.Schema({
             Welcome: {
                 Enabled: Boolean,
                 ChannelID: String,
+                PresenceStatus: String, // online, idle, offline, dnd, invisible, streaming, phone
+                BorderColor: String,
                 Message: String,
-                BorderColor: String
+                ReplyMessage: String, // Message to reply to the user
             },
             Goodbye: {
                 Enabled: Boolean,
                 ChannelID: String,
+                PresenceStatus: String,
+                BorderColor: String,
                 Message: String,
-                BorderColor: String
+                ReplyMessage: String, // Message to reply to the user
             }
         },
         invite: {
