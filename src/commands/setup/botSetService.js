@@ -88,7 +88,8 @@ module.exports = {
                 ...(svc.fields && { fields: svc.fields }),
                 updateFields: svc.updateFields,
                 replyStrings: svc.replyStrings,
-                ...(svc.silentReEnable && { silentReEnable: svc.silentReEnable })
+                ...(svc.silentReEnable && { silentReEnable: svc.silentReEnable }),
+                svc
             });
             return;
         }
