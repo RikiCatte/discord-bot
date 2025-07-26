@@ -106,27 +106,7 @@ const botConfigSchema = new mongoose.Schema({
                 PresenceStatus: String,
                 BorderColor: String,
                 Message: String,
-                ReplyMessage: String, // Message to reply to the user
-            }
-        },
-        invite: {
-            enabled: { type: Boolean, default: false },
-            ChannelID: String,
-            Users: {
-                GuildID: String,
-                UserID: String,
-                TotalInvites: { type: Number, deafult: 0 },
-                InviteCodes: [{
-                    Code: String,
-                    Uses: { type: Number, deafult: 0 }
-                }],
-                InvitedUsers: [{
-                    User: {
-                        UserID: String,
-                        Fake: { type: Boolean, default: false },
-                        Left: { type: Boolean, default: false }
-                    }
-                }],
+                ReplyMessage: String,
             }
         },
         jointocreate: {
