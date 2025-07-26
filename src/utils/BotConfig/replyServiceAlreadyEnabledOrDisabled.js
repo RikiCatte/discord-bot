@@ -6,9 +6,7 @@ module.exports = async function replyServiceAlreadyEnabledOrDisabled(interaction
             ? `\`ℹ️\` The \`${service}\` service is already **DISABLED**. Please run \`/bot-set-service\` \`${service}\` and select **ENABLE** action to activate it.`
             : `\`ℹ️\` The \`${service}\` service is${alreadyEnabled ? " already" : ""} **ENABLED**. Please run \`/bot-set-service\` \`${service}\` and select **DISABLE** or **EDIT** action.`;
 
-        console.log(`Replying to interaction with content: ${content}`);
         if (interaction.isStringSelectMenu?.()) return await interaction.update({ content, components: [], flags: MessageFlags.Ephemeral });
-        console.log("Interaction is not a select menu, proceeding with reply...");
         if (interaction.replied || interaction.deferred) return await interaction.editReply({ content, flags: MessageFlags.Ephemeral });
         else if (typeof interaction.update === "function") return await interaction.update({ content, components: [], flags: MessageFlags.Ephemeral });
         else return await interaction.reply({ content, flags: MessageFlags.Ephemeral });
