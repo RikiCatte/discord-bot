@@ -39,6 +39,24 @@ module.exports = async function handleConfigurableService({
 
     // If selectMenu is present, handle the menu logic
     if (selectMenu) {
+        if (isEdit && selectMenu.options) {
+            const currentConfig = config.services[service];
+            // Use the specified property, or find the first match
+            let currentValue;
+            if (selectMenu.selectedField) {
+                currentValue = currentConfig?.[selectMenu.selectedField];
+            } else {
+                // Try to find the first field that matches one of the options
+                currentValue = selectMenu.options
+                    .map(opt => opt.value)
+                    .find(val => Object.values(currentConfig || {}).includes(val));
+            }
+            selectMenu.options = selectMenu.options.map(opt => ({
+                ...opt,
+                default: opt.value === currentValue
+            }));
+        }
+
         const row = createSelectMenu(selectMenu);
         await interaction.reply({
             content: selectMenu.content,
@@ -56,6 +74,15 @@ module.exports = async function handleConfigurableService({
     if (modal) {
         let modalInteraction;
         try {
+            if (isEdit && modal.fields) {
+                let currentValues = config.services[service];
+                if (configType && currentValues && currentValues[configType]) currentValues = currentValues[configType];
+                modal.fields = modal.fields.map(field => ({
+                    ...field,
+                    value: currentValues?.[field.customId] ?? field.value
+                }));
+            }
+
             const { success, values, modalInteraction: mi } = await createModal(interaction, modal, 300_000);
             modalInteraction = mi;
             if (!success) return;
@@ -115,10 +142,8 @@ module.exports = async function handleConfigurableService({
             });
         } catch (err) {
             const replyTarget = modalInteraction || interaction;
-            await replyTarget.reply({
-                content: err.message || "An error occurred while updating the configuration.",
-                flags: MessageFlags.Ephemeral
-            });
+            if (!replyTarget.replied && !replyTarget.deferred) await replyTarget.reply({ content: err.message || "An error occurred while updating the configuration.", flags: MessageFlags.Ephemeral });
+            else console.log("Interaction already replied or deferred:", err);
             return;
         }
     }
