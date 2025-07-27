@@ -54,7 +54,6 @@ module.exports = async function handleConfigurableService({
     if (modal) {
         let modalInteraction;
         try {
-            // Otherwise, handle the classic modal
             const { success, values, modalInteraction: mi } = await createModal(interaction, modal, 300_000);
             modalInteraction = mi;
             if (!success) return;
@@ -67,7 +66,7 @@ module.exports = async function handleConfigurableService({
                     // If the preview is an attachment, send it as a file
                     if (preview.files) {
                         await modalInteraction.reply({
-                            content: `${isEnable ? replyStrings.setupSuccess(configType) : replyStrings.editSuccess(configType)}\n${preview.content || ""}`,
+                            content: `${isEnable ? replyStrings.setupSuccess(updated) : replyStrings.editSuccess(updated)}\n${preview.content || ""}`,
                             files: preview.files,
                             flags: MessageFlags.Ephemeral
                         });
@@ -77,7 +76,7 @@ module.exports = async function handleConfigurableService({
                     // If the preview is an embed or an array of embeds, send it as an embed
                     if (Array.isArray(preview) || (preview && preview.data)) {
                         await modalInteraction.reply({
-                            content: isEnable ? replyStrings.setupSuccess(configType) : replyStrings.editSuccess(configType),
+                            content: isEnable ? replyStrings.setupSuccess(updated) : replyStrings.editSuccess(updated),
                             embeds: Array.isArray(preview) ? preview : [preview],
                             flags: MessageFlags.Ephemeral
                         });
@@ -85,7 +84,7 @@ module.exports = async function handleConfigurableService({
                     } else {
                         // If the preview is a string, send it as a content message
                         await modalInteraction.reply({
-                            content: `${isEnable ? replyStrings.setupSuccess(configType) : replyStrings.editSuccess(configType)}\n${preview}`,
+                            content: `${isEnable ? replyStrings.setupSuccess(updated) : replyStrings.editSuccess(updated)}\n${preview}`,
                             flags: MessageFlags.Ephemeral
                         });
                         return;
@@ -95,7 +94,7 @@ module.exports = async function handleConfigurableService({
 
             // If no preview is provided, just send a success message
             await modalInteraction.reply({
-                content: isEnable ? replyStrings.setupSuccess(configType) : replyStrings.editSuccess(configType),
+                content: isEnable ? replyStrings.setupSuccess(updated) : replyStrings.editSuccess(updated),
                 flags: MessageFlags.Ephemeral
             });
         } catch (err) {
