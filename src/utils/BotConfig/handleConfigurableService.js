@@ -60,6 +60,20 @@ module.exports = async function handleConfigurableService({
             modalInteraction = mi;
             if (!success) return;
             const updated = configType ? updateFields(configType, values, isEnable) : updateFields(values, isEnable);
+
+            // DRY validation logic for input (not all services require this check)
+            if (svc?.validateInput) {
+                try {
+                    await svc.validateInput(interaction, updated);
+                } catch (err) {
+                    await modalInteraction.reply({
+                        content: err.message || "An error occurred while validating your input.",
+                        flags: MessageFlags.Ephemeral
+                    });
+                    return;
+                }
+            }
+
             await updateServiceConfig(config, service, updated);
 
             if (svc.getPreview && configType) {

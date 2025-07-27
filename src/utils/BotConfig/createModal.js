@@ -20,16 +20,20 @@ module.exports = async function createModal(interaction, { customId, title, fiel
         .setCustomId(customId)
         .setTitle(title);
 
-    const rows = fields.map(field =>
-        new ActionRowBuilder().addComponents(
-            new TextInputBuilder()
-                .setCustomId(field.customId)
-                .setLabel(field.label)
-                .setStyle(field.style || TextInputStyle.Short)
-                .setPlaceholder(field.placeholder || "")
-                .setRequired(field.required ?? true)
-        )
-    );
+    const rows = fields.map(field => {
+        const input = new TextInputBuilder()
+            .setCustomId(field.customId)
+            .setLabel(field.label)
+            .setStyle(field.style || TextInputStyle.Short)
+            .setPlaceholder(field.placeholder || "")
+            .setRequired(field.required ?? true);
+
+        if (field.minLength != null) input.setMinLength(field.minLength);
+        if (field.maxLength != null) input.setMaxLength(field.maxLength);
+        if (field.value != null) input.setValue(field.value);
+
+        return new ActionRowBuilder().addComponents(input);
+    });
 
     modal.addComponents(...rows);
 
