@@ -112,7 +112,7 @@ const botConfigSchema = new mongoose.Schema({
         jointocreate: {
             enabled: { type: Boolean, default: false },
             ChannelID: String,
-            UserLimit: { type: Number, default: 2 }
+            UserLimit: Number
         },
         kick: {
             enabled: { type: Boolean, default: false },
