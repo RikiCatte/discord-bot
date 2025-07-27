@@ -57,7 +57,13 @@ module.exports = {
     },
     getPreview: getPreviewCard,
     replyStrings: {
-        setupSuccess: (type) => `\`✅\` \`greeting\` service for **${type}** Configuration successfully **ENABLED**!`,
-        editSuccess: (type) => `\`✅\` \`greeting\` service for **${type}** Configuration successfully **UPDATED**!`
+        setupSuccess: (obj) => {
+            const type = Object.keys(obj).find(k => k === "Welcome" || k === "Goodbye") || "Greeting";
+            return `\`✅\` \`greeting\` service for **${type}** Configuration successfully **ENABLED**!`;
+        },
+        editSuccess: (obj) => {
+            const type = Object.keys(obj).find(k => k === "Welcome" || k === "Goodbye") || "Greeting";
+            return `\`✅\` \`greeting\` service for **${type}** Configuration successfully **UPDATED**!`;
+        }
     }
 };
