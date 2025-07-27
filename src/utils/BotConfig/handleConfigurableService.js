@@ -35,6 +35,8 @@ module.exports = async function handleConfigurableService({
         else return await successfullyReEnabledService(interaction, service);
     }
 
+    if (action === "edit" && svc?.editNotSupported) return await interaction.reply({ content: `\`⚠️\` The \`${service}\` service does not support editing its configuration. You can only enable or disable it using the corresponding command.`, flags: MessageFlags.Ephemeral });
+
     // If selectMenu is present, handle the menu logic
     if (selectMenu) {
         const row = createSelectMenu(selectMenu);
