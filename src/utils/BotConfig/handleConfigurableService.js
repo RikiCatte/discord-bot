@@ -53,7 +53,8 @@ module.exports = async function handleConfigurableService({
             }
             selectMenu.options = selectMenu.options.map(opt => ({
                 ...opt,
-                default: opt.value === currentValue
+                value: opt.value.toString(),
+                default: opt.value.toString() === currentValue?.toString()
             }));
         }
 
@@ -79,7 +80,7 @@ module.exports = async function handleConfigurableService({
                 if (configType && currentValues && currentValues[configType]) currentValues = currentValues[configType];
                 modal.fields = modal.fields.map(field => ({
                     ...field,
-                    value: currentValues?.[field.customId] ?? field.value
+                    value: currentValues?.[field.customId].toString() ?? field.value
                 }));
             }
 
