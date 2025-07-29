@@ -68,7 +68,21 @@ module.exports = async function handleConfigurableService({
         const { success, select } = await handleSelectMenuInteraction(interaction, selectMenu.customId);
         if (!success) return;
 
-        await updateServiceConfig(config, service, updateFields(select.values[0], isEnable));
+        
+        const newValue = select.values[0];
+        const oldValue = selectMenu.selectedField
+            ? config.services[service]?.[selectMenu.selectedField]
+            : currentValue;
+
+        if (newValue.toString() === (oldValue ?? "").toString()) {
+            await select.update({
+                content: `\`ℹ️\` No changes were made to the configuration for \`${service}\` service.`,
+                components: []
+            });
+            return;
+        }
+
+        await updateServiceConfig(config, service, updateFields(newValue, isEnable));
         await select.update({ content: isEnable ? replyStrings.setupSuccess(select.values[0]) : replyStrings.editSuccess(select.values[0]), components: [] });
     }
 
@@ -100,6 +114,22 @@ module.exports = async function handleConfigurableService({
                     });
                     return;
                 }
+            }
+
+            const currentValues = configType
+                ? config.services[service]?.[configType]
+                : config.services[service];
+
+            const isUnchanged = Object.keys(updated).every(
+                key => updated[key]?.toString() === (currentValues?.[key] ?? "").toString()
+            );
+
+            if (isUnchanged) {
+                await modalInteraction.reply({
+                    content: `\`ℹ️\` No changes were made to the configuration for \`${service}\` service.`,
+                    flags: MessageFlags.Ephemeral
+                });
+                return;
             }
 
             await updateServiceConfig(config, service, updated);
