@@ -14,7 +14,8 @@ function getSelectMenu(action) {
         options: antilinkPermissionOptions,
         content: action === "enable"
             ? "Select a permission to bypass AntiLink system:"
-            : "Select the new permission to bypass the AntiLink system:"
+            : "Select the new permission to bypass the AntiLink system:",
+        selectedField: "Permissions"
     };
 }
 

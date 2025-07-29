@@ -5,5 +5,6 @@ module.exports = {
         setupSuccess: () => "\`✅\` \`giveaway\` service succesfully **ENABLED**",
         editSuccess: () => "\`✅\` \`giveaway\` service succesfully **UPDATED**"
     },
-    silentReEnable: true
+    silentReEnable: true,
+    editNotSupported: true
 }
