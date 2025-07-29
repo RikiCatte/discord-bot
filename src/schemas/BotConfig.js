@@ -72,7 +72,7 @@ const botConfigSchema = new mongoose.Schema({
                     'Ping'
                 ]
             },
-            status: { type: String, default: 'dnd' }, // 'online', 'idle', 'dnd', 'invisible'
+            status: String, // 'online', 'idle', 'dnd', 'invisible'
             interval: { type: Number, default: 10000 }
         },
         giveaway: {
