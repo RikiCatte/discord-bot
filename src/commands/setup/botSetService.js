@@ -40,7 +40,7 @@ module.exports = {
     category: "setup",
 
     autocomplete: async (interaction) => {
-        const allServices = Object.keys(BotConfig.schema.obj.services);
+        const allServices = Object.keys(serviceConfigs);
         const focusedValue = interaction.options.getFocused();
         const filtered = allServices.filter(s =>
             s.toLowerCase().includes(focusedValue.toLowerCase())
