@@ -20,6 +20,9 @@ module.exports = async (client, member) => {
 
     if (!serviceConfig || !serviceConfig.enabled) return;
 
+    let logChannel = null;
+    if (serviceConfig.LogChannelID) logChannel = client.channels.cache.get(serviceConfig.LogChannelID);
+
     let userData = serviceConfig.users?.find(u => u.UserID === member.id);
     if (!userData) { // user never joined the server before so we create new data for him
         let captchaText = "";
@@ -63,7 +66,7 @@ module.exports = async (client, member) => {
             length = Math.floor(Math.random() * 8) + 5;
             text = await rndStr(length);
         } else text = serviceConfig.Captcha;
-        
+
         userData.Captcha = text;
         userData.CaptchaStatus = "Pending";
         userData.CaptchaExpired = false;
@@ -73,16 +76,17 @@ module.exports = async (client, member) => {
             userData.CaptchaExpired = true;
             await updateServiceConfig(config, "captcha", { users: serviceConfig.users });
 
-            await member.send(`You Re-Joined ${member.guild.name} too many times so you can't receive the verified role! Please contact server Admins.`);
-            return await member.kick(`User **${member.user.username}** (${member.user.id}) has been kicked because he/she has rejoined the server ${userData.ReJoinedTimes} times!`);
+            try {
+                await member.send(`You Re-Joined ${member.guild.name} too many times so you can't receive the verified role! Please contact server Admins.`);
+            } catch (err) {
+                if (logChannel) logChannel.send({ content: `@here Unable to send DM to ${member} before kick because he/she probably has DMs disabled.` });
+            }
+            return await member.kick(`${member} has been kicked because he/she has rejoined the server ${userData.ReJoinedTimes} times!`);
         }
 
         await updateServiceConfig(config, "captcha", { users: serviceConfig.users });
 
-        let logChannel = null;
-        if (serviceConfig.LogChannelID) logChannel = client.channels.cache.get(serviceConfig.LogChannelID);
-
-        if (logChannel) await logChannel.send({ content: `@here Warning! User **${member.user.username}** (${member.user.id}) rejoined the server for ${userData.ReJoinedTimes} times!` });
+        if (logChannel) await logChannel.send({ content: `@here Warning! ${member} rejoined the server for ${userData.ReJoinedTimes} times!` });
     }
 
     const captcha = new CaptchaGenerator()
@@ -134,7 +138,11 @@ module.exports = async (client, member) => {
 
     captchaModal.addComponents(firstActionRow);
 
-    const msg = await member.send({ embeds: [capEmbed, alertEmbed], files: [attachment], components: [captchaButton] }).catch(err => { return console.log(err); })
+    const msg = await member.send({ embeds: [capEmbed, alertEmbed], files: [attachment], components: [captchaButton] }).catch(err => {
+        if (logChannel) logChannel.send({ content: `@here Unable to send Captcha Verification to ${member} because he/she probably has DMs disabled.` });
+    });
+
+    if (!msg) return;
 
     const collector = msg.createMessageComponentCollector({ time: serviceConfig.ExpireInMS });
 
@@ -150,7 +158,11 @@ module.exports = async (client, member) => {
             await updateServiceConfig(freshConfig, "captcha", { users: freshConfig.services.captcha.users });
 
             await msg.delete().catch(err => console.log(err));
-            return await member.send({ content: `Your captcha has expired, please contact a **${member.guild.name}** Admin in order to gain the verified role.` });
+            try {
+                await member.send({ content: `Your captcha has expired, please contact a **${member.guild.name}** Admin in order to gain the verified role.` });
+            } catch (err) {
+                if (logChannel) logChannel.send({ content: `@here Unable to send DM to ${member} after captcha expiration.` });
+            }
         }
 
         await msg.delete().catch(err => console.log(err));
