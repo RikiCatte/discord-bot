@@ -116,10 +116,12 @@ const botConfigSchema = new mongoose.Schema({
         },
         kick: {
             enabled: { type: Boolean, default: false },
-            UserID: String,
-            Reason: String,
-            KickedBy: String,
-            KickedAt: { type: Date, default: Date.now }
+            Kicks: [{
+                UserID: String,
+                KickedBy: String, // Could be inaccurate (Discord does not provide a direct way to get who kicked, this is a workaround)
+                Reason: String,
+                KickedAt: Date
+            }]
         },
         logs: {
             enabled: { type: Boolean, default: false },
