@@ -1,4 +1,4 @@
-const { EmbedBuilder, Events, AuditLogEvent, ActionRowBuilder, ButtonBuilder, ButtonStyle, DMChannel, GuildChannel, AutoModerationActionExecution, GuildAuditLogsEntry, PollAnswer, MessageReaction, ThreadChannel, ThreadMember, TextChannel, NewsChannel, VoiceChannel, StageChannel, ForumChannel, MediaChannel, Embed, PermissionOverwriteManager } = require("discord.js");
+const { EmbedBuilder, Events, AuditLogEvent, ActionRowBuilder, ButtonBuilder, ButtonStyle, DMChannel, GuildChannel, GuildMember, AutoModerationActionExecution, GuildAuditLogsEntry, PollAnswer, MessageReaction, ThreadChannel, ThreadMember, TextChannel, NewsChannel, VoiceChannel, StageChannel, ForumChannel, MediaChannel, Embed } = require("discord.js");
 const msgConfig = require("../messageConfig.json");
 const serverStatsCategoryId = msgConfig.serverStats_Category;
 const riskyLogsSchema = require("../schemas/riskyLogs");
@@ -9,6 +9,8 @@ const getPermissionDifferences = require("../utils/getPermissionDifferences.js")
 const formatPermissions = require("../utils/formatPermissions.js");
 const validateEmbedFields = require("../utils/validateEmbedFields.js");
 const updateServiceConfig = require("../utils/BotConfig/updateServiceConfig");
+const BotConfig = require("../schemas/BotConfig.js");
+const { profileImage } = require("discord-arts");
 
 module.exports = (client) => {
     /**
@@ -440,7 +442,85 @@ module.exports = (client) => {
      * This event seems to be not invoked properly on discord.js v14.16.3
      */
     client.on(Events.GuildAuditLogEntryCreate, async (auditLogEntry, guild) => {
-        if (!auditLogEntry || auditLogEntry.action) return;
+        if (!auditLogEntry) return;
+
+        const { action, executorId, targetId } = auditLogEntry;
+
+        switch (action) {
+            case AuditLogEvent.MemberKick: {
+                const reason = auditLogEntry.reason || "None";
+
+                const executor = await client.users.fetch(executorId);
+
+                const kickedUser = await client.users.fetch(targetId);
+
+                const embed = new EmbedBuilder()
+                    .setColor("Yellow")
+                    .setTitle("\`🟡\` Member Kicked")
+                    .addFields({ name: "Member - Member Username", value: `${kickedUser} - ${kickedUser.username}`, inline: false })
+                    .addFields({ name: "Member ID", value: `${kickedUser.id}`, inline: true })
+                    .addFields({ name: "Kicked By", value: executor.username, inline: false })
+                    .addFields({ name: "Reason", value: reason || "None", inline: false })
+                    .addFields({ name: "Risk", value: msgConfig.moderateRisk });
+
+                await sendLog(embed);
+
+                const config = await BotConfig.findOne({ GuildID: guild.id });
+                const serviceConfig = config?.services?.greeting;
+
+                if (!serviceConfig || !serviceConfig.enabled || serviceConfig.Goodbye.Enabled !== true) return;
+
+                try {
+                    const kickEntry = {
+                        UserID: kickedUser.id,
+                        KickedBy: executor.id,
+                        Reason: reason,
+                        KickedAt: new Date(),
+                    };
+
+                    if (!config.services.kick)
+                        config.services.kick = { Kicks: [] };
+
+                    config.services.kick.Kicks.push(kickEntry);
+                    await updateServiceConfig(config, "kick", { Kicks: config.services.kick.Kicks });
+                } catch (error) {
+                    console.log("[handleLogs.js] Error while adding kick to DB: ", error);
+                }
+
+                try {
+                    const channel = guild.channels.cache.get(serviceConfig.Goodbye.ChannelID);
+                    if (!channel) return;
+
+                    const reasonLine = "Kick";
+                    const message = serviceConfig.Goodbye.Message.replace("<user>", kickedUser.username);
+
+                    const replyMessage = serviceConfig.Goodbye.ReplyMessage
+                        ? serviceConfig.Goodbye.ReplyMessage
+                            .replace("<user>", kickedUser.username)
+                            .replace("<reason>", reasonLine)
+                        : "";
+
+                    let borderColor = serviceConfig.Goodbye.BorderColor || "#FFFFFF";
+                    if (borderColor.toLowerCase() === "random") borderColor = `#${Math.floor(Math.random() * 16777215).toString(16).padStart(6, '0')}`;
+
+                    const image = await profileImage(kickedUser.id, {
+                        presenceStatus: serviceConfig.Goodbye.PresenceStatus || "online",
+                        borderColor: borderColor,
+                        customTag: message || "Bye! <user>",
+                        customDate: new Date().toLocaleDateString(),
+                        customBackground: kickedUser.bannerURL?.({ forceStatic: true })
+                    });
+
+                    await channel.send({ content: `${replyMessage}\n${reasonLine}`, files: [image] });
+                } catch (error) {
+                    console.log("[handleLogs.js] Error while sending goodbye message for kick: ", error);
+                }
+
+                break;
+            }
+            default:
+                return;
+        }
 
         let changed;
         if (auditLogEntry.changes.old != auditLogEntry.changes.new)
@@ -478,56 +558,99 @@ module.exports = (client) => {
      * @param {GuildBan} guildBan
      */
     client.on(Events.GuildBanAdd, async (guildBan) => {
-        guildBan.guild
-            .fetchAuditLogs({ type: AuditLogEvent.GuildBanAdd })
-            .then(async (audit) => {
-                const BotConfig = require("../schemas/BotConfig");
-                const config = await BotConfig.findOne({ GuildID: guildBan.guild.id });
-                let bannedBy = "Unknown", reason = "None";
+        const audit = await guildBan.guild.fetchAuditLogs({ type: AuditLogEvent.GuildBanAdd, limit: 5 }).catch(() => null);
+        let bannedBy = "Unknown", reason = "None";
 
-                if (config && config.services?.ban) {
-                    // Check in the DB if there is an unban for this user, if so we remove it before banning
-                    if (config?.services?.unban?.Unbans) {
-                        config.services.unban.Unbans = config.services.unban.Unbans.filter(u => u.UserID !== guildBan.user.id);
-                        await updateServiceConfig(config, "unban", { Unbans: config.services.unban.Unbans });
-                    }
+        let auditEntry = null;
+        if (audit) {
+            auditEntry = audit.entries.find(entry =>
+                entry.target.id === guildBan.user.id &&
+                Date.now() - entry.createdTimestamp < 10000
+            );
+        }
 
-                    // Find the ban entry in the database, if it exists get the BannedBy field
-                    const banDbEntry = config.services.ban.Bans?.find(b => b.UserID === guildBan.user.id);
+        if (auditEntry) {
+            bannedBy = `<@${auditEntry.executor.id}> (${auditEntry.executor.tag})`;
+            reason = auditEntry.reason || "No reason";
+        }
 
-                    if (banDbEntry && banDbEntry.Reason)
-                        reason = banDbEntry.Reason;
-                    else
-                        reason = guildBan.reason || "No reason";
+        const BotConfig = require("../schemas/BotConfig");
+        const config = await BotConfig.findOne({ GuildID: guildBan.guild.id });
 
-                    if (banDbEntry && banDbEntry.BannedBy && banDbEntry.BannedBy !== "Unknown") bannedBy = `<@${banDbEntry.BannedBy}>`;
+        if (config && config.services?.ban) {
+            // Check in the DB if there is an unban for this user, if so we remove it before banning
+            if (config?.services?.unban?.Unbans) {
+                config.services.unban.Unbans = config.services.unban.Unbans.filter(u => u.UserID !== guildBan.user.id);
+                await updateServiceConfig(config, "unban", { Unbans: config.services.unban.Unbans });
+            }
 
-                    // If it doesn't exist, add the ban as manual/external
-                    if (!banDbEntry) {
-                        const banEntry = {
-                            UserID: guildBan.user.id,
-                            BannedBy: "Unknown",
-                            Reason: guildBan.reason || "No reason",
-                            BannedAt: new Date()
-                        };
+            // Find the ban entry in the database, if it exists get the BannedBy field
+            const banDbEntry = config.services.ban.Bans?.find(b => b.UserID === guildBan.user.id);
 
-                        config.services.ban.Bans = config.services.ban.Bans || [];
-                        config.services.ban.Bans.push(banEntry);
-                        await updateServiceConfig(config, "ban", { Bans: config.services.ban.Bans });
-                    }
-                }
+            if (banDbEntry && banDbEntry.Reason)
+                reason = banDbEntry.Reason;
+            if (banDbEntry && banDbEntry.BannedBy && banDbEntry.BannedBy !== "Unknown")
+                bannedBy = `<@${banDbEntry.BannedBy}>`;
 
-                const embed = new EmbedBuilder()
-                    .setColor("Red")
-                    .setTitle("\`🔴\` Member Banned")
-                    .addFields({ name: "Member - Member Username", value: `${guildBan.user} - ${guildBan.user.username}`, inline: false })
-                    .addFields({ name: "Member ID", value: `${guildBan.user.id}`, inline: true })
-                    .addFields({ name: "Banned By", value: bannedBy, inline: false })
-                    .addFields({ name: "Reason", value: reason || "None", inline: false })
-                    .addFields({ name: "Risk", value: msgConfig.highRisk });
+            // If it doesn't exist, add the ban as manual/external
+            if (!banDbEntry) {
+                const banEntry = {
+                    UserID: guildBan.user.id,
+                    BannedBy: auditEntry?.executor?.id || "Unknown",
+                    Reason: reason,
+                    BannedAt: new Date()
+                };
 
-                return sendLog(embed);
+                config.services.ban.Bans = config.services.ban.Bans || [];
+                config.services.ban.Bans.push(banEntry);
+                await updateServiceConfig(config, "ban", { Bans: config.services.ban.Bans });
+            }
+        }
+
+        const embed = new EmbedBuilder()
+            .setColor("Red")
+            .setTitle("\`🔴\` Member Banned")
+            .addFields({ name: "Member - Member Username", value: `${guildBan.user} - ${guildBan.user.username}`, inline: false })
+            .addFields({ name: "Member ID", value: `${guildBan.user.id}`, inline: true })
+            .addFields({ name: "Banned By", value: bannedBy, inline: false })
+            .addFields({ name: "Reason", value: reason || "None", inline: false })
+            .addFields({ name: "Risk", value: msgConfig.highRisk });
+
+        await sendLog(embed);
+
+        try {
+            const config = await BotConfig.findOne({ GuildID: guildBan.guild.id });
+            const serviceConfig = config?.services?.greeting;
+
+            if (!serviceConfig || !serviceConfig.enabled || serviceConfig.Goodbye.Enabled !== true) return;
+
+            const channel = guildBan.guild.channels.cache.get(serviceConfig.Goodbye.ChannelID);
+            if (!channel) return;
+
+            const reasonLine = "Ban";
+            const message = serviceConfig.Goodbye.Message.replace("<user>", guildBan.user.username);
+
+            const replyMessage = serviceConfig.Goodbye.ReplyMessage
+                ? serviceConfig.Goodbye.ReplyMessage
+                    .replace("<user>", guildBan.user.username)
+                    .replace("<reason>", reasonLine)
+                : "";
+
+            let borderColor = serviceConfig.Goodbye.BorderColor || "#FFFFFF";
+            if (borderColor.toLowerCase() === "random") borderColor = `#${Math.floor(Math.random() * 16777215).toString(16).padStart(6, '0')}`;
+
+            const image = await profileImage(guildBan.user.id, {
+                presenceStatus: serviceConfig.Goodbye.PresenceStatus || "online",
+                borderColor: borderColor,
+                customTag: message || "Bye! <user>",
+                customDate: new Date().toLocaleDateString(),
+                customBackground: guildBan.user.bannerURL?.({ forceStatic: true })
             });
+
+            await channel.send({ content: `${replyMessage}\n${reasonLine}`, files: [image] });
+        } catch (error) {
+            console.log("[handleLogs.js] Error while sending goodbye message for ban: ", error);
+        }
     });
 
     /**
@@ -556,7 +679,6 @@ module.exports = (client) => {
                         reason = guildBan.reason || "No reason";
 
                     if (unbanDbEntry && unbanDbEntry.UnbannedBy && unbanDbEntry.UnbannedBy !== "Unknown") unbannedBy = `<@${unbanDbEntry.UnbannedBy}>`;
-                    
 
                     if (!unbanDbEntry) {
                         const unbanEntry = {
@@ -797,23 +919,56 @@ module.exports = (client) => {
      */
     client.on(Events.GuildMemberRemove, async (member) => {
         const options = { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false };
-
         const formattedCreatedAt = member.user.createdAt.toLocaleString('en-US', options);
         const formattedJoinedAt = member.joinedAt.toLocaleString('en-US', options);
 
         const embed = new EmbedBuilder()
             .setColor("Blue")
-            .setTitle(`\`🔵\` Member **Left** the Server`)
+            .setTitle("`🔵` Member has left the server")
             .setThumbnail(member.displayAvatarURL())
-            .addFields({ name: "Member - Member Userame", value: `${member} - ${member.user.username}`, inline: false })
+            .addFields({ name: "Member - Member Username", value: `${member} - ${member.user.username}`, inline: false })
             .addFields({ name: "Member ID", value: member.id, inline: true })
             .addFields({ name: "Bot?", value: `\`${member.user.bot}\``, inline: true })
             .addFields({ name: "Created At", value: formattedCreatedAt, inline: true })
             .addFields({ name: "Joined At", value: formattedJoinedAt, inline: true })
-            .addFields({ name: "Risk", value: msgConfig.info, inline: false })
+            .addFields({ name: "Risk", value: msgConfig.info, inline: false });
 
-        return sendLog(embed);
-    })
+        await sendLog(embed);
+
+        try {
+            const config = await BotConfig.findOne({ GuildID: member.guild.id });
+            const serviceConfig = config?.services?.greeting;
+
+            if (!serviceConfig || !serviceConfig.enabled || serviceConfig.Goodbye.Enabled !== true) return;
+
+            const channel = member.guild.channels.cache.get(serviceConfig.Goodbye.ChannelID);
+            if (!channel) return;
+
+            let reasonLine = "Left";
+            const message = serviceConfig.Goodbye.Message.replace("<user>", member.user.username);
+
+            const replyMessage = serviceConfig.Goodbye.ReplyMessage
+                ? serviceConfig.Goodbye.ReplyMessage
+                    .replace("<user>", member.user.username)
+                    .replace("<reason>", reasonLine)
+                : "";
+
+            let borderColor = serviceConfig.Goodbye.BorderColor || "#FFFFFF";
+            if (borderColor.toLowerCase() === "random") borderColor = `#${Math.floor(Math.random() * 16777215).toString(16).padStart(6, '0')}`;
+
+            const image = await profileImage(member.user.id, {
+                presenceStatus: serviceConfig.Goodbye.PresenceStatus || "online",
+                borderColor: borderColor,
+                customTag: message || "Bye! <user>",
+                customDate: new Date().toLocaleDateString(),
+                customBackground: member.user.bannerURL({ forceStatic: true })
+            });
+
+            await channel.send({ content: `${replyMessage}`, files: [image] });
+        } catch (error) {
+            console.log("[handleLogs.js] Error while sending goodbye message: ", error);
+        }
+    });
 
     /**
      * Emitted whenever a chunk of guild members is received (all members come from the same guild).
