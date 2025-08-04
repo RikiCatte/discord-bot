@@ -42,7 +42,7 @@ const greetingFields = (type) => [
         customId: `ReplyMessage`, 
         label: `${type} Reply Message`, 
         style: TextInputStyle.Paragraph, 
-        placeholder: type === "Welcome" ? "<user> Welcome and have fun on our server!" : "<user> Goodbye! We will miss you!",
+        placeholder: type === "Welcome" ? "<user> Welcome and have fun on our server!" : "<user> Goodbye! Exit reason: <reason>",
         minLength: 1,
         maxLength: 2048,
         required: true
