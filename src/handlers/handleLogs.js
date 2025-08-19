@@ -1,8 +1,6 @@
 const { EmbedBuilder, Events, AuditLogEvent, ActionRowBuilder, ButtonBuilder, ButtonStyle, DMChannel, GuildChannel, GuildMember, AutoModerationActionExecution, GuildAuditLogsEntry, PollAnswer, MessageReaction, ThreadChannel, ThreadMember, TextChannel, NewsChannel, VoiceChannel, StageChannel, ForumChannel, MediaChannel, Embed } = require("discord.js");
 const msgConfig = require("../messageConfig.json");
 const serverStatsCategoryId = msgConfig.serverStats_Category;
-const riskyLogsSchema = require("../schemas/riskyLogs");
-const susUserSchema = require("../schemas/suspiciousUserJoin");
 const getColorName = require("../utils/getColorName.js");
 const getDifferences = require("../utils/getDifferences.js");
 const getPermissionDifferences = require("../utils/getPermissionDifferences.js");
@@ -21,11 +19,15 @@ module.exports = (client) => {
      * @param {string} logTitle 
      */
     async function sendLog(embed, raidRisk, channelId, logTitle) {
-        const staffChannel = client.channels.cache.get(`${msgConfig.staffChannel}`);
-        const LogChannel = client.channels.cache.get(`${msgConfig.logsChannel}`);
+        const config = await BotConfig.findOne({ GuildID: msgConfig.guild });
+        const logsService = config?.services?.logs;
+        if (!logsService || !logsService.enabled) return;
 
-        if (!LogChannel || !staffChannel)
-            return console.log("[LOGGING SYSTEM][ERROR] Error with ChannelID, check .json file!".red);
+        const logChannel = client.channels.cache.get(logsService.LogChannelID);
+        const staffChannel = client.channels.cache.get(logsService.StaffChannelID);
+
+        if (!logChannel || !staffChannel)
+            return console.log("[LOGGING SYSTEM][ERROR] Error with ChannelID, check your Bot Config!".red);
 
         if (embed === "apiError") {
             const embed = new EmbedBuilder()
@@ -36,7 +38,7 @@ module.exports = (client) => {
                 .setFooter({ text: "Mod Logging System by RikiCatte", iconURL: msgConfig.footer_iconURL })
                 .setTimestamp()
             try {
-                return await LogChannel.send({ embeds: [embed] });
+                return await logChannel.send({ embeds: [embed] });
             } catch {
                 return console.log("[LOGGING SYSTEM][ERROR] Error with sending API Error message!".red);
             }
@@ -49,7 +51,7 @@ module.exports = (client) => {
         embed.setTimestamp();
 
         try {
-            await LogChannel.send({ embeds: [embed] });
+            await logChannel.send({ embeds: [embed] });
 
             if (raidRisk) {
                 const button = new ActionRowBuilder()
@@ -65,20 +67,22 @@ module.exports = (client) => {
                 const date = new Date();
                 const formattedDate = `${date.getDate()}/${date.getMonth() + 1}/${date.getFullYear()} - ${date.getHours()}:${date.getMinutes()}`;
 
-                await riskyLogsSchema.create({
+                logsService.RiskyLogs.push({
                     RiskyLogID: msg.id,
                     ChannelID: channelId,
                     Guild: msg.guildId,
                     Title: logTitle,
                     Date: formattedDate,
                     Solved: false,
-                }).catch((err) => console.log(err));
+                }).catch((err) => console.log(err)); ù
+
+                await updateServiceConfig(config, "logs", { RiskyLogs: logsService.RiskyLogs });
             }
 
             return;
         } catch (err) {
             console.log(err);
-            return await LogChannel.send("Error occured with: " + embed);
+            return await logChannel.send("Error occured with: " + embed);
         }
     }
 
@@ -874,7 +878,10 @@ module.exports = (client) => {
 
             const row = new ActionRowBuilder().addComponents(kickBtn, banBtn, cancelBtn);
 
-            let result = await susUserSchema.findOne({ GuildID: member.guild.id, SusUserID: member.id });
+            const config = await BotConfig.findOne({ GuildID: member.guild.id });
+            const suspiciousUsers = config.services?.suspicioususerjoin || [];
+
+            let result = suspiciousUsers.find(u => u.SusUserID === member.id);
             if (result) return await staffChannel.send({ content: `@here User ${member} (${member.id}) left and rejoined the server multiple times!` });
 
             if (staffChannel) {
@@ -883,16 +890,18 @@ module.exports = (client) => {
                 const date = new Date();
                 const formattedDate = `${date.getDate()}/${date.getMonth() + 1}/${date.getFullYear()} - ${date.getHours()}:${date.getMinutes()}`;
 
-                await susUserSchema.create({
+                suspiciousUsers.push({
                     GuildID: member.guild.id,
                     SusUserID: member.id,
                     MessageID: `${msg.id}`,
                     JoinDate: formattedDate,
                     TakenAction: false,
-                }).catch((err) => console.error(err));
+                });
+
+                await updateServiceConfig(config, "suspicioususerjoin", suspiciousUsers);
                 return;
             } else {
-                console.error("logChannel not found! check .json file");
+                console.error("logChannel not found! check your Bot Config!");
             }
         }
     })

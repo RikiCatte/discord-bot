@@ -125,7 +125,8 @@ const botConfigSchema = new mongoose.Schema({
         },
         logs: {
             enabled: { type: Boolean, default: false },
-            ChannelID: String,
+            LogChannelID: String,
+            StaffChannelID: String,
             RiskyLogs: [{
                 RiskyLogID: String,
                 ChannelID: String,
