@@ -74,7 +74,7 @@ module.exports = (client) => {
                     Title: logTitle,
                     Date: formattedDate,
                     Solved: false,
-                }).catch((err) => console.log(err)); ù
+                })
 
                 await updateServiceConfig(config, "logs", { RiskyLogs: logsService.RiskyLogs });
             }
@@ -1522,7 +1522,7 @@ module.exports = (client) => {
             .addFields({ name: "Channel - Channel ID", value: `${channel} - ${channel.id}`, inline: false })
             .addFields({ name: "Risk", value: msgConfig.raidRisk, inline: false })
 
-        return sendLog(embed, false, channel.id, title);
+        return sendLog(embed, true, channel.id, title);
     })
 
     /**
