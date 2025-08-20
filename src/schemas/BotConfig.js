@@ -160,12 +160,14 @@ const botConfigSchema = new mongoose.Schema({
         },
         suspicioususerjoin: {
             enabled: { type: Boolean, default: false },
-            SusUserID: String,
-            MessageID: String,
-            JoinDate: String,
-            TakenAction: Boolean,
-            Action: String,
-            ModeratedBy: String,
+            SusUsers: [{
+                SusUserID: String,
+                MessageID: String,
+                JoinDate: String,
+                TakenAction: Boolean,
+                Action: String,
+                ModeratedBy: String,
+            }],
         },
         ticket: {
             enabled: { type: Boolean, default: false },

@@ -835,7 +835,6 @@ module.exports = (client) => {
      * Plus: Alert system for recently created accounts and users that have re-entered the server more than a certain limit
      */
     client.on(Events.GuildMemberAdd, async (member) => {
-        const staffChannel = client.channels.cache.get(`${msgConfig.staffChannel}`);
         const options = { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false };
 
         const formattedCreatedAt = member.user.createdAt.toLocaleString('en-US', options);
@@ -879,7 +878,15 @@ module.exports = (client) => {
             const row = new ActionRowBuilder().addComponents(kickBtn, banBtn, cancelBtn);
 
             const config = await BotConfig.findOne({ GuildID: member.guild.id });
-            const suspiciousUsers = config.services?.suspicioususerjoin || [];
+            const serviceConfig = config?.services?.suspicioususerjoin;
+
+            if (!serviceConfig || !serviceConfig.enabled) return;
+
+            const logsConfig = config?.services?.logs;
+            if (!logsConfig || !logsConfig.enabled || !logsConfig.StaffChannelID) return;
+            const staffChannel = client.channels.cache.get(logsConfig.StaffChannelID);
+
+            const suspiciousUsers = serviceConfig.SusUsers || [];
 
             let result = suspiciousUsers.find(u => u.SusUserID === member.id);
             if (result) return await staffChannel.send({ content: `@here User ${member} (${member.id}) left and rejoined the server multiple times!` });
@@ -891,17 +898,16 @@ module.exports = (client) => {
                 const formattedDate = `${date.getDate()}/${date.getMonth() + 1}/${date.getFullYear()} - ${date.getHours()}:${date.getMinutes()}`;
 
                 suspiciousUsers.push({
-                    GuildID: member.guild.id,
                     SusUserID: member.id,
                     MessageID: `${msg.id}`,
                     JoinDate: formattedDate,
                     TakenAction: false,
                 });
 
-                await updateServiceConfig(config, "suspicioususerjoin", suspiciousUsers);
+                await updateServiceConfig(config, "suspicioususerjoin", { SusUsers: suspiciousUsers });
                 return;
             } else {
-                console.error("logChannel not found! check your Bot Config!");
+                console.error("[handleLogs.js] No configuration values were found, check your Bot Config!");
             }
         }
     })
