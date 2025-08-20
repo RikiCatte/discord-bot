@@ -3,7 +3,6 @@ const BotConfig = require("../schemas/BotConfig");
 const replyNoConfigFound = require("../utils/BotConfig/replyNoConfigFound");
 const replyServiceAlreadyEnabledOrDisabled = require("../utils/BotConfig/replyServiceAlreadyEnabledOrDisabled");
 const updateServiceConfig = require("../utils/BotConfig/updateServiceConfig");
-const msgConfig = require("../messageConfig.json");
 
 module.exports = {
     customId: "ban-sus-user",
