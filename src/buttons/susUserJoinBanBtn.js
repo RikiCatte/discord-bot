@@ -64,6 +64,8 @@ module.exports = {
         susUser.Action = "User-Ban";
         susUser.ModeratedBy = interaction.user.id;
 
+        serviceConfig.SusUsers = serviceConfig.SusUsers.filter(u => u.SusUserID !== susUser.SusUserID);
+
         await updateServiceConfig(config, "suspicioususerjoin", { SusUsers: serviceConfig.SusUsers });
 
         return await interaction.reply({ content: `\`✅\` ${member} (${member.id}) should have been successfully banned`, Flags: MessageFlags.Ephemeral });
