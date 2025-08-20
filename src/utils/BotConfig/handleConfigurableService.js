@@ -68,7 +68,7 @@ module.exports = async function handleConfigurableService({
         const { success, select } = await handleSelectMenuInteraction(interaction, selectMenu.customId);
         if (!success) return;
 
-        
+
         const newValue = select.values[0];
         const oldValue = selectMenu.selectedField
             ? config.services[service]?.[selectMenu.selectedField]
@@ -167,10 +167,12 @@ module.exports = async function handleConfigurableService({
             }
 
             // If no preview is provided, just send a success message
-            await modalInteraction.reply({
-                content: isEnable ? replyStrings.setupSuccess(updated) : replyStrings.editSuccess(updated),
-                flags: MessageFlags.Ephemeral
-            });
+            try {
+                await modalInteraction.reply({
+                    content: isEnable ? replyStrings.setupSuccess(updated) : replyStrings.editSuccess(updated),
+                    flags: MessageFlags.Ephemeral
+                });
+            } catch (err) { /* interaction already replied or deferred */ };
         } catch (err) {
             const replyTarget = modalInteraction || interaction;
             if (!replyTarget.replied && !replyTarget.deferred) await replyTarget.reply({ content: err.message || "An error occurred while updating the configuration.", flags: MessageFlags.Ephemeral });

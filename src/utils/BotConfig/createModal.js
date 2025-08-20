@@ -1,62 +1,106 @@
-const { ModalBuilder, ActionRowBuilder, TextInputBuilder, TextInputStyle, MessageFlags } = require("discord.js");
+const { ModalBuilder, ActionRowBuilder, TextInputBuilder, TextInputStyle, ButtonBuilder, ButtonStyle, MessageFlags } = require("discord.js");
+
+function chunkArray(arr, size) {
+    const out = [];
+    for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
+    return out;
+}
 
 /**
- * Shows a dynamic modal and returns the entered values.
- * @param {Interaction} interaction
- * @param {Object} options
- * @param {string} options.customId
- * @param {string} options.title
- * @param {Array} options.fields [{ customId, label, style, placeholder, required }]
- * @param {number} [timeout=60000]
- * @returns {Promise<{ success: boolean, values?: Object, modalInteraction?: ModalSubmitInteraction }>}
+ * Multi-page modal flow (max 5 fields per modal). Uses a "Continue" button between pages.
+ * @param {Interaction} interaction - original ChatInput/MessageComponent interaction that triggers the flow
+ * @param {Object} opts
+ * @param {string} opts.customId - base custom id (will be suffixed with page index)
+ * @param {string} opts.title
+ * @param {Array} opts.fields - [{ customId, label, style, placeholder, required, minLength, maxLength, value }]
+ * @param {number} timeout - per-step timeout (ms)
+ * @returns {Promise<{ success: boolean, values?: Object }>}
  */
-module.exports = async function createModal(interaction, { customId, title, fields }, timeout = 60000) {
-    if (fields.length > 5) {
-        await interaction.reply({ content: `\`❌\` You can enter a maximum of 5 fields per modal, you entered \`${fields.count}\``, ephemeral: true });
-        return { success: false };
-    }
+module.exports = async function pagedModal(interaction, { customId, title, fields }, timeout = 60000) {
+    if (!Array.isArray(fields) || fields.length === 0) return { success: false };
 
-    const modal = new ModalBuilder()
-        .setCustomId(customId)
-        .setTitle(title);
-
-    const rows = fields.map(field => {
-        const input = new TextInputBuilder()
-            .setCustomId(field.customId)
-            .setLabel(field.label)
-            .setStyle(field.style || TextInputStyle.Short)
-            .setPlaceholder(field.placeholder || "")
-            .setRequired(field.required ?? true);
-
-        if (field.minLength != null) input.setMinLength(field.minLength);
-        if (field.maxLength != null) input.setMaxLength(field.maxLength);
-        if (field.value != null) input.setValue(field.value);
-
-        return new ActionRowBuilder().addComponents(input);
-    });
-
-    modal.addComponents(...rows);
-
-    await interaction.showModal(modal);
-
+    const pages = chunkArray(fields, 5);
+    const allValues = {};
+    let currentTrigger = interaction; // the interaction we will call showModal on (first = original)
     try {
-        const modalInteraction = await interaction.awaitModalSubmit({
-            filter: i => i.customId === customId && i.user.id === interaction.user.id,
-            time: timeout
-        });
+        for (let pageIndex = 0; pageIndex < pages.length; pageIndex++) {
+            const pageFields = pages[pageIndex];
+            const pageId = `${customId}:page:${pageIndex}`;
 
-        const values = {};
-        for (const field of fields) {
-            values[field.customId] = modalInteraction.fields.getTextInputValue(field.customId);
+            // build modal for this page
+            const modal = new ModalBuilder()
+                .setCustomId(pageId)
+                .setTitle(`${title} — ${pageIndex + 1}/${pages.length}`);
+
+            const rows = pageFields.map(f => {
+                const txt = new TextInputBuilder()
+                    .setCustomId(f.customId)
+                    .setLabel(f.label)
+                    .setStyle(f.style === 'PARAGRAPH' || f.style === TextInputStyle.Paragraph ? TextInputStyle.Paragraph : TextInputStyle.Short)
+                    .setPlaceholder(f.placeholder ?? "")
+                    .setRequired(f.required ?? true);
+
+                if (f.minLength != null) txt.setMinLength(f.minLength);
+                if (f.maxLength != null) txt.setMaxLength(f.maxLength);
+                if (f.value != null) txt.setValue(f.value);
+
+                return new ActionRowBuilder().addComponents(txt);
+            });
+
+            modal.addComponents(...rows);
+
+            // show modal on the current trigger (first: original interaction; subsequent: button interaction)
+            await currentTrigger.showModal(modal);
+
+            // wait for modal submit
+            const modalSubmit = await currentTrigger.awaitModalSubmit({
+                filter: i => i.customId === pageId && i.user.id === interaction.user.id,
+                time: timeout
+            });
+
+            // collect values from this page
+            for (const f of pageFields) {
+                try {
+                    allValues[f.customId] = modalSubmit.fields.getTextInputValue(f.customId);
+                } catch (e) {
+                    allValues[f.customId] = null;
+                }
+            }
+
+            // if there are more pages, ask the user to click the button (ephemeral reply with button)
+            if (pageIndex < pages.length - 1) {
+                const nextCustom = `${customId}:next:${pageIndex + 1}`;
+                const nextButton = new ButtonBuilder()
+                    .setCustomId(nextCustom)
+                    .setLabel("Next Page")
+                    .setStyle(ButtonStyle.Primary);
+
+                const row = new ActionRowBuilder().addComponents(nextButton);
+
+                await modalSubmit.reply({
+                    content: `\`⌛\` Page \`${pageIndex + 1}\` completed, please click the button below to proceed.`,
+                    components: [row],
+                    flags: MessageFlags.Ephemeral
+                });
+                const replyMsg = await modalSubmit.fetchReply();
+
+                const btnInteraction = await replyMsg.awaitMessageComponent({
+                    filter: i => i.user.id === interaction.user.id && i.customId === nextCustom,
+                    time: timeout
+                });
+
+                currentTrigger = btnInteraction;
+            } else await modalSubmit.reply({ content: "`✅` All pages completed, thank you!", flags: MessageFlags.Ephemeral }).catch(() => { });
         }
 
-        return { success: true, values, modalInteraction };
+        return { success: true, values: allValues };
+
     } catch (err) {
         try {
-            await interaction.followUp({ content: "\`❌\` Operation cancelled or expired. Try again.", flags: MessageFlags.Ephemeral });
-        } catch (e) {
-            console.log(e);
-        }
+            if (currentTrigger && !currentTrigger.replied && !currentTrigger.deferred) {
+                await currentTrigger.reply({ content: "`❌` Operation aborted or timed out.", flags: MessageFlags.Ephemeral });
+            }
+        } catch { }
         return { success: false };
     }
-}
+};
