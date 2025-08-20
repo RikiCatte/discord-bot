@@ -535,8 +535,8 @@ module.exports = (client) => {
         const embed = new EmbedBuilder()
             .setColor("Blue")
             .setTitle("\`🔵\` Audit Log Entry Created")
-            .addFields({ name: "Action", value: auditLogEntry.action, inline: true })
-            .addFields({ name: "Action Type", value: auditLogEntry.actionType, inline: true })
+            .addFields({ name: "Action", value: `\`${auditLogEntry.action}\``, inline: true })
+            .addFields({ name: "Action Type", value: `\`${auditLogEntry.actionType}\``, inline: true })
             .addFields({ name: "Does Entry Already Exist?", value: `\`${changed}\``, inline: false })
             .addFields({ name: "Risk", value: msgConfig.info, inline: false })
 
@@ -889,7 +889,7 @@ module.exports = (client) => {
             const suspiciousUsers = serviceConfig.SusUsers || [];
 
             let result = suspiciousUsers.find(u => u.SusUserID === member.id);
-            if (result) return await staffChannel.send({ content: `@here User ${member} (${member.id}) left and rejoined the server multiple times!` });
+            if (result) await staffChannel.send({ content: `@here User ${member} (${member.id}) left and rejoined the server multiple times!` });
 
             if (staffChannel) {
                 let msg = await staffChannel.send({ content: `@here ⚠️ **Alert!** ${member}'s (${member.id}) account was created less than a month ago.`, embeds: [embed], components: [row] });
