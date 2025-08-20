@@ -30,7 +30,7 @@ module.exports = {
 
         const member = await interaction.guild.members.fetch(susUser.SusUserID);
 
-        await logChannel.send({ content: `User ${member} (${member.id}) has been **Ignored** by ${interaction.user} (${interaction.user.id})` });
+        await logChannel.send({ content: `[Suspicious User Join Service] User ${member} (${member.id}) has been **Ignored** by ${interaction.user} (${interaction.user.id})` });
 
         const disabledKickBtn = new ButtonBuilder()
             .setCustomId("kick-sus-user")

@@ -32,7 +32,7 @@ module.exports = {
 
         try {
             await member.kick(`${susUser.SusUserID}`);
-            await logChannel.send({ content: `User ${member} (${member.id}) has been **Kicked** by ${interaction.user} (${interaction.user.id})` });
+            await logChannel.send({ content: `[Suspicious User Join Service] User ${member} (${member.id}) has been **Kicked** by ${interaction.user} (${interaction.user.id})` });
         } catch (err) {
             console.error(err);
             return await interaction.reply({ content: `Something went wrong while kicking ${member}, maybe he has Admin Role`, Flags: MessageFlags.Ephemeral });

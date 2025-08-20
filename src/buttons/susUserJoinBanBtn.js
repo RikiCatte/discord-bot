@@ -32,7 +32,7 @@ module.exports = {
 
         try {
             await member.ban({ reason: `You have been banned from ${interaction.guild.name}` });
-            await logChannel.send({ content: `User ${member} (${member.id}) has been **Banned** by ${interaction.user} (${interaction.user.id})` });
+            await logChannel.send({ content: `[Suspicious User Join Service] User ${member} (${member.id}) has been **Banned** by ${interaction.user} (${interaction.user.id})` });
         } catch (err) {
             console.error(err);
             return await interaction.reply({ content: `Something went wrong while banning ${member}, maybe he has Admin Role`, Flags: MessageFlags.Ephemeral });
