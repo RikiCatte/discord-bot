@@ -1,4 +1,4 @@
-const { EmbedBuilder, Events, AuditLogEvent, ActionRowBuilder, ButtonBuilder, ButtonStyle, DMChannel, GuildChannel, GuildMember, AutoModerationActionExecution, GuildAuditLogsEntry, PollAnswer, MessageReaction, ThreadChannel, ThreadMember, TextChannel, NewsChannel, VoiceChannel, StageChannel, ForumChannel, MediaChannel, Embed } = require("discord.js");
+const { EmbedBuilder, Events, AuditLogEvent, ActionRowBuilder, ApplicationCommandPermissionsUpdateData, ButtonBuilder, ButtonStyle, DMChannel, GuildChannel, GuildMember, AutoModerationActionExecution, GuildAuditLogsEntry, PollAnswer, MessageReaction, ThreadChannel, ThreadMember, TextChannel, NewsChannel, VoiceChannel, StageChannel, ForumChannel, MediaChannel, Embed, ChannelType } = require("discord.js");
 const msgConfig = require("../messageConfig.json");
 const getColorName = require("../utils/getColorName.js");
 const getDifferences = require("../utils/getDifferences.js");
@@ -11,14 +11,16 @@ const { profileImage } = require("discord-arts");
 
 module.exports = (client) => {
     /**
-     * Sends the Log in the designated channel (channel ID inside .json file)
+     * Sends the Log in the designated channel
      * @param {Embed | string} embed 
      * @param {boolean} raidRisk 
      * @param {int} channelId 
      * @param {string} logTitle 
      */
-    async function sendLog(embed, raidRisk, channelId, logTitle) {
-        const config = await BotConfig.findOne({ GuildID: msgConfig.guild });
+    async function sendLog(embed, guildId, raidRisk = false, channelId = null, logTitle = null) {
+        if (guildId === null) return console.log("[LOGGING SYSTEM][ERROR] Guild ID is null for event with embed: ", embed.toJSON());
+
+        const config = await BotConfig.findOne({ GuildID: guildId });
         const logsService = config?.services?.logs;
         if (!logsService || !logsService.enabled) return;
 
@@ -101,7 +103,7 @@ module.exports = (client) => {
             .addFields({ name: "Type", value: `Permission is for ${data.permissions.type}`, inline: true })
             .addFields({ name: "Risk", value: msgConfig.moderateRisk })
 
-        return sendLog(embed);
+        return sendLog(embed, data.guildId);
     })
 
     /**
@@ -133,7 +135,7 @@ module.exports = (client) => {
             .setTitle(title)
             .addFields(fields)
 
-        return sendLog(embed, true, automodAction.channelId, title);
+        return sendLog(embed, automodAction.guild.id, true, automodAction.channelId, title);
     })
 
     /**
@@ -175,7 +177,7 @@ module.exports = (client) => {
             .setTitle("\`🟢\` New AutoMod Rule Created")
             .addFields(fields);
 
-        return sendLog(embed);
+        return sendLog(embed, automodRule.guild.id);
     })
 
     /**
@@ -217,7 +219,7 @@ module.exports = (client) => {
             .setTitle("\`🔴\` AutoMod Rule Deleted")
             .addFields(fields);
 
-        return sendLog(embed)
+        return sendLog(embed, automodRule.guild.id)
     })
 
     /**
@@ -227,9 +229,6 @@ module.exports = (client) => {
      * On discord.js v 14.16.3 the event is not working properly, oldAutoModRule seems to be always null
      */
     client.on(Events.AutoModerationRuleUpdate, async (oldAutoModRule, newAutoModRule) => {
-        if (!oldAutoModRule)
-            return sendLog("apiError", "autoModerationRuleUpdate");
-
         const differences = await getDifferences(oldAutoModRule, newAutoModRule);
 
         const embed = new EmbedBuilder()
@@ -243,20 +242,8 @@ module.exports = (client) => {
         }
 
         embed.addFields({ name: "Risk", value: msgConfig.moderateRisk, inline: false });
-        return sendLog(embed);
+        return sendLog(embed, newAutoModRule.guild.id);
     })
-
-    /**
-     * Cache Sweep
-     * @param {String} message
-     */
-    // client.on(Events.CacheSweep, (message) => {
-    //     const embed = new EmbedBuilder()
-    //         .setColor("Yellow")
-    //         .setTitle("\`🟡\` Cache Sweeped")
-
-    //     // return sendLog(embed);
-    // })
 
     /**
      * Emitted whenever a guild channel is created.
@@ -287,7 +274,7 @@ module.exports = (client) => {
                     .addFields({ name: "Rate Limit Per User", value: `${channel.rateLimitPerUser}`, inline: false })
                     .addFields({ name: "Risk", value: msgConfig.lowRisk })
 
-                return sendLog(embed);
+                return sendLog(embed, channel.guildId);
             })
     });
 
@@ -297,6 +284,8 @@ module.exports = (client) => {
      * Deleted by field should be always correct.
      */
     client.on(Events.ChannelDelete, async (channel) => {
+        if (channel.type === ChannelType.DM) return;
+
         channel.guild
             .fetchAuditLogs({ type: AuditLogEvent.ChannelDelete })
             .then(async (audit) => {
@@ -318,7 +307,7 @@ module.exports = (client) => {
                     .addFields({ name: "Deleted By", value: `<@${executor.id}> (${executor.tag})`, inline: false })
                     .addFields({ name: "Risk", value: msgConfig.moderateRisk })
 
-                return sendLog(embed);
+                return sendLog(embed, channel.guildId);
             });
     });
 
@@ -329,13 +318,15 @@ module.exports = (client) => {
      * @param {Date} date
      */
     client.on(Events.ChannelPinsUpdate, (channel, date) => {
+        if (channel.type === ChannelType.DM) return;
+
         const embed = new EmbedBuilder()
             .setColor("Blue")
             .setTitle(`\`🟢\` New Pinned Message`)
             .addFields({ name: "Channel - Channel ID", value: `${channel} - (${channel.id})`, inline: true })
             .addFields({ name: "Risk", value: msgConfig.lowRisk })
 
-        return sendLog(embed);
+        return sendLog(embed, channel.guildId);
     })
 
     // Emitted whenever a channel is updated - e.g. name change, topic change, channel type change.
@@ -344,6 +335,8 @@ module.exports = (client) => {
      * @param {DMChannel | GuildChannel} newChannel
      */
     client.on(Events.ChannelUpdate, async (oldChannel, newChannel) => {
+        if (oldChannel.type === ChannelType.DM || newChannel.type === ChannelType.DM) return;
+
         const config = await BotConfig.findOne({ GuildID: newChannel.guild.id });
         const serverStatsChannels = config?.services?.serverstats?.channels?.map(c => c.ChannelID) || [];
 
@@ -390,36 +383,9 @@ module.exports = (client) => {
 
                 embed.addFields({ name: "Modified by", value: `<@${executor.id}> (${executor.tag})`, inline: false });
                 embed.addFields({ name: "Risk", value: msgConfig.moderateRisk, inline: false });
-                return sendLog(embed);
+                return sendLog(embed, newChannel.guildId);
             })
     })
-
-    /**
-     * Emitted when the client becomes ready to start working.
-     * @param {Client} client
-     */
-    // client.on(Events.ClientReady, async (client) => {
-    //     const embed = new EmbedBuilder()
-    //         .setColor("Green")
-    //         .setTitle("\`🟢\` Client is ready to start working")
-    //         .addFields({ name: "Risk", value: msgConfig.info })
-
-    //     return sendLog(embed);
-    // })
-
-    /**
-     * Emitted for general debugging information.
-     * @param {String} debug
-     */
-    // client.on(Events.Debug, async (debug) => {
-    //     const embed = new EmbedBuilder()
-    //         .setColor("Blue")
-    //         .setTitle("🔵 DEBUG")
-    //         .addFields({ name: "Text", value: debug, inline: false })
-    //         .addFields({ name: "Risk", value: msgConfig.info, inline: false })
-
-    //     return sendLog(embed);
-    // })
 
     /**
      * Emitted when the client encounters an error. Errors thrown within this event do not have a catch handler,
@@ -427,18 +393,18 @@ module.exports = (client) => {
      * [Node.js docs](https://nodejs.org/api/events.html#capture-rejections-of-promises) for details.
      * @param {Error} error
      */
-    client.on(Events.Error, async (error) => {
-        console.log(error);
+    // client.on(Events.Error, async (error) => {
+    //     console.log(error);
 
-        const embed = new EmbedBuilder()
-            .setColor("Blue")
-            .setTitle("🔵 ERROR")
-            .addFields({ name: "Error Name", value: error.name, inline: false })
-            .addFields({ name: "Error Message", value: error.message, inline: false })
-            .addFields({ name: "Risk", value: msgConfig.info, inline: false })
+    //     const embed = new EmbedBuilder()
+    //         .setColor("Blue")
+    //         .setTitle("🔵 ERROR")
+    //         .addFields({ name: "Error Name", value: error.name, inline: false })
+    //         .addFields({ name: "Error Message", value: error.message, inline: false })
+    //         .addFields({ name: "Risk", value: msgConfig.info, inline: false })
 
-        return sendLog(embed);
-    })
+    //     return sendLog(embed);
+    // })
 
     /**
      * Emitted whenever a guild audit log entry is created.
@@ -468,7 +434,7 @@ module.exports = (client) => {
                     .addFields({ name: "Reason", value: reason || "None", inline: false })
                     .addFields({ name: "Risk", value: msgConfig.moderateRisk });
 
-                await sendLog(embed);
+                await sendLog(embed, guild.id);
 
                 const config = await BotConfig.findOne({ GuildID: guild.id });
                 const serviceConfig = config?.services?.greeting;
@@ -541,7 +507,7 @@ module.exports = (client) => {
             .addFields({ name: "Does Entry Already Exist?", value: `\`${changed}\``, inline: false })
             .addFields({ name: "Risk", value: msgConfig.info, inline: false })
 
-        return sendLog(embed);
+        return sendLog(embed, guild.id);
     })
 
     /**
@@ -555,7 +521,7 @@ module.exports = (client) => {
     //         .addFields({ name: "Guild Name", value: `${guild.name} (${guild.id})`, inline: false })
     //         .addFields({ name: "Risk", value: msgConfig.info, inline: false })
 
-    //     return sendLog(embed);
+    //     return sendLog(embed, guild.id);
     // })
 
     /**
@@ -621,7 +587,7 @@ module.exports = (client) => {
             .addFields({ name: "Reason", value: reason || "None", inline: false })
             .addFields({ name: "Risk", value: msgConfig.highRisk });
 
-        await sendLog(embed);
+        await sendLog(embed, guild.id);
 
         try {
             const config = await BotConfig.findOne({ GuildID: guildBan.guild.id });
@@ -708,7 +674,7 @@ module.exports = (client) => {
                     .addFields({ name: "Reason", value: reason || "None", inline: false })
                     .addFields({ name: "Risk", value: msgConfig.highRisk });
 
-                return sendLog(embed);
+                return sendLog(embed, guildBan.guild.id);
             });
     });
 
@@ -723,7 +689,7 @@ module.exports = (client) => {
             .addFields({ name: "Guild Name - ID", value: `${guild.name} - (${guild.id})`, inline: false })
             .addFields({ name: "Risk", value: msgConfig.info, inline: false })
 
-        return sendLog(embed);
+        return sendLog(embed, guild.id);
     });
 
     /**
@@ -737,12 +703,13 @@ module.exports = (client) => {
             .addFields({ name: "Guild Name/ID", value: `${guild.name} (${guild.id})`, inline: false })
             .addFields({ name: "Risk", value: msgConfig.info, inline: false })
 
-        return sendLog(embed);
+        return sendLog(embed, guild.id);
     });
 
     /**
      * Emitted whenever a new emoji is created from a guild.
-     * @param {GuildEmoji} emoji
+     * Same as emojiCreate event
+     * @param {GuildEmoji} createdEmoji
      */
     client.on(Events.GuildEmojiCreate, async (createdEmoji) => {
         const options = { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false };
@@ -767,12 +734,13 @@ module.exports = (client) => {
             .addFields({ name: "Emoji Preview", value: createdEmoji.toString(), inline: true })
             .addFields({ name: "Risk", value: msgConfig.info })
 
-        return sendLog(embed);
+        return sendLog(embed, createdEmoji.guild.id);
     });
 
     /**
      * Emitted whenever a custom emoji is deleted from a guild.
-     * @param {GuildEmoji} emoji
+     * Same as emojiDelete event
+     * @param {GuildEmoji} deletedEmoji
      */
     client.on(Events.GuildEmojiDelete, async (deletedEmoji) => {
         const options = { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false };
@@ -789,11 +757,12 @@ module.exports = (client) => {
             .addFields({ name: "Emoji URL", value: deletedEmoji.imageURL(), inline: true })
             .addFields({ name: "Risk", value: msgConfig.info })
 
-        return sendLog(embed);
+        return sendLog(embed, deletedEmoji.guild.id);
     })
 
     /**
      * Emitted whenever a existing emoji is modified from a guild.
+     * Same as emojiUpdate event
      * @param {GuildEmoji} oldEmoji
      * @param {GuildEmoji} newEmoji
      */
@@ -813,7 +782,7 @@ module.exports = (client) => {
         }
 
         embed.addFields({ name: "Risk", value: msgConfig.info, inline: false })
-        return sendLog(embed);
+        return sendLog(embed, newEmoji.guild.id);
     })
 
     /**
@@ -827,7 +796,7 @@ module.exports = (client) => {
             .addFields({ name: "Guild Name - ID", value: `${guild.name} - ${guild.id}`, inline: false })
             .addFields({ name: "Risk", value: msgConfig.info, inline: false })
 
-        return sendLog(embed);
+        return sendLog(embed, guild.id);
     })
 
     /**
@@ -858,7 +827,7 @@ module.exports = (client) => {
             .addFields({ name: "Bot?", value: `\`${member.user.bot}\``, inline: true })
             .addFields({ name: "Risk", value: msgConfig.info, inline: false });
 
-        await sendLog(embed);
+        await sendLog(embed, member.guild.id);
 
         if (member.user.createdAt > oneMonthAgo) {
             const kickBtn = new ButtonBuilder()
@@ -926,7 +895,7 @@ module.exports = (client) => {
     //         .addFields({ name: "ID", value: member.id, inline: true })
     //         .addFields({ name: "Risk", value: msgConfig.info, inline: false })
 
-    //     return sendLog(embed);
+    //     return sendLog(embed, member.guild.id);
     // })
 
     /**
@@ -949,7 +918,7 @@ module.exports = (client) => {
             .addFields({ name: "Joined At", value: formattedJoinedAt, inline: true })
             .addFields({ name: "Risk", value: msgConfig.info, inline: false });
 
-        await sendLog(embed);
+        await sendLog(embed, member.guild.id);
 
         try {
             const config = await BotConfig.findOne({ GuildID: member.guild.id });
@@ -1000,7 +969,7 @@ module.exports = (client) => {
             .addFields({ name: "Members Collection Size", value: `${members.size}`, inline: true })
             .addFields({ name: "Risk", value: msgConfig.info, inline: false })
 
-        return sendLog(embed);
+        return sendLog(embed, guild.id);
     });
 
     /**
@@ -1054,7 +1023,7 @@ module.exports = (client) => {
             embed.addFields({ name: key, value: `Before: ${oldValue}\nAfter: ${newValue}`, inline: false });
         }
 
-        return sendLog(embed);
+        return sendLog(embed, newMember.guild.id);
     })
 
     /**
@@ -1092,7 +1061,7 @@ module.exports = (client) => {
             .addFields({ name: "Role Permissions", value: permissions, inline: true })
             .addFields({ name: "Risk", value: msgConfig.lowRisk, inline: false });
 
-        return sendLog(embed);
+        return sendLog(embed, role.guild.id);
     })
 
     /**
@@ -1120,7 +1089,7 @@ module.exports = (client) => {
             .addFields({ name: "Role Permissions: ", value: permissions, inline: false })
             .addFields({ name: "Risk", value: msgConfig.moderateRisk, inline: false })
 
-        return sendLog(embed);
+        return sendLog(embed, role.guild.id);
     })
 
     /**
@@ -1176,7 +1145,7 @@ module.exports = (client) => {
         }
 
         embed.addFields({ name: "Risk", value: msgConfig.moderateRisk, inline: false });
-        return sendLog(embed);
+        return sendLog(embed, newRole.guild.id);
     })
 
     /**
@@ -1209,7 +1178,7 @@ module.exports = (client) => {
             .addFields({ name: "Event URL", value: event.url, inline: false })
             .addFields({ name: "Risk", value: msgConfig.lowRisk, inline: false })
 
-        return sendLog(embed);
+        return sendLog(embed, guildScheduledEvent.guildId);
     })
 
     /**
@@ -1236,7 +1205,7 @@ module.exports = (client) => {
             .addFields({ name: "Event URL", value: event.url, inline: false })
             .addFields({ name: "Risk", value: msgConfig.lowRisk, inline: false })
 
-        return sendLog(embed);
+        return sendLog(embed, guildScheduledEvent.guildId);
     });
 
     /**
@@ -1262,7 +1231,7 @@ module.exports = (client) => {
         }
 
         embed.addFields({ name: "Risk", value: msgConfig.lowRisk, inline: false })
-        return sendLog(embed);
+        return sendLog(embed, newGuildScheduledEvent.guildId);
     });
 
     /**
@@ -1271,8 +1240,6 @@ module.exports = (client) => {
      * @param {User} user
      */
     client.on(Events.GuildScheduledEventUserAdd, async (guildScheduledEvent, user) => {
-        const event = guildScheduledEvent;
-
         const embed = new EmbedBuilder()
             .setColor("Blue")
             .setTitle(`\`🔵\` User has Subscribed to Scheduled Event`)
@@ -1280,7 +1247,7 @@ module.exports = (client) => {
             .addFields({ name: "Event Name - ID", value: `${guildScheduledEvent.name} - ${guildScheduledEvent.id}`, inline: true })
             .addFields({ name: "Risk", value: msgConfig.info })
 
-        return sendLog(embed);
+        return sendLog(embed, guildScheduledEvent.guildId);
     });
 
     /**
@@ -1289,8 +1256,6 @@ module.exports = (client) => {
      * @param {User} user
      */
     client.on(Events.GuildScheduledEventUserRemove, async (guildScheduledEvent, user) => {
-        const event = guildScheduledEvent;
-
         const embed = new EmbedBuilder()
             .setColor("Blue")
             .setTitle(`\`🔵\` User has Unsuscribed to Scheduled Event`)
@@ -1298,7 +1263,7 @@ module.exports = (client) => {
             .addFields({ name: "Event Name - ID", value: `${guildScheduledEvent.name} - ${guildScheduledEvent.id}`, inline: true })
             .addFields({ name: "Risk", value: msgConfig.info })
 
-        return sendLog(embed);
+        return sendLog(embed, guildScheduledEvent.guildId);
     })
 
     /**
@@ -1358,7 +1323,7 @@ module.exports = (client) => {
             .addFields({ name: "Uploaded by User - User ID", value: `${user} - ${user.id}`, inline: true })
             .addFields({ name: "Risk", value: msgConfig.info, inline: false })
 
-        return sendLog(embed);
+        return sendLog(embed, sticker.guildId);
     })
 
     /**
@@ -1380,7 +1345,7 @@ module.exports = (client) => {
             .addFields({ name: "URL", value: sticker.url, inline: true })
             .addFields({ name: "Risk", value: msgConfig.info, inline: false })
 
-        return sendLog(embed);
+        return sendLog(embed, sticker.guildId);
     })
 
     /**
@@ -1404,7 +1369,7 @@ module.exports = (client) => {
         }
 
         embed.addFields({ name: "Risk", value: msgConfig.info, inline: false })
-        return sendLog(embed);
+        return sendLog(embed, newSticker.guildId);
     })
 
     /**
@@ -1417,7 +1382,7 @@ module.exports = (client) => {
             .setColor("Red")
             .addFields({ name: "Risk", value: msgConfig.discordApiError, inline: false })
 
-        return sendLog(embed);
+        return sendLog(embed, guild.id);
     })
 
     /**
@@ -1440,7 +1405,7 @@ module.exports = (client) => {
         }
 
         embed.addFields({ name: "Risk", value: msgConfig.highRisk, inline: false });
-        return sendLog(embed);
+        return sendLog(embed, newGuild.id);
     });
 
     /**
@@ -1455,7 +1420,7 @@ module.exports = (client) => {
     //         .addFields({ name: "Interaction Type", value: interaction.type, inline: true })
     //         .addFields({ name: "Risk", value: msgConfig.info, inline: false })
     //
-    //     return sendLog(embed);
+    //     return sendLog(embed, interaction.guildId);
     // });
 
     /**
@@ -1488,7 +1453,7 @@ module.exports = (client) => {
             .addFields({ name: "URL", value: invite.url, inline: true })
             .addFields({ name: "Risk", value: msgConfig.info, inline: false })
 
-        return sendLog(embed);
+        return sendLog(embed, invite.guild.id);
     });
 
     /**
@@ -1512,7 +1477,7 @@ module.exports = (client) => {
             .addFields({ name: "URL", value: invite.url, inline: true })
             .addFields({ name: "Risk", value: msgConfig.info, inline: false })
 
-        return sendLog(embed);
+        return sendLog(embed, invite.guild.id);
     })
 
     /**
@@ -1529,7 +1494,7 @@ module.exports = (client) => {
             .addFields({ name: "Channel - Channel ID", value: `${channel} - ${channel.id}`, inline: false })
             .addFields({ name: "Risk", value: msgConfig.raidRisk, inline: false })
 
-        return sendLog(embed, true, channel.id, title);
+        return sendLog(embed, channel.guild.id, true, channel.id, title);
     })
 
     /**
@@ -1584,7 +1549,7 @@ module.exports = (client) => {
 
         embed.addFields({ name: "Risk", value: msgConfig.moderateRisk, inline: false });
 
-        return sendLog(embed);
+        return sendLog(embed, message.guildId);
     });
 
     /**
@@ -1593,7 +1558,8 @@ module.exports = (client) => {
      * @param {Snowflake} userId 
      */
     client.on(Events.MessagePollVoteAdd, async (pollAnswer, userId) => {
-        const guildMember = await client.guilds.cache.get(pollAnswer.poll.message.guildId).members.fetch(userId);
+        const guildId = pollAnswer.poll.message.guildId;
+        const guildMember = await client.guilds.cache.get(guildId).members.fetch(userId);
 
         const embed = new EmbedBuilder()
             .setTitle(`\`🔵\` Member Voted in a Poll`)
@@ -1605,7 +1571,7 @@ module.exports = (client) => {
             .addFields({ name: `"${pollAnswer.text}" Answer Votes`, value: pollAnswer.voteCount.toString(), inline: false })
             .addFields({ name: "Risk", value: msgConfig.info, inline: false })
 
-        return sendLog(embed);
+        return sendLog(embed, guildId);
     });
 
     /**
@@ -1614,7 +1580,8 @@ module.exports = (client) => {
      * @param {Snowflake} userId
      */
     client.on(Events.MessagePollVoteRemove, async (pollAnswer, userId) => {
-        const guildMember = await client.guilds.cache.get(pollAnswer.poll.message.guildId).members.fetch(userId);
+        const guildId = pollAnswer.poll.message.guildId;
+        const guildMember = await client.guilds.cache.get(guildId).members.fetch(userId);
 
         const embed = new EmbedBuilder()
             .setTitle(`\`🔵\` Member Removed his Vote in a Poll`)
@@ -1626,7 +1593,7 @@ module.exports = (client) => {
             .addFields({ name: `"${pollAnswer.text}" Answer Votes`, value: pollAnswer.voteCount.toString(), inline: false })
             .addFields({ name: "Risk", value: msgConfig.info, inline: false })
 
-        return sendLog(embed);
+        return sendLog(embed, guildId);
     });
 
     /**
@@ -1651,7 +1618,7 @@ module.exports = (client) => {
             .addFields({ name: "Super Emoji used?", value: details.burst ? "Yes" : "No", inline: true })
             .addFields({ name: "Risk", value: msgConfig.info, inline: false })
 
-        return sendLog(embed);
+        return sendLog(embed, messageReaction.message.guildId);
     })
 
     /**
@@ -1675,7 +1642,7 @@ module.exports = (client) => {
             .addFields({ name: "Super Emoji used?", value: details.burst ? "Yes" : "No", inline: true })
             .addFields({ name: "Risk", value: msgConfig.info, inline: false })
 
-        return sendLog(embed);
+        return sendLog(embed, messageReaction.message.guildId);
     })
 
     /**
@@ -1693,7 +1660,7 @@ module.exports = (client) => {
             .addFields({ name: "Message Content", value: message.content || "Unknown", inline: false })
             .addFields({ name: "Risk", value: msgConfig.info, inline: false })
 
-        return sendLog(embed);
+        return sendLog(embed, message.guildId);
     })
 
     /**
@@ -1709,7 +1676,7 @@ module.exports = (client) => {
             .addFields({ name: "Message Content", value: reaction.message.content || "Unknown", inline: false })
             .addFields({ name: "Risk", value: msgConfig.info, inline: false })
 
-        return sendLog(embed);
+        return sendLog(embed, reaction.message.guildId);
     })
 
     /**
@@ -1749,7 +1716,7 @@ module.exports = (client) => {
             .addFields({ name: "Edited By User - User ID", value: `${author} - ${author.id}`, inline: false })
             .addFields({ name: "Risk", value: msgConfig.moderateRisk, inline: false })
 
-        return sendLog(embed);
+        return sendLog(embed, newMessage.guildId);
     })
 
     /**
@@ -1766,92 +1733,7 @@ module.exports = (client) => {
     //         .addFields({ name: "New Status", value: `\`${newPresence.status}\``, inline: true })
     //         .addFields({ name: "Risk", value: msgConfig.info, inline: false })
 
-    //     return sendLog(embed);
-    // })
-
-    /**
-     * Emitted when the client becomes ready to start working.
-     * @param {Client} client
-     */
-    // client.on(Events.Ready, async (client) => {
-    //     return console.log("Client ", client, " is ready!".red);
-    // })
-
-    /**
-     * Emitted when a shard's WebSocket disconnects and will no longer reconnect.
-     * @param {CloseEvent} event
-     * @param {number} id
-     */
-    // client.on(Events.ShardDisconnect, async (event, id) => {
-    //     const embed = new EmbedBuilder()
-    //         .setTitle(`\`🔵\` Shard Disconnected`)
-    //         .setColor("Blue")
-    //         .addFields({ name: "ID", value: id.toString(), inline: false })
-    //         .addFields({ name: "Risk", value: msgConfig.info, inline: false })
-
-    //     return sendLog(embed);
-    // })
-
-    /**
-     * Emitted whenever a shard's WebSocket encounters a connection error.
-     * @param {Error} error
-     * @param {number} shardId
-     */
-    // client.on(Events.ShardError, async (error, shardId) => {
-    //     const embed = new EmbedBuilder()
-    //         .setTitle(`\`🔴\` Shard Error`)
-    //         .setColor("Blue")
-    //         .addFields({ name: "Shard ID", value: shardId.toString(), inline: false })
-    //         .addFields({ name: "Error Name", value: error.name, inline: false })
-    //         .addFields({ name: "Error Message", value: error.message, inline: true })
-    //         .addFields({ name: "Risk", value: msgConfig.error, inline: false })
-
-    //     return sendLog(embed);
-    // })
-
-    /**
-     * Emitted when a shard turns ready.
-     * @param {number} id
-     * @param {Set<Snowflake>} unavilableGuilds
-     */
-    // client.on(Events.ShardReady, async (id, unavilableGuilds) => {
-    //     const embed = new EmbedBuilder()
-    //         .setTitle(`\`🔵\` Shard turned ready`)
-    //         .setColor("Blue")
-    //         .addFields({ name: "ID", value: id.toString(), inline: false })
-    //         .addFields({ name: "Risk", value: msgConfig.info, inline: false })
-
-    //     return sendLog(embed);
-    // })
-
-    /**
-     * Emitted when a shard is attempting to reconnect or re-identify.
-     * @param {number} id
-     */
-    // client.on(Events.ShardReconnecting, async (id) => {
-    //     const embed = new EmbedBuilder()
-    //         .setTitle(`\`🔵\` Shard Reconnecting`)
-    //         .setColor("Blue")
-    //         .addFields({ name: "ID", value: id.toString(), inline: false })
-    //         .addFields({ name: "Risk", value: msgConfig.info, inline: false })
-
-    //     return sendLog(embed);
-    // })
-
-    /**
-     * Emitted when a shard resumes successfully.
-     * @param {number} id
-     * @param {number} replayedEvents
-     */
-    // client.on(Events.ShardResume, async (id, replayedEvents) => {
-    //     const embed = new EmbedBuilder()
-    //         .setTitle(`\`🔵\` Shard Resumed`)
-    //         .setColor("Blue")
-    //         .addFields({ name: "ID", value: id.toString(), inline: false })
-    //         .addFields({ name: "Replayed Events", value: replayedEvents.toString(), inline: true })
-    //         .addFields({ name: "Risk", value: msgConfig.info, inline: false })
-
-    //     return sendLog(embed);
+    //     return sendLog(embed, newPresence.guild.id);
     // })
 
     /**
@@ -1874,7 +1756,7 @@ module.exports = (client) => {
             .addFields({ name: "Server Scheduled Event", value: stageInstance.guildScheduledEventId || "None", inline: true })
             .addFields({ name: "Risk", value: msgConfig.info, inline: false })
 
-        return sendLog(embed);
+        return sendLog(embed, stageInstance.guildId);
     })
 
     /**
@@ -1890,7 +1772,7 @@ module.exports = (client) => {
             .addFields({ name: "Server Scheduled Event", value: stageInstance.guildScheduledEventId || "None", inline: true })
             .addFields({ name: "Risk", value: msgConfig.info, inline: false })
 
-        return sendLog(embed);
+        return sendLog(embed, stageInstance.guildId);
     })
 
     /**
@@ -1914,7 +1796,7 @@ module.exports = (client) => {
         }
 
         embed.addFields({ name: "Risk", value: msgConfig.info, inline: false });
-        return sendLog(embed);
+        return sendLog(embed, newStageInstance.guildId);
     })
 
     /**
@@ -1938,7 +1820,7 @@ module.exports = (client) => {
             .addFields({ name: "Newly Created?", value: `\`${newlyCreated}\``, inline: true })
             .addFields({ name: "Risk", value: msgConfig.lowRisk, inline: false })
 
-        return sendLog(embed);
+        return sendLog(embed, thread.guildId);
     })
 
     /**
@@ -1955,7 +1837,7 @@ module.exports = (client) => {
             .addFields({ name: "Member Count", value: threadChannel.memberCount.toString(), inline: true })
             .addFields({ name: "Risk", value: msgConfig.info, inline: false })
 
-        return sendLog(embed);
+        return sendLog(embed, threadChannel.guildId);
     })
 
     /**
@@ -1987,7 +1869,7 @@ module.exports = (client) => {
         }
 
         embed.addFields({ name: "Risk", value: msgConfig.lowRisk, inline: false });
-        return sendLog(embed);
+        return sendLog(embed, thread.guildId);
     })
 
     /**
@@ -2033,7 +1915,7 @@ module.exports = (client) => {
         }
 
         embed.addFields({ name: "Risk", value: msgConfig.lowRisk, inline: false });
-        return sendLog(embed);
+        return sendLog(embed, newThread.guildId);
     })
 
     /**
@@ -2041,37 +1923,16 @@ module.exports = (client) => {
      * @param {Typing} typing
      */
     // client.on(Events.TypingStart, async (typing) => {
+    //     if (!typing.inGuild()) return;
+
     //     const embed = new EmbedBuilder()
     //         .setTitle(`\`🔵\` User Started Typing`)
     //         .setColor("Blue")
     //         .addFields({ name: "Channel", value: `${typing.channel} (${typing.channel.id})`, inline: false })
     //         .addFields({ name: "User", value: `${typing.member} (${typing.member.id})`, inline: true })
 
-    //     return sendLog(embed);
+    //     return sendLog(embed, typing.guild.id);
     // })
-
-    /**
-     * Emitted whenever a user's details (e.g. username) are changed. Triggered by the Discord gateway events UserUpdate, GuildMemberUpdate, and PresenceUpdate.
-     * @param {User} oldUser
-     * @param {User} newUser
-     */
-    client.on(Events.UserUpdate, async (oldUser, newUser) => {
-        const differences = await getDifferences(oldUser, newUser);
-
-        const embed = new EmbedBuilder()
-            .setTitle(`\`🟢\` User details are changed`)
-            .setDescription("The following changes have been made to user:")
-            .setColor("Green")
-            .addFields({ name: "User ID - UserName", value: `${oldUser.id} - ${oldUser.username}`, inline: false })
-
-        for (const key in differences) {
-            const { oldValue, newValue } = differences[key];
-            embed.addFields({ name: key, value: `Before: ${oldValue}\nAfter: ${newValue}`, inline: false });
-        }
-
-        embed.addFields({ name: "Risk", value: msgConfig.lowRisk, inline: false });
-        return sendLog(embed);
-    })
 
     /**
      * Emitted whenever a member changes voice state - e.g. joins/leaves a channel, mutes/unmutes.
@@ -2158,21 +2019,8 @@ module.exports = (client) => {
         // Embed will be sent only if there is a description (preventing empty embeds)
         if (embed.data.description) {
             embed.addFields({ name: "Risk", value: msgConfig.info, inline: false });
-            return sendLog(embed);
+            return sendLog(embed, newState.guild.id);
         }
-    })
-
-    /**
-     * Emitted for general warnings.
-     * @param {string} info
-     */
-    client.on(Events.Warn, async (info) => {
-        const embed = new EmbedBuilder()
-            .setTitle(`\`🔵\` Warn Info`)
-            .setColor("Blue")
-            .addFields({ name: "Info", value: "info", inline: false })
-
-        return sendLog(embed);
     })
 
     /**
@@ -2185,6 +2033,6 @@ module.exports = (client) => {
             .setColor("Blue")
             .addFields({ name: "Channel - Channel ID", value: `${channel} - ${channel.id}`, inline: false })
 
-        return sendLog(embed);
+        return sendLog(embed, channel.guild.id);
     })
 }
