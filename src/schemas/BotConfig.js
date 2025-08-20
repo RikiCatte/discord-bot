@@ -158,6 +158,18 @@ const botConfigSchema = new mongoose.Schema({
             notifiedAt: Date,
             image: Buffer
         },
+        serverstats: {
+            enabled: { type: Boolean, default: false },
+            channels: [{
+                ChannelID: String,
+                Label: String, // e.g. "👥 Total users:"
+                RoleID: String, // optional, if we want to count users with a specific role
+                Type: String, // "total", "members", "bots", "role", "activity"
+                Activity: String, // optional, e.g. "online", "dnd", "idle", "offline"
+                ShowCount: { type: Boolean, default: true }
+            }],
+            showActivityStats: { type: Boolean, default: false }
+        },
         suspicioususerjoin: {
             enabled: { type: Boolean, default: false },
             SusUsers: [{
