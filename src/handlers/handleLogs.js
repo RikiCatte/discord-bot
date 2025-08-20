@@ -1,6 +1,5 @@
 const { EmbedBuilder, Events, AuditLogEvent, ActionRowBuilder, ButtonBuilder, ButtonStyle, DMChannel, GuildChannel, GuildMember, AutoModerationActionExecution, GuildAuditLogsEntry, PollAnswer, MessageReaction, ThreadChannel, ThreadMember, TextChannel, NewsChannel, VoiceChannel, StageChannel, ForumChannel, MediaChannel, Embed } = require("discord.js");
 const msgConfig = require("../messageConfig.json");
-const serverStatsCategoryId = msgConfig.serverStats_Category;
 const getColorName = require("../utils/getColorName.js");
 const getDifferences = require("../utils/getDifferences.js");
 const getPermissionDifferences = require("../utils/getPermissionDifferences.js");
@@ -345,8 +344,10 @@ module.exports = (client) => {
      * @param {DMChannel | GuildChannel} newChannel
      */
     client.on(Events.ChannelUpdate, async (oldChannel, newChannel) => {
-        // Check if channel is under server stats category (we don't want these channels be logged when modified)
-        if (serverStatsCategoryId && newChannel.parent?.id === serverStatsCategoryId) return;
+        const config = await BotConfig.findOne({ GuildID: newChannel.guild.id });
+        const serverStatsChannels = config?.services?.serverstats?.channels?.map(c => c.ChannelID) || [];
+
+        if (serverStatsChannels.includes(newChannel.id)) return;
 
         newChannel.guild
             .fetchAuditLogs({ type: AuditLogEvent.ChannelUpdate })
@@ -1574,7 +1575,7 @@ module.exports = (client) => {
 
         let executor = null;
         if (matchingAudit)
-            executor = await client.guilds.cache.get(msgConfig.guild).members.fetch(matchingAudit.executorId);
+            executor = await client.guilds.cache.get(message.guild.id).members.fetch(matchingAudit.executorId);
 
         if (matchingAudit && executor) {
             embed.addFields({ name: "Deleted by", value: `${executor} (${executor.id})`, inline: true });
@@ -1592,7 +1593,7 @@ module.exports = (client) => {
      * @param {Snowflake} userId 
      */
     client.on(Events.MessagePollVoteAdd, async (pollAnswer, userId) => {
-        const guildMember = await client.guilds.cache.get(msgConfig.guild).members.fetch(userId);
+        const guildMember = await client.guilds.cache.get(pollAnswer.poll.message.guildId).members.fetch(userId);
 
         const embed = new EmbedBuilder()
             .setTitle(`\`🔵\` Member Voted in a Poll`)
@@ -1613,7 +1614,7 @@ module.exports = (client) => {
      * @param {Snowflake} userId
      */
     client.on(Events.MessagePollVoteRemove, async (pollAnswer, userId) => {
-        const guildMember = await client.guilds.cache.get(msgConfig.guild).members.fetch(userId);
+        const guildMember = await client.guilds.cache.get(pollAnswer.poll.message.guildId).members.fetch(userId);
 
         const embed = new EmbedBuilder()
             .setTitle(`\`🔵\` Member Removed his Vote in a Poll`)
