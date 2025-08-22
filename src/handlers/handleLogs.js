@@ -1120,7 +1120,7 @@ module.exports = (client) => {
             .setTitle(`\`🟡\` Role Modified`)
             .setDescription("The following changes have been made to role:")
             .setColor("Yellow")
-            .addFields({ name: "Role Name - ID", value: `${role.name} - ${role.id}`, inline: true })
+            .addFields({ name: "Role Name - ID", value: `${newRole.name} - ${newRole.id}`, inline: true })
 
         // Differences detected by getDifferences() here:
         for (const key in differences) {
