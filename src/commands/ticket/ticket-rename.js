@@ -1,4 +1,7 @@
 const { EmbedBuilder, SlashCommandBuilder, PermissionFlagsBits, MessageFlags } = require('discord.js');
+const BotConfig = require("../../schemas/BotConfig");
+const replyNoConfigFound = require("../../utils/BotConfig/replyNoConfigFound");
+const replyServiceAlreadyEnabledOrDisabled = require("../../utils/BotConfig/replyServiceAlreadyEnabledOrDisabled");
 const msgConfig = require("../../messageConfig.json");
 
 module.exports = {
@@ -15,6 +18,12 @@ module.exports = {
     botPermissions: [PermissionFlagsBits.ManageMessages],
 
     run: async (client, interaction) => {
+        const config = await BotConfig.findOne({ GuildID: interaction.guild.id });
+        const serviceConfig = config?.services?.ticket;
+
+        if (!serviceConfig) return await replyNoConfigFound(interaction, "ticket");
+        if (!serviceConfig.enabled) return await replyServiceAlreadyEnabledOrDisabled(interaction, "ticket", "disabled", false);
+
         try {
             const { options, message, member } = interaction;
             const oldName = interaction.channel.name;

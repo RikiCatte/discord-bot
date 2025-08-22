@@ -183,27 +183,26 @@ const botConfigSchema = new mongoose.Schema({
         },
         ticket: {
             enabled: { type: Boolean, default: false },
-            setup: {
-                Channel: String,
-                Category: String,
-                Transcripts: String,
-                Handlers: String,
-                Everyone: String,
-                Description: String,
-                EmbedColor: String,
-                CustomId: [String],
-                TicketCategories: [String],
-                MessageId: String,
-                Emojis: [String],
-                CategoriesEmojiArray: [{
-                    category: String,
-                    emoji: String
-                }]
-            },
+            Channel: String,
+            Category: String,
+            Transcripts: String,
+            Handlers: String,
+            Everyone: String,
+            Description: String,
+            EmbedColor: String,
+            CustomId: [String],
+            TicketCategories: [String],
+            MessageId: String,
+            Emojis: [String],
+            CategoriesEmojiArray: [{
+                category: String,
+                emoji: String
+            }],
             tickets: [{
                 MembersID: [String],
                 TicketID: String,
                 ChannelID: String,
+                OpenedAt: Date,
                 Closed: Boolean,
                 Locked: Boolean,
                 Type: String,
