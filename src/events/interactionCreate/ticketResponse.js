@@ -1,59 +1,61 @@
 const { ChannelType, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, PermissionFlagsBits, MessageFlags } = require("discord.js");
-const ticketschema = require("../../schemas/ticket");
-const TicketSetup = require("../../schemas/ticketsetup");
+const BotConfig = require("../../schemas/BotConfig");
+const updateServiceConfig = require("../../utils/BotConfig/updateServiceConfig");
+const replyNoConfigFound = require("../../utils/BotConfig/replyNoConfigFound");
+const replyServiceAlreadyEnabledOrDisabled = require("../../utils/BotConfig/replyServiceAlreadyEnabledOrDisabled")
 const msgConfig = require("../../messageConfig.json");
-require('dotenv').config();
 
 module.exports = async (client, interaction) => {
-    if (!interaction.isStringSelectMenu()) return;
+    const config = await BotConfig.findOne({ GuildID: interaction.guild.id });
+    const serviceConfig = config?.services?.ticket;
 
-    var selectedCategory;
-    if (interaction.values && interaction.values[0]) { // If interaction cames from StringSelectMenuBuilder
-        selectedCategory = interaction.values[0];
-    } else { // If not cames from StringSelectMenuBuilder
-        return;
-    }
+    if (!serviceConfig) return await replyNoConfigFound(interaction, "ticket");
+    if (!serviceConfig.enabled) return await replyServiceAlreadyEnabledOrDisabled(interaction, "ticket", "enabled", false);
+
+    if (
+        !interaction.isStringSelectMenu() ||
+        !interaction.customId ||
+        !serviceConfig?.CustomId?.includes(interaction.customId)
+    ) return;
+
+    let selectedCategory;
+    if (interaction.values && interaction.values[0]) selectedCategory = interaction.values[0];
+    else return;
 
     const { guild, member, customId } = interaction;
     const { ViewChannel, SendMessages, ManageChannels, ReadMessageHistory } = PermissionFlagsBits;
-    const ticketId = Math.floor(Math.random() * 9000) + 10000;
+    let ticketId;
 
-    const data = await TicketSetup.findOne({ GuildID: guild.id });
-    const messageId = data.MessageId;
-    const channel = client.channels.cache.get(data.Channel);
-    const message = await channel.messages.fetch(messageId);
-    message.edit("");
+    const messageId = serviceConfig.MessageId;
+    const channel = client.channels.cache.get(serviceConfig.Channel);
+    if (!channel) return;
+    const message = await channel.messages.fetch(messageId).catch(() => null);
+    if (message) message.edit("");
 
-    if (!data)
-        return;
-
-    if (!data.CustomId.includes(customId)) {
-        return;
-    }
+    if (!serviceConfig.CustomId.includes(customId)) return;
 
     if (!guild.members.me.permissions.has(ManageChannels))
-        interaction.reply({ content: "I don't have permissions to do this.", flags: MessageFlags.Ephemeral });
+        return interaction.reply({ content: "`⚠️` I don't have permissions to do this.", flags: MessageFlags.Ephemeral });
 
     try {
-        const staffRole = guild.roles.cache.get(process.env.staffRole);
-
-        if (!staffRole) {
-            return interaction.reply({ content: "Staff role not found, check .env file", flags: MessageFlags.Ephemeral });
-        }
-
-        //
+        const staffRole = guild.roles.cache.get(serviceConfig.Handlers);
+        if (!staffRole) return interaction.reply({ content: "`⚠️` Staff role not found, check BotConfig.", flags: MessageFlags.Ephemeral });
 
         const trimmedSelectedCategory = selectedCategory.trim();
-        const categoryIndex = data.TicketCategories.indexOf(trimmedSelectedCategory);
-        const emojiForCategory = `${data.CategoriesEmojiArray[categoryIndex]?.emoji}` || "";
+        const categoryIndex = serviceConfig.TicketCategories.indexOf(trimmedSelectedCategory);
+        const emojiForCategory = `${serviceConfig.CategoriesEmojiArray[categoryIndex]?.emoji}` || "";
+
+        do {
+            ticketId = Math.floor(Math.random() * 9000) + 10000;
+        } while (serviceConfig.tickets.some(t => t.TicketID === ticketId.toString()));
 
         await guild.channels.create({
             name: `『${emojiForCategory}』${member.user.username} ${trimmedSelectedCategory}`,
             type: ChannelType.GuildText,
-            parent: data.Category,
+            parent: serviceConfig.Category,
             permissionOverwrites: [
                 {
-                    id: data.Everyone,
+                    id: serviceConfig.Everyone,
                     deny: [ViewChannel, SendMessages, ReadMessageHistory],
                 },
                 {
@@ -61,25 +63,28 @@ module.exports = async (client, interaction) => {
                     allow: [ViewChannel, SendMessages, ReadMessageHistory],
                 },
                 {
-                    id: staffRole.id, // To allow staff role to access the ticket
+                    id: staffRole.id,
                     allow: [ViewChannel, SendMessages, ReadMessageHistory],
                 }
             ],
-        }).then(async (channel) => {
-            await ticketschema.create({
-                GuildID: guild.id,
-                MembersID: member.id,
-                TicketID: ticketId,
-                ChannelID: channel.id,
+        }).then(async (ticketChannel) => {
+            serviceConfig.tickets.push({
+                MembersID: [member.id],
+                TicketID: ticketId.toString(),
+                ChannelID: ticketChannel.id,
+                OpenedAt: Date.now(),
                 Closed: false,
                 Locked: false,
-                Type: selectedCategory,
+                Type: trimmedSelectedCategory,
                 Claimed: false,
+                ClaimedBy: ""
             });
 
+            await updateServiceConfig(config, "ticket", { tickets: serviceConfig.tickets });
+
             const embed = new EmbedBuilder()
-                .setTitle(`User: ${member.user.username} | ID: ${member.id} - Ticket: ${selectedCategory} | Ticket ID: ${ticketId}`)
-                .setDescription("Our team will contact you shortly. Please describe your issue. The buttons below are staff reserved")
+                .setTitle(`User: ${member.user.username} | ID: ${member.id} - Ticket Type: ${trimmedSelectedCategory} | Ticket ID: ${ticketId}`)
+                .setDescription("Our team will contact you shortly. Please describe your issue. The buttons below are staff reserved (except that one to ping the staff)")
                 .setAuthor({ name: `${client.user.username}`, iconURL: msgConfig.author_img })
                 .setColor("Random")
                 .setThumbnail(member.displayAvatarURL({ dynamic: true }))
@@ -87,24 +92,23 @@ module.exports = async (client, interaction) => {
                 .setFooter({ text: msgConfig.footer_text, iconURL: msgConfig.footer_iconURL });
 
             const buttonRow1 = new ActionRowBuilder().addComponents(
-                new ButtonBuilder().setCustomId('close').setLabel('Close ticket').setStyle(ButtonStyle.Primary).setEmoji('❌'),
-                new ButtonBuilder().setCustomId('lock').setLabel('Lock ticket').setStyle(ButtonStyle.Secondary).setEmoji('🔐'),
-                new ButtonBuilder().setCustomId('unlock').setLabel('Unlock ticket').setStyle(ButtonStyle.Success).setEmoji('🔓')
+                new ButtonBuilder().setCustomId('close').setLabel('Close Ticket').setStyle(ButtonStyle.Primary).setEmoji('❌'),
+                new ButtonBuilder().setCustomId('lock').setLabel('Lock Ticket').setStyle(ButtonStyle.Secondary).setEmoji('🔐'),
+                new ButtonBuilder().setCustomId('unlock').setLabel('Unlock Ticket').setStyle(ButtonStyle.Success).setEmoji('🔓')
             );
 
             const buttonRow2 = new ActionRowBuilder().addComponents(
-                new ButtonBuilder().setCustomId('claim').setLabel('Claim').setStyle(ButtonStyle.Secondary).setEmoji('🛄'),
-                new ButtonBuilder().setCustomId('rename').setLabel('Rename').setStyle(ButtonStyle.Secondary).setEmoji('📝'),
+                new ButtonBuilder().setCustomId('claim').setLabel('Claim Ticket').setStyle(ButtonStyle.Secondary).setEmoji('🛄'),
+                new ButtonBuilder().setCustomId('rename').setLabel('Rename Ticket Channel').setStyle(ButtonStyle.Secondary).setEmoji('📝'),
                 new ButtonBuilder().setCustomId('pingStaff').setLabel('Ping Staff').setStyle(ButtonStyle.Danger).setEmoji('🔔')
             );
 
-            channel.send({
+            ticketChannel.send({
                 embeds: [embed],
                 components: [buttonRow1, buttonRow2]
             });
 
-
-            interaction.reply({ content: `Succesfully created a ticket! Open it up here 👉 <#${channel.id}>`, flags: MessageFlags.Ephemeral });
+            interaction.reply({ content: `\`✅\` Succesfully created your ticket! Open it up here 👉 <#${ticketChannel.id}>`, flags: MessageFlags.Ephemeral });
         });
     } catch (err) {
         return console.log(err);
