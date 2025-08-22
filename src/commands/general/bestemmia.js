@@ -24,7 +24,7 @@ module.exports = {
             const rnd = Math.floor(Math.random() * data.length);
             const rigaDaInviare = data[rnd];
 
-            await interaction.reply(rigaDaInviare);
+            await interaction.reply({ content: rigaDaInviare, flags: MessageFlags.Ephemeral });
         } catch (error) {
             console.error('Errore durante la lettura del file JSON:', error);
             await interaction.reply({ content: `Si è verificato un errore durante la lettura del file.`, flags: MessageFlags.Ephemeral });
