@@ -29,7 +29,6 @@
   "exitMembersLogsChannel": "1187030720149987388",
   "commandsUsedLogsChannel": "1216388309626912909",
   "errorFlagSystemChannel": "1216388668374388836",
-  "bugReportsChannel": "1216481830694551553",
 
   "_comment___": "Logs System Risk Messages",
   "lowRisk": "🟢 Low Risk",
