@@ -108,10 +108,22 @@ module.exports = async function handleConfigurableService({
                 try {
                     await svc.validateInput(interaction, updated);
                 } catch (err) {
-                    await modalInteraction.reply({
-                        content: err.message || "An error occurred while validating your input.",
-                        flags: MessageFlags.Ephemeral
-                    });
+                    try {
+                        if (!modalInteraction.replied && !modalInteraction.deferred) {
+                            await modalInteraction.reply({
+                                content: err.message || "An error occurred while validating your input.",
+                                flags: MessageFlags.Ephemeral
+                            });
+                        } else {
+                            await modalInteraction.followUp({
+                                content: err.message || "An error occurred while validating your input.",
+                                flags: MessageFlags.Ephemeral
+                            });
+                        }
+                    }
+                    catch (err) {
+                        console.log("[handleConfigurableService.js] Error while following up:", err);
+                    }
                     return;
                 }
             }
@@ -168,11 +180,20 @@ module.exports = async function handleConfigurableService({
 
             // If no preview is provided, just send a success message
             try {
-                await modalInteraction.reply({
-                    content: isEnable ? replyStrings.setupSuccess(updated) : replyStrings.editSuccess(updated),
-                    flags: MessageFlags.Ephemeral
-                });
-            } catch (err) { /* interaction already replied or deferred */ };
+                if (!modalInteraction.replied && !modalInteraction.deferred) {
+                    await modalInteraction.reply({
+                        content: isEnable ? replyStrings.setupSuccess(updated) : replyStrings.editSuccess(updated),
+                        flags: MessageFlags.Ephemeral
+                    });
+                } else {
+                    await modalInteraction.followUp({
+                        content: isEnable ? replyStrings.setupSuccess(updated) : replyStrings.editSuccess(updated),
+                        flags: MessageFlags.Ephemeral
+                    });
+                }
+            } catch (err) {
+                console.log("[handleConfigurableService.js] Error while following up:", err);
+            }
         } catch (err) {
             const replyTarget = modalInteraction || interaction;
             if (!replyTarget.replied && !replyTarget.deferred) await replyTarget.reply({ content: err.message || "An error occurred while updating the configuration.", flags: MessageFlags.Ephemeral });
