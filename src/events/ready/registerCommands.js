@@ -9,7 +9,7 @@ const DEBUG = false;
 
 module.exports = async function registerCommands(client) {
     try {
-        const applicationCommands = await getApplicationCommands(client); //, testServerId); // Comment out testServerId to register commands globally (no guild-specific commands)
+        const applicationCommands = await getApplicationCommands(client);
 
         // await applicationCommands.set([]); // Decomment to clear only global application commands in case of problems
 

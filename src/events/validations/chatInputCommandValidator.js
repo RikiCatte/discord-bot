@@ -1,7 +1,7 @@
 require("colors");
 
 const { EmbedBuilder, ButtonBuilder, ButtonStyle, ActionRowBuilder, ComponentType, ChatInputCommandInteraction, MessageFlags } = require("discord.js");
-const { developersId, testServerId } = require("../../config.json");
+const { developersId } = require("../../config.json");
 const mConfig = require("../../messageConfig.json");
 const getLocalCommands = require("../../utils/getLocalCommands");
 const BotConfig = require("../../schemas/BotConfig");
@@ -42,16 +42,6 @@ module.exports = async (client, interaction) => {
 				const rEmbed = new EmbedBuilder()
 					.setColor(`${mConfig.embedColorError}`)
 					.setDescription(`${mConfig.commandDevOnly}`);
-				interaction.reply({ embeds: [rEmbed], flags: MessageFlags.Ephemeral });
-				return;
-			};
-		};
-
-		if (commandObject.testMode) {
-			if (interaction.guild.id !== testServerId) {
-				const rEmbed = new EmbedBuilder()
-					.setColor(`${mConfig.embedColorError}`)
-					.setDescription(`${mConfig.commandTestMode}`);
 				interaction.reply({ embeds: [rEmbed], flags: MessageFlags.Ephemeral });
 				return;
 			};

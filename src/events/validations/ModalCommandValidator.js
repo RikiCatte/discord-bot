@@ -1,7 +1,7 @@
 require("colors");
 
 const { EmbedBuilder, MessageFlags } = require("discord.js");
-const { developersId, testServerId } = require("../../config.json");
+const { developersId } = require("../../config.json");
 const mConfig = require("../../messageConfig.json");
 const getModals = require("../../utils/getModals");
 
@@ -20,16 +20,6 @@ module.exports = async (client, interaction) => {
 				const rEmbed = new EmbedBuilder()
 					.setColor(`${mConfig.embedColorError}`)
 					.setDescription(`${mConfig.commandDevOnly}`);
-				interaction.reply({ embeds: [rEmbed], flags: MessageFlags.Ephemeral });
-				return;
-			}
-		}
-
-		if (modalObject.testMode) {
-			if (interaction.guild.id !== testServerId) {
-				const rEmbed = new EmbedBuilder()
-					.setColor(`${mConfig.embedColorError}`)
-					.setDescription(`${mConfig.commandTestMode}`);
 				interaction.reply({ embeds: [rEmbed], flags: MessageFlags.Ephemeral });
 				return;
 			}
