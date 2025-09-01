@@ -142,11 +142,6 @@ const botConfigSchema = new mongoose.Schema({
             MuteRoleID: String,
             LogChannelID: String
         },
-        messagesleaderboard: {
-            enabled: { type: Boolean, default: false },
-            UserID: String,
-            Messages: Number
-        },
         freegames: {
             enabled: { type: Boolean, default: false },
             title: String,
