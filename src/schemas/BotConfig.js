@@ -136,12 +136,6 @@ const botConfigSchema = new mongoose.Schema({
                 SolvedBy: String,
             }]
         },
-        moderation: {
-            enabled: { type: Boolean, default: false },
-            MultiGuilded: { type: Boolean, default: true }, // ??
-            MuteRoleID: String,
-            LogChannelID: String
-        },
         freegames: {
             enabled: { type: Boolean, default: false },
             title: String,
