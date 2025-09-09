@@ -136,27 +136,20 @@ const botConfigSchema = new mongoose.Schema({
                 SolvedBy: String,
             }]
         },
-        moderation: {
-            enabled: { type: Boolean, default: false },
-            MultiGuilded: { type: Boolean, default: true }, // ??
-            MuteRoleID: String,
-            LogChannelID: String
-        },
-        messagesleaderboard: {
-            enabled: { type: Boolean, default: false },
-            UserID: String,
-            Messages: Number
-        },
         freegames: {
             enabled: { type: Boolean, default: false },
-            title: String,
-            description: String,
-            url: String,
-            source: String,
-            startDate: Date,
-            endDate: Date,
-            notifiedAt: Date,
-            image: Buffer
+            ChannelID: String,
+            Games: [{
+                ID: String,
+                Title: String,
+                Description: String,
+                Url: String,
+                Source: String,
+                StartDate: Date,
+                EndDate: Date,
+                NotifiedAt: Date,
+                Image: Buffer
+            }]
         },
         serverstats: {
             enabled: { type: Boolean, default: false },
@@ -218,19 +211,6 @@ const botConfigSchema = new mongoose.Schema({
                 Reason: String,
                 UnbannedAt: Date
             }]
-        },
-        warning: {
-            enabled: { type: Boolean, default: false },
-            UserID: String,
-            UserTag: String,
-            Content: Array
-        },
-        welcome: {
-            enabled: { type: Boolean, default: false },
-            ChannelID: String,
-            Message: String,
-            RoleID: String,
-            RulesChannelID: String
         }
     },
     lastUpdated: { type: Date, default: Date.now }
