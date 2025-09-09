@@ -1,9 +1,9 @@
 const { SlashCommandBuilder, EmbedBuilder, ChatInputCommandInteraction, MessageFlags } = require('discord.js');
-const axios = require('axios');
 require('dotenv').config();
+const axios = require('axios');
 const msgConfig = require("../../messageConfig.json");
-const { options } = require('superagent');
-const { botPermissions } = require('./qrcode');
+const BotConfig = require("../../schemas/BotConfig");
+const { replyNoConfigFound, replyServiceNotEnabled } = require("../../utils/BotConfig")
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -102,6 +102,12 @@ module.exports = {
      * @param {ChatInputCommandInteraction} interaction 
      */
     run: async (client, interaction) => {
+        const config = await BotConfig.findOne({ guildId: interaction.guild.id });
+        const serviceConfig = config.services?.antitor;
+
+        if (!config) return await replyNoConfigFound(interaction, "antitor");
+        if (!serviceConfig?.enabled) return await replyServiceNotEnabled(interaction, "antitor");
+
         const host = "api.antitor.com";
         const apiKey = process.env.antitorApi;
 

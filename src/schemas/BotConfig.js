@@ -8,6 +8,9 @@ const botConfigSchema = new mongoose.Schema({
             Permissions: String,
             Whitelist: [{ UserID: String }],
         },
+        antitor: {
+            enabled: { type: Boolean, default: false },
+        },
         nitroboost: {
             enabled: { type: Boolean, default: false },
             channelID: String,
