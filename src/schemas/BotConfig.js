@@ -11,13 +11,26 @@ const botConfigSchema = new mongoose.Schema({
         antitor: {
             enabled: { type: Boolean, default: false },
         },
-        nitroboost: {
+        ban: {
             enabled: { type: Boolean, default: false },
-            channelID: String,
-            embedColor: String,
-            embedTitle: String,
-            embedMessage: String,
-            boostMessage: String,
+            Bans: [{
+                UserID: String,
+                BannedBy: String, // Could be inaccurate (Discord does not provide a direct way to get who banned, this is a workaround)
+                Reason: String,
+                BannedAt: Date
+            }]
+        },
+        bugreport: {
+            enabled: { type: Boolean, default: false },
+            ReportChannelID: String,
+            Reports: [{
+                ReportID: String, // ID of the message in the report channel
+                ReportingMemberID: String,
+                ReportingCommand: String,
+                ReportDescription: String,
+                Solved: { type: Boolean, default: false },
+                FixedBy: String
+            }]
         },
         captcha: {
             enabled: { type: Boolean, default: false },
@@ -41,27 +54,6 @@ const botConfigSchema = new mongoose.Schema({
                 BypassedBy: String,
             }]
         },
-        ban: {
-            enabled: { type: Boolean, default: false },
-            Bans: [{
-                UserID: String,
-                BannedBy: String, // Could be inaccurate (Discord does not provide a direct way to get who banned, this is a workaround)
-                Reason: String,
-                BannedAt: Date
-            }]
-        },
-        bugreport: {
-            enabled: { type: Boolean, default: false },
-            ReportChannelID: String,
-            Reports: [{
-                ReportID: String, // ID of the message in the report channel
-                ReportingMemberID: String,
-                ReportingCommand: String,
-                ReportDescription: String,
-                Solved: { type: Boolean, default: false },
-                FixedBy: String
-            }]
-        },
         dinamic_activities: {
             enabled: { type: Boolean, default: false },
             activities: {
@@ -77,6 +69,21 @@ const botConfigSchema = new mongoose.Schema({
             },
             status: String, // 'online', 'idle', 'dnd', 'invisible'
             interval: { type: Number, default: 10000 }
+        },
+        freegames: {
+            enabled: { type: Boolean, default: false },
+            ChannelID: String,
+            Games: [{
+                ID: String,
+                Title: String,
+                Description: String,
+                Url: String,
+                Source: String,
+                StartDate: Date,
+                EndDate: Date,
+                NotifiedAt: Date,
+                Image: Buffer
+            }]
         },
         giveaway: {
             enabled: { type: Boolean, default: false },
@@ -139,19 +146,25 @@ const botConfigSchema = new mongoose.Schema({
                 SolvedBy: String,
             }]
         },
-        freegames: {
+        nitroboost: {
+            enabled: { type: Boolean, default: false },
+            channelID: String,
+            embedColor: String,
+            embedTitle: String,
+            embedMessage: String,
+            boostMessage: String,
+        },
+        poll: {
             enabled: { type: Boolean, default: false },
             ChannelID: String,
-            Games: [{
-                ID: String,
-                Title: String,
-                Description: String,
-                Url: String,
-                Source: String,
-                StartDate: Date,
-                EndDate: Date,
-                NotifiedAt: Date,
-                Image: Buffer
+            Polls: [{
+                MessageID: String,
+                Question: String,
+                Options: [String],
+                Votes: [Number],
+                Ended: Boolean, // The poll will be marked as ended only when the poll.end() function is called by a member
+                CreatedAt: Date,
+                EndsAt: Date
             }]
         },
         serverstats: {
