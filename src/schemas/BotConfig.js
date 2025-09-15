@@ -179,6 +179,19 @@ const botConfigSchema = new mongoose.Schema({
             }],
             showActivityStats: { type: Boolean, default: false }
         },
+        suggest: {
+            enabled: { type: Boolean, default: false },
+            ChannelID: String,
+            Suggestions: [{
+                SuggestionMessageID: String,
+                AuthorID: String,
+                Name: String,
+                Description: String,
+                SubmittedAt: Date,
+                Upvotes: [String],
+                Downvotes: [String],
+            }],
+        },
         suspicioususerjoin: {
             enabled: { type: Boolean, default: false },
             SusUsers: [{

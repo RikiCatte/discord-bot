@@ -22,7 +22,7 @@ module.exports = (client) => {
 
         const config = await BotConfig.findOne({ GuildID: guildId });
         const logsService = config?.services?.logs;
-        if (!logsService || !logsService.enabled) return;
+        if (!config || !logsService.enabled) return;
 
         const logChannel = client.channels.cache.get(logsService.LogChannelID);
         const staffChannel = client.channels.cache.get(logsService.StaffChannelID);
@@ -1603,6 +1603,8 @@ module.exports = (client) => {
      * @param {MessageReactionEventDetails} details 
      */
     client.on(Events.MessageReactionAdd, async (messageReaction, user, details) => {
+        if (user.bot) return;
+
         const embed = new EmbedBuilder()
             .setTitle(`\`🔵\` Reaction Added to a Message`)
             .setColor("Blue")
@@ -1618,7 +1620,32 @@ module.exports = (client) => {
             .addFields({ name: "Super Emoji used?", value: details.burst ? "Yes" : "No", inline: true })
             .addFields({ name: "Risk", value: msgConfig.info, inline: false })
 
-        return sendLog(embed, messageReaction.message.guildId);
+        await sendLog(embed, messageReaction.message.guildId);
+
+        const config = await BotConfig.findOne({ guildId: messageReaction.message.guildId });
+        const serviceConfig = config.services?.suggest;
+        if (!config || !serviceConfig.enabled) return;
+
+        const DBSuggestion = serviceConfig.Suggestions.find(s => s.SuggestionMessageID === messageReaction.message.id);
+        if (!DBSuggestion) return;
+
+        if (messageReaction.emoji.name === '✅') {
+            if (!DBSuggestion.Upvotes.includes(user.id)) DBSuggestion.Upvotes.push(user.id);
+            DBSuggestion.Downvotes = DBSuggestion.Downvotes.filter(id => id !== user.id);
+        } else if (messageReaction.emoji.name === '❌') {
+            if (!DBSuggestion.Downvotes.includes(user.id)) DBSuggestion.Downvotes.push(user.id);
+            DBSuggestion.Upvotes = DBSuggestion.Upvotes.filter(id => id !== user.id);
+        }
+
+        if (messageReaction.emoji.name === '✅') {
+            const noReaction = messageReaction.message.reactions.resolve('❌');
+            if (noReaction) await noReaction.users.remove(user.id).catch(() => { });
+        } else if (messageReaction.emoji.name === '❌') {
+            const yesReaction = messageReaction.message.reactions.resolve('✅');
+            if (yesReaction) await yesReaction.users.remove(user.id).catch(() => { });
+        }
+
+        return await updateServiceConfig(config, "suggest", { Suggestions: serviceConfig.Suggestions });
     })
 
     /**
@@ -1628,6 +1655,8 @@ module.exports = (client) => {
      * @param {MessageReactionEventDetails} details
      */
     client.on(Events.MessageReactionRemove, async (messageReaction, user, details) => {
+        if (user.bot) return;
+
         const embed = new EmbedBuilder()
             .setTitle(`\`🔵\` Reaction Removed from a Message`)
             .setColor("Blue")
@@ -1642,7 +1671,19 @@ module.exports = (client) => {
             .addFields({ name: "Super Emoji used?", value: details.burst ? "Yes" : "No", inline: true })
             .addFields({ name: "Risk", value: msgConfig.info, inline: false })
 
-        return sendLog(embed, messageReaction.message.guildId);
+        await sendLog(embed, messageReaction.message.guildId);
+
+        const config = await BotConfig.findOne({ GuildID: messageReaction.message.guildId });
+        const serviceConfig = config?.services?.suggest;
+        if (!config || !serviceConfig?.enabled) return;
+
+        const DBSuggestion = serviceConfig.Suggestions.find(s => s.SuggestionMessageID === messageReaction.message.id);
+        if (!DBSuggestion) return;
+
+        if (messageReaction.emoji.name === '✅') DBSuggestion.Upvotes = DBSuggestion.Upvotes.filter(id => id !== user.id);
+        else if (messageReaction.emoji.name === '❌') DBSuggestion.Downvotes = DBSuggestion.Downvotes.filter(id => id !== user.id);
+
+        return await updateServiceConfig(config, "suggest", { Suggestions: serviceConfig.Suggestions });
     })
 
     /**
@@ -1651,6 +1692,8 @@ module.exports = (client) => {
      * @param {Collection<(string|Snowflake), MessageReaction>} reactions
      */
     client.on(Events.MessageReactionRemoveAll, async (message, reactions, messageReactions) => {
+        if (user.bot) return;
+
         const embed = new EmbedBuilder()
             .setTitle(`\`🔵\` Message no Longer has any Reaction`)
             .setColor("Blue")
