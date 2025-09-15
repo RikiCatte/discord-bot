@@ -1,6 +1,8 @@
 require('dotenv').config();
 require("colors");
 
+const mongoose = require("mongoose");
+
 const { Client, GatewayIntentBits, Collection, Partials } = require('discord.js');
 const eventHandler = require("./handlers/eventHandler");
 
@@ -215,27 +217,31 @@ async function checkBotConfigOnStartup(client) {
     }
 }
 
-function loginBot() {
-    //console.log(process.env.TOKEN);
-    client.login(process.env.TOKEN)
-        .then(async () => {
-            console.log(`[INFO] ${client.user.username} is online.`.red);
-            retryAttempts = 0; // Reset retry attempts on successful login
-            await ensureAllServicesInConfig();
-            await checkBotConfigOnStartup(client);
-        })
-        .catch((error) => {
-            console.error('Failed to login:', error);
-            if (retryAttempts < maxRetries) {
-                retryAttempts++;
-                const retryDelay = Math.pow(2, retryAttempts) * 1000; // Exponential backoff
-                console.log(`Retrying in ${retryDelay / 1000} seconds...`);
-                setTimeout(loginBot, retryDelay);
-            } else {
-                console.error('Max retry attempts reached. Exiting...');
-                process.exit(1);
-            }
+async function startBot() {
+    try {
+        await mongoose.connect(process.env.MONGODB_TOKEN, {
+            useNewUrlParser: true,
+            useUnifiedTopology: true
         });
+        console.log(`[INFO] Connected to the MongoDB database.`.green);
+
+        await client.login(process.env.TOKEN);
+        console.log(`[INFO] ${client.user.username} is online.`.red);
+
+        await ensureAllServicesInConfig();
+        await checkBotConfigOnStartup(client);
+    } catch (error) {
+        console.error('Failed to start bot:', error);
+        retryAttempts++;
+        if (retryAttempts < maxRetries) {
+            const retryDelay = Math.pow(2, retryAttempts) * 1000;
+            console.log(`Retrying in ${retryDelay / 1000} seconds...`);
+            setTimeout(startBot, retryDelay);
+        } else {
+            console.error('Max retry attempts reached. Exiting...');
+            process.exit(1);
+        }
+    }
 }
 
-loginBot();
+startBot();
