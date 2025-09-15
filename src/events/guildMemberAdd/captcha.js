@@ -33,6 +33,7 @@ module.exports = async (client, member) => {
 
         userData = {
             UserID: member.id,
+            GuildID: member.guild.id, // Redundant but necessary because we can't access guildId from DMs!
             Username: member.user.username,
             JoinedAt: await frmtDate(),
             ReJoinedTimes: 0,

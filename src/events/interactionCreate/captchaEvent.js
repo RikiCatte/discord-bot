@@ -13,16 +13,23 @@ const updateServiceConfig = require("../../utils/BotConfig/updateServiceConfig")
 module.exports = async (client, interaction) => {
     if (!interaction.isModalSubmit() || interaction.customId !== "captchaModal") return;
 
-    const config = await BotConfig.findOne({ GuildID: msgConfig.guild });
-    const serviceConfig = config?.services?.captcha;
-    if (!serviceConfig || !serviceConfig.enabled) return;
+    let userData;
+    let config;
+    let serviceConfig;
 
-    const verifiedRoleId = serviceConfig.RoleID;
-    const captchaGuild = await client.guilds.fetch(msgConfig.guild);
-    const verifiedRole = await captchaGuild.roles.cache.get(verifiedRoleId);
-    const member = await captchaGuild.members.fetch(interaction.user.id);
+    const allConfigs = await BotConfig.find({});
+    for (const conf of allConfigs) {
+        const captchaService = conf.services?.captcha;
+        if (!captchaService) continue;
+        const found = captchaService.users?.find(u => u.UserID === interaction.user.id);
+        if (found) {
+            userData = found;
+            config = conf;
+            serviceConfig = captchaService;
+            break;
+        }
+    }
 
-    let userData = serviceConfig.users?.find(u => u.UserID === interaction.user.id);
     if (!userData) return await interaction.reply({ content: "There was an error while searching your captcha data, please contact a server admin", flags: MessageFlags.Ephemeral });
 
     let captcha = userData.Captcha;
@@ -48,9 +55,25 @@ module.exports = async (client, interaction) => {
         return await interaction.reply({ content: "\`❌\` That was wrong!, please try again", flags: MessageFlags.Ephemeral });
     }
 
+    const captchaGuild = await client.guilds.fetch(config.GuildID);
+    const verifiedRole = captchaGuild.roles.cache.get(serviceConfig.RoleID);
+
+    let member;
+    try {
+        member = await captchaGuild.members.fetch(interaction.user.id);
+    } catch (err) {
+        return await interaction.reply({
+            content: "Impossibile trovarti nel server. Forse hai lasciato il server?",
+            flags: MessageFlags.Ephemeral
+        });
+    }
+
     await member.roles.add(verifiedRole).catch(async err => {
         console.log(err);
-        await interaction.reply({ content: "\`🔴\` There was an error while attempting to add you the verified role, please contact server staff to solve!", flags: MessageFlags.Ephemeral });
+        await interaction.reply({
+            content: "\`🔴\` There was an error while attempting to add you the verified role, please contact server staff to solve!",
+            flags: MessageFlags.Ephemeral
+        });
         return;
     });
 
@@ -70,8 +93,10 @@ module.exports = async (client, interaction) => {
     await updateServiceConfig(config, "captcha", { users: serviceConfig.users });
 
     let verifyMsg;
-    if (userData.Bypassed) verifyMsg = `You got verification bypassed by user id ${userData.BypassedBy} in **${member.guild.name}** on \`${await frmtDate()} UTC +1/2\``;
-    else verifyMsg = `You got verified in **${member.guild.name}** on \`${await frmtDate()} UTC +1/2\``;
+    if (userData.Bypassed)
+        verifyMsg = `You got verification bypassed by user id ${userData.BypassedBy} in **${member.guild.name}** on \`${await frmtDate()} UTC +1/2\``;
+    else
+        verifyMsg = `You got verified in **${member.guild.name}** on \`${await frmtDate()} UTC +1/2\``;
 
     await interaction.reply({ content: "\`✅\` " + verifyMsg });
 }

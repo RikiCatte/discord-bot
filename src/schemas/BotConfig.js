@@ -40,6 +40,7 @@ const botConfigSchema = new mongoose.Schema({
             ExpireInMS: Number,
             Captcha: String,
             users: [{
+                GuildID: String, // Redundant but necessary because we can't access guildId from DMs!
                 UserID: String,
                 Username: String,
                 JoinedAt: String,

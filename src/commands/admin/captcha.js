@@ -128,14 +128,6 @@ module.exports = {
                         text = serviceConfig.Captcha;
                     }
 
-                    userData.Captcha = text;
-                    userData.CaptchaStatus = "Pending";
-                    userData.CaptchaExpired = false;
-                    userData.Resent = true;
-                    userData.ResentBy = interaction.user.id;
-
-                    await updateServiceConfig(config, "captcha", { users: serviceConfig.users });
-
                     // Send the new captcha
                     const captcha = new CaptchaGenerator()
                         .setDimension(150, 450)
@@ -183,9 +175,23 @@ module.exports = {
 
                     captchaModal.addComponents(firstActionRow);
 
-                    const msg = await user.send({ embeds: [capEmbed, alertEmbed], files: [attachment], components: [captchaButton] }).catch(err => {
-                        return console.log(err);
+                    const msg = await user.send({ embeds: [capEmbed, alertEmbed], files: [attachment], components: [captchaButton] }).catch(async err => {
+                        if (!interaction.replied) await interaction.reply({ content: `\`❌\` I was unable to send a DM to ${user}, they probably have DMs disabled. Please ask them to enable DMs and try again.`, components: [], flags: MessageFlags.Ephemeral });
+                        else await interaction.editReply({ content: `\`❌\` I was unable to send a DM to ${user}, they probably have DMs disabled. Please ask them to enable DMs and try again.`, components: [], flags: MessageFlags.Ephemeral });
+                        return null;
                     });
+
+                    if (!msg) return;
+
+                    console.log("ciao")
+
+                    userData.Captcha = text;
+                    userData.CaptchaStatus = "Pending";
+                    userData.CaptchaExpired = false;
+                    userData.Resent = true;
+                    userData.ResentBy = interaction.user.id;
+
+                    await updateServiceConfig(config, "captcha", { users: serviceConfig.users });
 
                     const collector = msg.createMessageComponentCollector({ time: serviceConfig.ExpireInMS });
 
@@ -212,7 +218,19 @@ module.exports = {
                         await msg.delete().catch(err => console.log(err));
                     });
 
-                    await interaction.followUp({ content: `✅ Successfully resent CAPTCHA verification to ${user}`, flags: MessageFlags.Ephemeral });
+                    try {
+                        if (!interaction.replied) {
+                            await interaction.reply({ content: `✅ Successfully resent CAPTCHA verification to ${user}`, flags: MessageFlags.Ephemeral });
+                        } else {
+                            await interaction.editReply({ content: `✅ Successfully resent CAPTCHA verification to ${user}`, flags: MessageFlags.Ephemeral });
+                        }
+                    } catch (err) {
+                        try {
+                            await interaction.followUp({ content: `✅ Successfully resent CAPTCHA verification to ${user}`, flags: MessageFlags.Ephemeral });
+                        } catch (err2) {
+                            console.error("All reply attempts failed:", err2);
+                        }
+                    }
                 } else {
                     return await interaction.reply({ content: `\`⚠️\` ${user}'s CAPTCHA is not expired!`, flags: MessageFlags.Ephemeral });
                 }
