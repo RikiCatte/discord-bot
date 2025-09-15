@@ -183,8 +183,6 @@ module.exports = {
 
                     if (!msg) return;
 
-                    console.log("ciao")
-
                     userData.Captcha = text;
                     userData.CaptchaStatus = "Pending";
                     userData.CaptchaExpired = false;
