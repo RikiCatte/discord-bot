@@ -64,8 +64,8 @@ module.exports = {
                 .setDescription("Delete all polls (both from the database and from the Discord channel).")
         )
         .toJSON(),
-    userPermissions: [],
-    botPermissions: [],
+    userPermissions: [PermissionFlagsBits.ManageChannels],
+    botPermissions: [PermissionFlagsBits.ManageChannels],
 
     /**
      * 
