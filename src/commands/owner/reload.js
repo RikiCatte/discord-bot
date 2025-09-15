@@ -1,8 +1,8 @@
 require("colors");
 const { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits } = require('discord.js');
 const eventHandler = require('../../handlers/eventHandler');
-const commandHandler = require("../../events/ready/registerCommands");
-const CMhandler = require("../../events/ready/registerContextMenus");
+const commandHandler = require("../../events/clientReady/registerCommands");
+const CMhandler = require("../../events/clientReady/registerContextMenus");
 const msgConfig = require("../../messageConfig.json");
 
 module.exports = {
