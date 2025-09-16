@@ -1,5 +1,7 @@
 const { ButtonBuilder, ActionRowBuilder, EmbedBuilder, SlashCommandBuilder, ButtonStyle, MessageFlags } = require('discord.js');
-const client = require('../../index');
+const msgConfig = require("../../messageConfig.json");
+const BotConfig = require("../../schemas/BotConfig");
+const { replyNoConfigFound, replyServiceNotEnabled } = require("../../utils/BotConfig");
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -17,19 +19,33 @@ module.exports = {
     run: async (client, interaction) => {
         const { options, member, guild, channel } = interaction;
 
+        const config = await BotConfig.findOne({ GuildID: guild.id });
+        const serviceConfig = config.services?.music;
+        if (!config) return await replyNoConfigFound(interaction, "music");
+        if (!serviceConfig.enabled) return await replyServiceNotEnabled(interaction, "music");
+
         const query = options.getString('query');
         const voiceChannel = member.voice.channel;
 
         const embed = new EmbedBuilder();
 
         if (!voiceChannel) {
-            embed.setColor('#ff0000').setDescription('You must be in a voice channel to execute music commands.');
+
+            embed
+                .setDescription("`⚠️` You must be in a voice channel to execute music commands.")
+                .setColor("Red")
+                .setFooter({ text: msgConfig.footer_text, iconURL: msgConfig.footer_iconURL });
+
             return interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
         }
 
         if (!member.voice.channelId == guild.members.me.voice.channelId) {
-            embed.setColor('#ff0000').setDescription(`You can't use the music player as it is already active in <#${guild.members.me.voice.channelId}>`);
-            return interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
+            embed
+                .setDescription(`\`⚠️\` You can't use the music player as it is already active in <#${guild.members.me.voice.channelId}>`)
+                .setColor("Red")
+                .setFooter({ text: msgConfig.footer_text, iconURL: msgConfig.footer_iconURL });
+
+            return await interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
         }
 
         try {
@@ -81,8 +97,8 @@ module.exports = {
             const expTime = Math.floor((new Date().getTime() + collectorTime) / 1000);
 
             embed
-                .setColor('#00ff00')
-                .setDescription(`You can control the music with buttons. Or you can use commands to skip, loop, shuffle songs, etc. Use \`/bug-report\` if you encounter any bugs or issues. These buttons will expire in <t:${expTime}:R>`);
+                .setColor("Green")
+                .setDescription(`\`✅\` You can control the music with buttons. Or you can use commands to skip, loop, shuffle songs, etc. Use \`/bug-report\` if you encounter any bugs or issues. These buttons will expire in <t:${expTime}:R>`);
 
             let message;
             try {
@@ -90,7 +106,7 @@ module.exports = {
                     message = await interaction.reply({ embeds: [embed], components: [row1, row2] });
             } catch (e) {
                 // console.log(e);
-                return await interaction.channel.send(`${interaction.user} There was an error while replying to your interaction please use the commands to handle the music system`);
+                return await interaction.channel.send(`\`⚠️\` ${interaction.user} There was an error while replying to your interaction please use the commands to handle the music system`);
             }
 
             // Add a listener for button interactions
@@ -101,32 +117,32 @@ module.exports = {
                 try {
                     if (i.customId === 'pause') {
                         client.distube.pause(guild);
-                        embed.setDescription('⏸ Music paused.');
+                        embed.setDescription("`⏸` Music paused.");
                         await i.update({ embeds: [embed] });
                     } else if (i.customId === 'skip') {
                         client.distube.skip(guild);
-                        embed.setDescription('⏭️ Song skipped.');
+                        embed.setDescription("`⏭️` Song skipped.");
                         await i.update({ embeds: [embed] });
                     } else if (i.customId === 'resume') {
                         client.distube.resume(guild);
-                        embed.setDescription('▶️ Music resumed.');
+                        embed.setDescription("`▶️` Music resumed.");
                         await i.update({ embeds: [embed] });
                     } else if (i.customId === 'stop') {
                         client.distube.stop(guild);
-                        embed.setDescription('⏹️ Music stopped.');
+                        embed.setDescription("`⏹️` Music stopped.");
                         await i.update({ embeds: [embed] });
                     } else if (i.customId === 'loop') {
                         const toggle = client.distube.toggleAutoplay(guild);
-                        embed.setDescription(`🔁 Loop ${toggle ? 'enabled' : 'disabled'}.`);
+                        embed.setDescription(`\`🔁\` Loop ${toggle ? 'enabled' : 'disabled'}.`);
                         await i.update({ embeds: [embed] });
                     }
                     else if (i.customId === 'leave') {
                         await client.distube.voices.leave(voiceChannel.guild.id);
-                        embed.setDescription('💨 Bot has left the vocal channel.');
+                        embed.setDescription("`💨` Bot has left the vocal channel.");
                         await i.update({ embeds: [embed] });
                     }
                 } catch (error) {
-                    embed.setDescription(`❌ ${error.message}`);
+                    embed.setDescription(`\`❌\` ${error.message}`);
                     await i.update({ embeds: [embed] });
                 }
             });
@@ -142,7 +158,10 @@ module.exports = {
         } catch (err) {
             console.log(err);
 
-            embed.setColor('#ff0000').setDescription('⛔ | Something went wrong...');
+            embed
+                .setDescription("`⛔` Something went wrong...")
+                .setColor("Red")
+                .setFooter({ text: msgConfig.footer_text, iconURL: msgConfig.footer_iconURL });
 
             return await interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
         }
