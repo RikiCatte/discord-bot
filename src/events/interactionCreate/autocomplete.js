@@ -7,13 +7,30 @@ module.exports = async (client, interaction) => {
     const commandObject = localCommands.find((cmd) => cmd.data.name === interaction.commandName);
 
     if (commandObject && commandObject.autocomplete) {
+        let responded = false;
+        const timeout = setTimeout(() => {
+            if (!responded) {
+                responded = true;
+                interaction.respond([]).catch(() => {});
+            }
+        }, 2500);
+
         try {
-            await commandObject.autocomplete(interaction);
+            await commandObject.autocomplete(interaction, (hasResponded) => {
+                clearTimeout(timeout);
+                if (hasResponded) responded = true;
+            });
         } catch (err) {
-            console.log("[AUTOCOMPLETE ERROR]", err);
-            await interaction.respond([]); // Reply anyway to avoid timeout
+            clearTimeout(timeout);
+            if (!responded) {
+                responded = true;
+                if (!err.message?.includes("Unknown interaction")) {
+                    console.log("[AUTOCOMPLETE ERROR]", err);
+                }
+                await interaction.respond([]).catch(() => {});
+            }
         }
     } else {
-        await interaction.respond([]); // Reply anyway to avoid timeout
+        await interaction.respond([]).catch(() => {});
     }
 };
