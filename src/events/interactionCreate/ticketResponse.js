@@ -6,17 +6,15 @@ const replyServiceAlreadyEnabledOrDisabled = require("../../utils/BotConfig/repl
 const msgConfig = require("../../messageConfig.json");
 
 module.exports = async (client, interaction) => {
-    if (
-        !interaction.isStringSelectMenu() ||
-        !interaction.customId ||
-        !serviceConfig?.CustomId?.includes(interaction.customId)
-    ) return;
+    if (!interaction.isStringSelectMenu() || !interaction.customId) return;
 
     const config = await BotConfig.findOne({ GuildID: interaction.guild.id });
     const serviceConfig = config?.services?.ticket;
 
     if (!serviceConfig) return await replyNoConfigFound(interaction, "ticket");
     if (!serviceConfig.enabled) return await replyServiceAlreadyEnabledOrDisabled(interaction, "ticket", "enabled", false);
+
+    if (!serviceConfig?.CustomId?.includes(interaction.customId)) return;
 
     let selectedCategory;
     if (interaction.values && interaction.values[0]) selectedCategory = interaction.values[0];
