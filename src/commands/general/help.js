@@ -21,7 +21,7 @@ module.exports = {
 
                 const commandFiles = fs.readdirSync(folderPath).filter(file => file.endsWith(".js"));
 
-                let fields = [];
+                let description = "";
                 const subcommands = [];
 
                 for (const file of commandFiles) {
@@ -30,42 +30,38 @@ module.exports = {
                     try {
                         command = require(filePath);
                     } catch (err) {
-                        continue; // Salta file non validi
+                        continue; 
                     }
 
                     if (command.disabled || command.deleted) continue;
 
-                    const description = command.data?.description || "No description provided";
+                    const cmdName = command.data?.name ? `/${command.data.name}` : "Unknown";
+                    const cmdDescription = command.data?.description || "No description provided";
 
                     if (command.data?.type === "SUB_COMMAND" || command.data?.type === "SUB_COMMAND_GROUP") {
                         subcommands.push(command);
                     } else if (command.data?.name) {
-                        fields.push({
-                            name: `/${command.data.name}`,
-                            value: `${description}`
-                        });
+                        description += `- \`${cmdName}\` - ${cmdDescription}\n`;
                     }
                 }
 
-                // Aggiungi subcommands come campo unico
                 if (subcommands.length > 0) {
-                    fields.push({
-                        name: "Subcommands",
-                        value: subcommands.map(subcommand => `/${subcommand.data.name}`).join("\n")
-                    });
+                    description += `\n**Subcommands:**\n`;
+                    description += subcommands.map(subcommand => `- \`/${subcommand.data.name}\``).join("\n");
+                    description += "\n";
                 }
 
-                // Spezza i campi in più embed se superano 25
-                for (let i = 0; i < fields.length; i += 25) {
+                for (let i = 0; i < description.length; i += 4096) {
                     const categoryEmbed = new EmbedBuilder()
-                        .setTitle(folder)
+                        .setTitle(`\`📖\` ${folder} - Command List (${commandFiles.length})`)
+                        .setColor("#0b7e33")
+                        .setDescription(description.slice(i, i + 4096))
                         .setFooter({
                             text: `${msgConfig.footer_text}`,
                             iconURL: `${msgConfig.footer_iconURL}`
                         })
                         .setTimestamp()
-                        .setThumbnail(client.user.displayAvatarURL())
-                        .addFields(fields.slice(i, i + 25));
+                        .setThumbnail(client.user.displayAvatarURL());
 
                     helpEmbeds.push(categoryEmbed);
                 }
