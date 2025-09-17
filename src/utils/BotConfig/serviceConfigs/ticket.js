@@ -113,7 +113,6 @@ module.exports = {
             category: category.trim(),
             emoji: values.Emojis.split(",")[index % values.Emojis.split(",").length].trim()
         })),
-        tickets: []
     }),
     validateInput: async (interaction, updated) => {
         const channel = interaction.guild.channels.cache.get(updated.Channel);
