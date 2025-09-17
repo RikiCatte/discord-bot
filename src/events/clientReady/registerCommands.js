@@ -66,6 +66,16 @@ module.exports = async function registerCommands(client) {
                 );
             }
         }
+
+        const localCommandNames = localCommands.map(cmd => cmd.data.name);
+        for (const remoteCommand of applicationCommands.cache.values()) {
+            if (!localCommandNames.includes(remoteCommand.name)) {
+                await applicationCommands.delete(remoteCommand.id);
+                console.log(
+                    `[COMMAND REGISTERY] Application command ${remoteCommand.name} has been deleted because it no longer exists locally.`.red
+                );
+            }
+        }
     } catch (err) {
         console.log(`[COMMAND REGISTERY] - [ERROR] - An error occurred whit "${commandName}" command! Here it is the reason and location: `.red + `\n ${err.stack}`.yellow);
     }

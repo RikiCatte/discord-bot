@@ -37,6 +37,7 @@ module.exports = (existing, local) => {
                 description: input.description,
                 options: input.options ? normalizeObject(input.options) : undefined,
                 required: input.required,
+                autocomplete: input.autocomplete,
             };
 
             return normalizedItem;
