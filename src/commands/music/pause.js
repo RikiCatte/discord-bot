@@ -2,15 +2,15 @@ const { EmbedBuilder, SlashCommandBuilder, MessageFlags } = require('discord.js'
 const msgConfig = require("../../messageConfig.json");
 const BotConfig = require("../../schemas/BotConfig");
 const { replyNoConfigFound, replyServiceNotEnabled } = require("../../utils/BotConfig");
+const { useTimeline } = require('discord-player');
 
 module.exports = {
     data: new SlashCommandBuilder()
         .setName("pause")
-        .setDescription("Pause a song.")
+        .setDescription("Pause or resume the currently playing song.")
         .toJSON(),
     userPermissions: [],
     botPermissions: [],
-    disabled: true,
 
     run: async (client, interaction) => {
         const { member, guild } = interaction;
@@ -23,6 +23,7 @@ module.exports = {
         const voiceChannel = member.voice.channel;
 
         const embed = new EmbedBuilder();
+        let message;
 
         if (!voiceChannel) {
             embed
@@ -30,7 +31,19 @@ module.exports = {
                 .setColor("Red")
                 .setFooter({ text: msgConfig.footer_text, iconURL: msgConfig.footer_iconURL });
 
-            return await interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
+            if (!interaction.replied && !interaction.deferred) {
+                const { resource } = await interaction.reply({ embeds: [embed], withResponse: true });
+                message = resource.message;
+            }
+            else {
+                const { resource } = await interaction.editReply({ embeds: [embed], withResponse: true });
+                message = resource.message;
+            }
+
+            setTimeout(() => {
+                if (message && message.deletable) message.delete().catch(() => { });
+            }, 10_000);
+            return;
         }
 
         if (!member.voice.channelId == guild.members.me.voice.channelId) {
@@ -39,30 +52,88 @@ module.exports = {
                 .setColor("Red")
                 .setFooter({ text: msgConfig.footer_text, iconURL: msgConfig.footer_iconURL });
 
-            return await interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
+            if (!interaction.replied && !interaction.deferred) {
+                const { resource } = await interaction.reply({ embeds: [embed], withResponse: true });
+                message = resource.message;
+            }
+            else {
+                const { resource } = await interaction.editReply({ embeds: [embed], withResponse: true });
+                message = resource.message;
+            }
+
+            setTimeout(() => {
+                if (message && message.deletable) message.delete().catch(() => { });
+            }, 10_000);
+            return;
+        }
+
+        const DJRole = guild.roles.cache.get(serviceConfig.DJRoleID);
+        if (DJRole && !interaction.member.roles.cache.has(DJRole.id)) {
+            embed
+                .setDescription(`\`⚠️\` You need the <@&${DJRole.id}> role to use music commands.`)
+                .setColor("Red")
+                .setFooter({ text: msgConfig.footer_text, iconURL: msgConfig.footer_iconURL });
+
+            if (!interaction.replied && !interaction.deferred) {
+                const { resource } = await interaction.reply({ embeds: [embed], withResponse: true });
+                message = resource.message;
+            }
+            else {
+                const { resource } = await interaction.editReply({ embeds: [embed], withResponse: true });
+                message = resource.message;
+            }
+
+            setTimeout(() => {
+                if (message && message.deletable) message.delete().catch(() => { });
+            }, 10_000);
+            return;
         }
 
         try {
-            const queue = await client.distube.getQueue(voiceChannel)
+            const timeline = useTimeline({ node: interaction.guild });
 
-            if (!queue) {
+            if (!timeline) {
                 embed
-                    .setDescription("\`❌\` There is no active queue.")
+                    .setDescription("\`❌\` This server does not have an active player session.")
                     .setColor("Red")
                     .setFooter({ text: msgConfig.footer_text, iconURL: msgConfig.footer_iconURL });
 
-                return await interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
+                if (!interaction.replied && !interaction.deferred) {
+                    const { resource } = await interaction.reply({ embeds: [embed], withResponse: true });
+                    message = resource.message;
+                }
+                else {
+                    const { resource } = await interaction.editReply({ embeds: [embed], withResponse: true });
+                    message = resource.message;
+                }
+
+                setTimeout(() => {
+                    if (message && message.deletable) message.delete().catch(() => { });
+                }, 10_000);
+                return;
             }
 
-            await queue.pause(voiceChannel);
+            const wasPaused = timeline.paused;
+            wasPaused ? timeline.resume() : timeline.pause();
 
             embed
-                .setColor("Orange")
-                .setDescription("\`⏸️\` Song paused.")
-                .setColor("Orange")
+                .setDescription(`\`${wasPaused ? "▶️" : "⏸️"}\` Song ${wasPaused ? "resumed" : "paused"}.`)
+                .setColor(`${wasPaused ? "Green" : "Orange"}`)
                 .setFooter({ text: msgConfig.footer_text, iconURL: msgConfig.footer_iconURL });
 
-            return await interaction.reply({ embeds: [embed] });
+            if (!interaction.replied && !interaction.deferred) {
+                const { resource } = await interaction.reply({ embeds: [embed], withResponse: true });
+                message = resource.message;
+            }
+            else {
+                const { resource } = await interaction.editReply({ embeds: [embed], withResponse: true });
+                message = resource.message;
+            }
+
+            setTimeout(() => {
+                if (message && message.deletable) message.delete().catch(() => { });
+            }, 10_000);
+            return;
         } catch (err) {
             console.log(err);
 
@@ -71,7 +142,19 @@ module.exports = {
                 .setColor("Red")
                 .setFooter({ text: msgConfig.footer_text, iconURL: msgConfig.footer_iconURL });
 
-            return await interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
+            if (!interaction.replied && !interaction.deferred) {
+                const { resource } = await interaction.reply({ embeds: [embed], withResponse: true });
+                message = resource.message;
+            }
+            else {
+                const { resource } = await interaction.editReply({ embeds: [embed], withResponse: true });
+                message = resource.message;
+            }
+
+            setTimeout(() => {
+                if (message && message.deletable) message.delete().catch(() => { });
+            }, 10_000);
+            return;
         }
     }
 }

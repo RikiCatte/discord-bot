@@ -6,12 +6,14 @@ const process = require('node:process');
 const mongoose = require('mongoose');
 const { Client, GatewayIntentBits, Collection, Partials } = require('discord.js');
 const { Player } = require('discord-player');
+const { YoutubeiExtractor } = require('discord-player-youtubei');
 const { DefaultExtractors } = require('@discord-player/extractor');
 
 // Local modules
 const eventHandler = require('./handlers/eventHandler');
 const handleLogs = require('./handlers/handleLogs');
 const BotConfig = require('./schemas/BotConfig.js');
+const suppressYoutubeJSLibErrors = require("./utils/suppressYoutubeJSLibErrors.js");
 const {
     getDefaultServicesFromSchema,
     ensureAllServicesInConfig,
@@ -38,8 +40,21 @@ async function main() {
     });
 
     // Music player setup
-    const player = new Player(client);
-    await player.extractors.loadMulti(DefaultExtractors);    
+    const player = new Player(client, {
+        blockStreamFrom: [],
+        blockExtractors: []
+    });
+    await player.extractors.loadMulti(DefaultExtractors);
+
+    if (process.env.ytCookie) { // If you don't provide your youtube cookie, discord-player will use the default extractor (it should be SoundCloud)
+        await player.extractors.register(YoutubeiExtractor, {
+            cookie: process.env.ytCookie,
+            streamOptions: {
+                useClient: "WEB_EMBEDDED",
+            },
+            generateWithPoToken: true,
+        });
+    }
 
     // Custom client properties
     client.commands = new Collection();
@@ -87,6 +102,9 @@ async function main() {
 
     // Music event handlers
     require('./events/musicEvents.js')(player, client);
+
+    // Suppress non-critical errors from youtubei.js library
+    suppressYoutubeJSLibErrors();
 }
 
 main();

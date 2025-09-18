@@ -2,6 +2,7 @@ const { EmbedBuilder, SlashCommandBuilder, MessageFlags } = require('discord.js'
 const msgConfig = require("../../messageConfig.json");
 const BotConfig = require("../../schemas/BotConfig");
 const { replyNoConfigFound, replyServiceNotEnabled } = require("../../utils/BotConfig");
+const { useTimeline } = require('discord-player');
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -17,7 +18,6 @@ module.exports = {
         .toJSON(),
     userPermissions: [],
     botPermissions: [],
-    disabled: true,
 
     run: async (client, interaction) => {
         const { member, guild, options } = interaction;
@@ -31,6 +31,7 @@ module.exports = {
         const voiceChannel = member.voice.channel;
 
         const embed = new EmbedBuilder();
+        let message;
 
         if (!voiceChannel) {
             embed
@@ -38,7 +39,19 @@ module.exports = {
                 .setColor("Red")
                 .setFooter({ text: msgConfig.footer_text, iconURL: msgConfig.footer_iconURL });
 
-            return await interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
+            if (!interaction.replied && !interaction.deferred) {
+                const { resource } = await interaction.reply({ embeds: [embed], withResponse: true });
+                message = resource.message;
+            }
+            else {
+                const { resource } = await interaction.editReply({ embeds: [embed], withResponse: true });
+                message = resource.message;
+            }
+
+            setTimeout(() => {
+                if (message && message.deletable) message.delete().catch(() => { });
+            }, 10_000);
+            return;
         }
 
         if (!member.voice.channelId == guild.members.me.voice.channelId) {
@@ -47,12 +60,87 @@ module.exports = {
                 .setColor("Red")
                 .setFooter({ text: msgConfig.footer_text, iconURL: msgConfig.footer_iconURL });
 
-            return await interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
+            if (!interaction.replied && !interaction.deferred) {
+                const { resource } = await interaction.reply({ embeds: [embed], withResponse: true });
+                message = resource.message;
+            }
+            else {
+                const { resource } = await interaction.editReply({ embeds: [embed], withResponse: true });
+                message = resource.message;
+            }
+
+            setTimeout(() => {
+                if (message && message.deletable) message.delete().catch(() => { });
+            }, 10_000);
+            return;
+        }
+
+        const DJRole = guild.roles.cache.get(serviceConfig.DJRoleID);
+        if (DJRole && !interaction.member.roles.cache.has(DJRole.id)) {
+            embed
+                .setDescription(`\`⚠️\` You need the <@&${DJRole.id}> role to use music commands.`)
+                .setColor("Red")
+                .setFooter({ text: msgConfig.footer_text, iconURL: msgConfig.footer_iconURL });
+
+            if (!interaction.replied && !interaction.deferred) {
+                const { resource } = await interaction.reply({ embeds: [embed], withResponse: true });
+                message = resource.message;
+            }
+            else {
+                const { resource } = await interaction.editReply({ embeds: [embed], withResponse: true });
+                message = resource.message;
+            }
+
+            setTimeout(() => {
+                if (message && message.deletable) message.delete().catch(() => { });
+            }, 10_000);
+            return;
         }
 
         try {
-            client.distube.setVolume(voiceChannel, volume);
-            return await interaction.reply({ content: `\`🔈\` Volume has been set to ${volume}%` });
+            const timeline = useTimeline({ node: interaction.guild });
+            const prevVolume = timeline.volume;
+            if (volume === prevVolume) {
+                embed
+                    .setDescription(`\`⚠️\` The volume is already set to ${volume}%.`)
+                    .setColor("Red")
+                    .setFooter({ text: msgConfig.footer_text, iconURL: msgConfig.footer_iconURL });
+
+                if (!interaction.replied && !interaction.deferred) {
+                    const { resource } = await interaction.reply({ embeds: [embed], withResponse: true });
+                    message = resource.message;
+                }
+                else {
+                    const { resource } = await interaction.editReply({ embeds: [embed], withResponse: true });
+                    message = resource.message;
+                }
+
+                setTimeout(() => {
+                    if (message && message.deletable) message.delete().catch(() => { });
+                }, 10_000);
+                return;
+            } else {
+                await timeline.setVolume(volume);
+
+                embed
+                    .setDescription(`\`🔈\` Volume has been set to **${volume}%**, previous volume was ${prevVolume}%`)
+                    .setColor("Grey")
+                    .setFooter({ text: msgConfig.footer_text, iconURL: msgConfig.footer_iconURL });
+            }
+
+            if (!interaction.replied && !interaction.deferred) {
+                const { resource } = await interaction.reply({ embeds: [embed], withResponse: true });
+                message = resource.message;
+            }
+            else {
+                const { resource } = await interaction.editReply({ embeds: [embed], withResponse: true });
+                message = resource.message;
+            }
+
+            setTimeout(() => {
+                if (message && message.deletable) message.delete().catch(() => { });
+            }, 10_000);
+            return;
         } catch (err) {
             console.log(err);
 
@@ -61,7 +149,19 @@ module.exports = {
                 .setColor("Red")
                 .setFooter({ text: msgConfig.footer_text, iconURL: msgConfig.footer_iconURL });
 
-            return await interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
+            if (!interaction.replied && !interaction.deferred) {
+                const { resource } = await interaction.reply({ embeds: [embed], withResponse: true });
+                message = resource.message;
+            }
+            else {
+                const { resource } = await interaction.editReply({ embeds: [embed], withResponse: true });
+                message = resource.message;
+            }
+
+            setTimeout(() => {
+                if (message && message.deletable) message.delete().catch(() => { });
+            }, 10_000);
+            return;
         }
     }
 }

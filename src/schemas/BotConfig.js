@@ -149,6 +149,9 @@ const botConfigSchema = new mongoose.Schema({
         },
         music: {
             enabled: { type: Boolean, default: false },
+            MusicCommandsChannelID: String,
+            MusicVoiceChannelID: String,
+            DJRoleID: String,
         },
         nitroboost: {
             enabled: { type: Boolean, default: false },

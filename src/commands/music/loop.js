@@ -2,25 +2,39 @@ const { EmbedBuilder, SlashCommandBuilder, MessageFlags } = require("discord.js"
 const msgConfig = require("../../messageConfig.json");
 const BotConfig = require("../../schemas/BotConfig");
 const { replyNoConfigFound, replyServiceNotEnabled } = require("../../utils/BotConfig");
+const { useQueue, QueueRepeatMode } = require('discord-player');
 
 module.exports = {
     data: new SlashCommandBuilder()
         .setName("loop")
-        .setDescription("Display loop options.")
-        .addStringOption(option =>
-            option.setName("options")
-                .setDescription("Loop options: off, song, queue")
-                .addChoices(
-                    { name: "off", value: "off" },
-                    { name: "song", value: "song" },
-                    { name: "queue", value: "queue" },
-                )
+        .setDescription("Loop the queue in different modes.")
+        .addNumberOption((option) =>
+            option
+                .setName('mode')
+                .setDescription('The loop mode')
                 .setRequired(true)
+                .addChoices(
+                    {
+                        name: 'Off',
+                        value: QueueRepeatMode.OFF,
+                    },
+                    {
+                        name: 'Track',
+                        value: QueueRepeatMode.TRACK,
+                    },
+                    {
+                        name: 'Queue',
+                        value: QueueRepeatMode.QUEUE,
+                    },
+                    {
+                        name: 'Autoplay',
+                        value: QueueRepeatMode.AUTOPLAY,
+                    },
+                ),
         )
         .toJSON(),
     userPermissions: [],
     botPermissions: [],
-    disabled: true,
 
     run: async (client, interaction) => {
         const { member, options, guild } = interaction;
@@ -34,6 +48,7 @@ module.exports = {
         const voiceChannel = member.voice.channel;
 
         const embed = new EmbedBuilder()
+        let message;
 
         if (!voiceChannel) {
             embed
@@ -41,7 +56,19 @@ module.exports = {
                 .setColor("Red")
                 .setFooter({ text: msgConfig.footer_text, iconURL: msgConfig.footer_iconURL });
 
-            return await interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
+            if (!interaction.replied && !interaction.deferred) {
+                const { resource } = await interaction.reply({ embeds: [embed], withResponse: true });
+                message = resource.message;
+            }
+            else {
+                const { resource } = await interaction.editReply({ embeds: [embed], withResponse: true });
+                message = resource.message;
+            }
+
+            setTimeout(() => {
+                if (message && message.deletable) message.delete().catch(() => { });
+            }, 10_000);
+            return;
         }
 
         if (!member.voice.channelId == guild.members.me.voice.channelId) {
@@ -50,45 +77,78 @@ module.exports = {
                 .setColor("Red")
                 .setFooter({ text: msgConfig.footer_text, iconURL: msgConfig.footer_iconURL });
 
-            return await interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
+            if (!interaction.replied && !interaction.deferred) {
+                const { resource } = await interaction.reply({ embeds: [embed], withResponse: true });
+                message = resource.message;
+            }
+            else {
+                const { resource } = await interaction.editReply({ embeds: [embed], withResponse: true });
+                message = resource.message;
+            }
+
+            setTimeout(() => {
+                if (message && message.deletable) message.delete().catch(() => { });
+            }, 10_000);
+            return;
+        }
+
+        const DJRole = guild.roles.cache.get(serviceConfig.DJRoleID);
+        if (DJRole && !interaction.member.roles.cache.has(DJRole.id)) {
+            embed
+                .setDescription(`\`⚠️\` You need the <@&${DJRole.id}> role to use music commands.`)
+                .setColor("Red")
+                .setFooter({ text: msgConfig.footer_text, iconURL: msgConfig.footer_iconURL });
+
+            if (!interaction.replied && !interaction.deferred) {
+                const { resource } = await interaction.reply({ embeds: [embed], withResponse: true });
+                message = resource.message;
+            }
+            else {
+                const { resource } = await interaction.editReply({ embeds: [embed], withResponse: true });
+                message = resource.message;
+            }
+
+            setTimeout(() => {
+                if (message && message.deletable) message.delete().catch(() => { });
+            }, 10_000);
+            return;
         }
 
         try {
-            const queue = await client.distube.getQueue(voiceChannel);
+            const loopMode = interaction.options.getNumber("mode");
+
+            const queue = useQueue(interaction.guild);
 
             if (!queue) {
                 embed
-                    .setDescription("`⚠️` There is no active queue.")
+                    .setDescription("\`❌\` This server does not have an active player session.")
                     .setColor("Red")
                     .setFooter({ text: msgConfig.footer_text, iconURL: msgConfig.footer_iconURL });
 
-                return await interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
+                if (!interaction.replied && !interaction.deferred) return await interaction.reply({ embeds: [embed] });
+                else return await interaction.editReply({ embeds: [embed] });
             }
 
-            let mode = null;
-
-            switch (option) {
-                case "off":
-                    mode = 0;
-                    break;
-                case "song":
-                    mode = 1;
-                    break;
-                case "queue":
-                    mode = 2;
-                    break;
-            }
-
-            mode = await queue.setRepeatMode(mode);
-
-            mode = mode ? (mode === 2 ? "Repeat queue" : "Repeat song") : "Off";
+            queue.setRepeatMode(loopMode);
 
             embed
-                .setDescription(`\`🔁\` Set repeat mode to \`${mode}\`.`)
+                .setDescription(`\`🔁\` Loop mode set to ${QueueRepeatMode[loopMode]}.`)
                 .setColor("Orange")
                 .setFooter({ text: msgConfig.footer_text, iconURL: msgConfig.footer_iconURL });
 
-            return await interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
+            if (!interaction.replied && !interaction.deferred) {
+                const { resource } = await interaction.reply({ embeds: [embed], withResponse: true });
+                message = resource.message;
+            }
+            else {
+                const { resource } = await interaction.editReply({ embeds: [embed], withResponse: true });
+                message = resource.message;
+            }
+
+            setTimeout(() => {
+                if (message && message.deletable) message.delete().catch(() => { });
+            }, 10_000);
+            return;
         } catch (err) {
             console.log(err);
 
@@ -97,7 +157,19 @@ module.exports = {
                 .setColor("Red")
                 .setFooter({ text: msgConfig.footer_text, iconURL: msgConfig.footer_iconURL });
 
-            return await interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
+            if (!interaction.replied && !interaction.deferred) {
+                const { resource } = await interaction.reply({ embeds: [embed], withResponse: true });
+                message = resource.message;
+            }
+            else {
+                const { resource } = await interaction.editReply({ embeds: [embed], withResponse: true });
+                message = resource.message;
+            }
+
+            setTimeout(() => {
+                if (message && message.deletable) message.delete().catch(() => { });
+            }, 10_000);
+            return;
         }
     }
 }

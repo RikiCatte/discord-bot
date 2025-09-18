@@ -2,6 +2,7 @@ const { EmbedBuilder, SlashCommandBuilder, MessageFlags } = require('discord.js'
 const msgConfig = require("../../messageConfig.json");
 const BotConfig = require("../../schemas/BotConfig");
 const { replyNoConfigFound, replyServiceNotEnabled } = require("../../utils/BotConfig");
+const { useQueue } = require('discord-player');
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -10,40 +11,20 @@ module.exports = {
         .toJSON(),
     userPermissions: [],
     botPermissions: [],
-    disabled: true,
 
     run: async (client, interaction) => {
-        const { member, guild } = interaction;
+        const { guild } = interaction;
 
         const config = await BotConfig.findOne({ GuildID: guild.id });
         const serviceConfig = config.services?.music;
         if (!config) return await replyNoConfigFound(interaction, "music");
         if (!serviceConfig.enabled) return await replyServiceNotEnabled(interaction, "music");
 
-        const voiceChannel = member.voice.channel;
-
         const embed = new EmbedBuilder();
-
-        if (!voiceChannel) {
-            embed
-                .setDescription("`⚠️` You must be in a voice channel to execute music commands.")
-                .setColor("Red")
-                .setFooter({ text: msgConfig.footer_text, iconURL: msgConfig.footer_iconURL });
-
-            return await interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
-        }
-
-        if (!member.voice.channelId == guild.members.me.voice.channelId) {
-            embed
-                .setDescription(`\`⚠️\` You can't use the music player because it's already active in <#${guild.members.me.voice.channelId}>`)
-                .setColor("Red")
-                .setFooter({ text: msgConfig.footer_text, iconURL: msgConfig.footer_iconURL });
-
-            return await interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
-        }
+        let message;
 
         try {
-            const queue = await client.distube.getQueue(voiceChannel)
+            const queue = useQueue(interaction.guild);
 
             if (!queue) {
                 embed
@@ -51,19 +32,84 @@ module.exports = {
                     .setColor("Red")
                     .setFooter({ text: msgConfig.footer_text, iconURL: msgConfig.footer_iconURL });
 
-                return await interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
+                if (!interaction.replied && !interaction.deferred) {
+                    const { resource } = await interaction.reply({ embeds: [embed], withResponse: true });
+                    message = resource.message;
+                }
+                else {
+                    const { resource } = await interaction.editReply({ embeds: [embed], withResponse: true });
+                    message = resource.message;
+                }
+
+                setTimeout(() => {
+                    if (message && message.deletable) message.delete().catch(() => { });
+                }, 10_000);
+                return;
             }
 
-            const song = queue.songs[0];
+            const DJRole = guild.roles.cache.get(serviceConfig.DJRoleID);
+            if (DJRole && !interaction.member.roles.cache.has(DJRole.id)) {
+                embed
+                    .setDescription(`\`⚠️\` You need the <@&${DJRole.id}> role to use music commands.`)
+                    .setColor("Red")
+                    .setFooter({ text: msgConfig.footer_text, iconURL: msgConfig.footer_iconURL });
 
-            embed
-                .setDescription(`\`🎵\` **Now playing:** \`${song.name}\` - \`${song.formattedDuration}\`.\nLink:**${song.url}**`)
-                .setThumbnail(song.thumbnail)
-                .setColor("Blue")
-                .setFooter({ text: msgConfig.footer_text, iconURL: msgConfig.footer_iconURL });
+                if (!interaction.replied && !interaction.deferred) {
+                    const { resource } = await interaction.reply({ embeds: [embed], withResponse: true });
+                    message = resource.message;
+                }
+                else {
+                    const { resource } = await interaction.editReply({ embeds: [embed], withResponse: true });
+                    message = resource.message;
+                }
 
-            return await interaction.reply({ embeds: [embed] });
+                setTimeout(() => {
+                    if (message && message.deletable) message.delete().catch(() => { });
+                }, 10_000);
+                return;
+            }
 
+            const currentSong = queue.currentTrack;
+            if (!currentSong) {
+                embed
+                    .setDescription("\`❌\` There is no song currently playing.")
+                    .setColor("Red")
+                    .setFooter({ text: msgConfig.footer_text, iconURL: msgConfig.footer_iconURL });
+
+                if (!interaction.replied && !interaction.deferred) {
+                    const { resource } = await interaction.reply({ embeds: [embed], withResponse: true });
+                    message = resource.message;
+                }
+                else {
+                    const { resource } = await interaction.editReply({ embeds: [embed], withResponse: true });
+                    message = resource.message;
+                }
+
+                setTimeout(() => {
+                    if (message && message.deletable) message.delete().catch(() => { });
+                }, 10_000);
+                return;
+            } else {
+                embed
+                    .setDescription(`\`🎵\` **Now playing:** \`${currentSong.cleanTitle}\` - \`${currentSong.duration}\`.\nLink: **${currentSong.url}**\n${queue.node.createProgressBar()}`)
+                    .setThumbnail(currentSong.thumbnail)
+                    .setColor("Blue")
+                    .setFooter({ text: msgConfig.footer_text, iconURL: msgConfig.footer_iconURL });
+
+                if (!interaction.replied && !interaction.deferred) {
+                    const { resource } = await interaction.reply({ embeds: [embed], withResponse: true });
+                    message = resource.message;
+                }
+                else {
+                    const { resource } = await interaction.editReply({ embeds: [embed], withResponse: true });
+                    message = resource.message;
+                }
+
+                setTimeout(() => {
+                    if (message && message.deletable) message.delete().catch(() => { });
+                }, 10_000);
+                return;
+            }
         } catch (err) {
             console.log(err);
 
@@ -72,7 +118,19 @@ module.exports = {
                 .setColor("Red")
                 .setFooter({ text: msgConfig.footer_text, iconURL: msgConfig.footer_iconURL });
 
-            return await interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
+            if (!interaction.replied && !interaction.deferred) {
+                const { resource } = await interaction.reply({ embeds: [embed], withResponse: true });
+                message = resource.message;
+            }
+            else {
+                const { resource } = await interaction.editReply({ embeds: [embed], withResponse: true });
+                message = resource.message;
+            }
+
+            setTimeout(() => {
+                if (message && message.deletable) message.delete().catch(() => { });
+            }, 10_000);
+            return;
         }
     }
 }
