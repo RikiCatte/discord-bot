@@ -1,5 +1,6 @@
 const BotConfig = require("../../schemas/BotConfig");
 require("colors");
+const { useQueue } = require("discord-player");
 
 module.exports = async (client) => {
     const guilds = client.guilds.cache.map(g => g.id);
@@ -24,8 +25,10 @@ module.exports = async (client) => {
         const interval = config.services.dinamic_activities.interval || 10000;
 
         console.log(`[LOADED BOT ACTIVITIES] Dynamic activities enabled: ${activities.join(', ')}`.yellow);
-
         setInterval(() => {
+            const queue = useQueue(guildId);
+            if (queue && queue.currentTrack && !queue.node.isPaused()) return;
+
             let activity = activities[Math.floor(Math.random() * activities.length)];
 
             if (activity === 'Ping') activity = `\📶\ Ping: ${client.ws.ping}ms`;

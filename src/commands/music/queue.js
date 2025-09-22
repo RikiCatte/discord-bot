@@ -113,6 +113,12 @@ module.exports = {
                 return;
             }
 
+            if (queue.tracks.size === 0)
+                if (!interaction.replied && !interaction.deferred)
+                    return await interaction.reply({ content: "`⚠️` The music queue is currently empty.", flags: MessageFlags.Ephemeral });
+                else
+                    return await interaction.editReply({ content: "`⚠️` The music queue is currently empty.", flags: MessageFlags.Ephemeral });
+
             const currentTrack = queue.current;
 
             const upcomingTracks = queue.tracks.slice(0, 5);

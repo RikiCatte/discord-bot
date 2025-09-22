@@ -2,24 +2,6 @@ const { TextInputStyle, ChannelType } = require("discord.js");
 
 const musicFields = [
     {
-        customId: "MusicCommandsChannelID",
-        label: "Music Commands Channel ID",
-        style: TextInputStyle.Short,
-        placeholder: "Channel ID where music commands can be used.",
-        minLength: 18,
-        maxLength: 19,
-        required: true
-    },
-    {
-        customId: "MusicVoiceChannelID",
-        label: "Music Voice Channel ID",
-        style: TextInputStyle.Short,
-        placeholder: "Channel ID of the voice channel the bot will join.",
-        minLength: 18,
-        maxLength: 19,
-        required: true
-    },
-    {
         customId: "DJRoleID",
         label: "DJ Role ID",
         style: TextInputStyle.Short,
@@ -27,6 +9,15 @@ const musicFields = [
         minLength: 18,
         maxLength: 19,
         required: true
+    },
+    {
+        customId: "VoiceChannelID",
+        label: "Voice Channel ID",
+        style: TextInputStyle.Short,
+        placeholder: "Enter a VC ID to enable the commandless music system (optional).",
+        minLength: 18,
+        maxLength: 19,
+        required: false
     }
 ];
 
@@ -44,21 +35,29 @@ module.exports = {
     fields: musicFields,
     updateFields: (values) => ({
         enabled: true,
-        MusicCommandsChannelID: values.MusicCommandsChannelID,
-        MusicVoiceChannelID: values.MusicVoiceChannelID,
-        DJRoleID: values.DJRoleID
+        DJRoleID: values.DJRoleID,
+        VoiceChannelID: values.VoiceChannelID || null,
+        EmbedChannelID: null,
+        EmbedMessageID: null,
     }),
     validateInput: async (interaction, updated) => {
-        const commandsChannel = interaction.guild.channels.cache.get(updated.MusicCommandsChannelID);
-        const voiceChannel = interaction.guild.channels.cache.get(updated.MusicVoiceChannelID);
         const djRole = interaction.guild.roles.cache.get(updated.DJRoleID);
 
-        if (!commandsChannel || commandsChannel.type !== ChannelType.GuildText) throw new Error("`❌` The music commands channel ID does not exist or is not a text channel.");
-        if (!voiceChannel || (voiceChannel.type !== ChannelType.GuildVoice && voiceChannel.type !== ChannelType.GuildStageVoice)) throw new Error("`❌` The music voice channel ID does not exist or is not a voice/stage channel.");
         if (!djRole) throw new Error("`❌` The DJ role ID does not exist.");
+
+        if (!updated.VoiceChannelID) return; // Voice channel is optional
+        const voiceChannel = interaction.guild.channels.cache.get(updated.VoiceChannelID);
+        if (!voiceChannel || voiceChannel.type !== ChannelType.GuildVoice) throw new Error("`❌` The Voice Channel ID is invalid or not a voice channel.");
     },
     replyStrings: {
-        setupSuccess: (values) => `\`✅\` \`music\` service succesfully **ENABLED**, you can now use the music system commands across the guild (use \`/help\` to see the commands) you have to use commands in <#${values.MusicCommandsChannelID}>, the bot will join <#${values.MusicVoiceChannelID}> and users with <@&${values.DJRoleID}> role will be able to control the music system.`,
-        editSuccess: (values) => `\`✅\` \`music\` service succesfully **UPDATED**, you can now use the music system commands across the guild (use \`/help\` to see the commands) you have to use commands in <#${values.MusicCommandsChannelID}>, the bot will join <#${values.MusicVoiceChannelID}> and users with <@&${values.DJRoleID}> role will be able to control the music system.`,
+        setupSuccess: (values) => {
+            if (values.VoiceChannelID) return `\`✅\` \`music\` service succesfully **ENABLED**. You can now use the music system commands across the guild (use \`/help\` to see the commands). Users with <@&${values.DJRoleID}> role will be able to control the music system. The commandless music system is **enabled** in <#${values.VoiceChannelID}>. Please use \`/music-commandless-setup\` to complete the setup.`;
+            else return `\`✅\` \`music\` service succesfully **ENABLED**. You can now use the music system commands across the guild (use \`/help\` to see the commands). Users with <@&${values.DJRoleID}> role will be able to control the music system. The commandless music system is \`disabled\`.`;
+
+        },
+        editSuccess: (values) => {
+            if (values.VoiceChannelID) return `\`✅\` \`music\` service succesfully **UPDATED**. You can now use the music system commands across the guild (use \`/help\` to see the commands). Users with <@&${values.DJRoleID}> role will be able to control the music system. The commandless music system is **enabled** in <#${values.VoiceChannelID}>. Please use \`/music-commandless-setup\` to complete the setup.`;
+            else return `\`✅\` \`music\` service succesfully **UPDATED**. You can now use the music system commands across the guild (use \`/help\` to see the commands). Users with <@&${values.DJRoleID}> role will be able to control the music system. The commandless music system is \`disabled\`.`;
+        },
     },
 }

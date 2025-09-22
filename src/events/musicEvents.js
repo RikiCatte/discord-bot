@@ -1,7 +1,8 @@
 const { EmbedBuilder } = require('discord.js');
-// costruire qui l'embed con requestedBy ecc...
+const MusicEmbed = require("../utils/music/musicEmbed.js");
+const BotConfig = require("../schemas/BotConfig");
 
-module.exports = async (player, client) => {
+module.exports = async (player, client, statusManager) => {
     player.events
         // GENERAL EVENTS:
 
@@ -13,6 +14,8 @@ module.exports = async (player, client) => {
                     .setColor("Greyple");
 
                 const message = await queue.metadata.channel.send({ embeds: [embed] });
+
+                await statusManager.onTrackStart(queue.guild.id);
 
                 setTimeout(() => {
                     if (message && message.deletable) message.delete().catch(() => { });
@@ -32,6 +35,28 @@ module.exports = async (player, client) => {
             }
         })
 
+        .on('playerError', async (queue, error) => {
+            console.error(`Player error: ${error.message}`);
+
+            try {
+                const embed = new EmbedBuilder()
+                    .setDescription("`⛔` An unexpected error occurred...")
+                    .setColor("Red");
+
+                const message = await queue.metadata.channel.send({ embeds: [embed] });
+
+                setTimeout(() => {
+                    if (message && message.deletable) message.delete().catch(() => { });
+                }, 10_000);
+            } catch (err) {
+                console.error(err);
+            }
+        })
+
+        .on('error', async (error) => {
+            console.error(`General player error event: ${error.message}`);
+        })
+
         // Emitted when the player adds a single song to its queue
         .on('audioTrackAdd', async (queue, track) => {
             try {
@@ -40,6 +65,28 @@ module.exports = async (player, client) => {
                     .setColor("Greyple");
 
                 const message = await queue.metadata.channel.send({ embeds: [embed] });
+
+                await statusManager.updateStatusAndVoice(queue.guild.id);
+
+                const config = await BotConfig.findOne({ GuildID: queue.guild.id });
+                const serviceConfig = config?.services?.music;
+                if (config && serviceConfig?.enabled && serviceConfig?.EmbedChannelID && serviceConfig?.EmbedMessageID) {
+                    const current = queue.currentTrack;
+                    const trackInfo = {
+                        title: current?.title,
+                        author: current?.author,
+                        duration: current?.durationMS || current?.duration,
+                        thumbnail: current?.thumbnail,
+                        requester: current?.requestedBy,
+                        paused: queue.node.isPaused(),
+                        volume: queue.node.volume,
+                        loop: queue.repeatMode === 1 ? "track" : queue.repeatMode === 2 ? "queue" : "off",
+                        queueLength: queue.tracks.size
+                    };
+
+                    const embedHandler = new MusicEmbed(client);
+                    await embedHandler.updateMusicEmbed(queue.guild.id, trackInfo);
+                }
 
                 setTimeout(() => {
                     if (message && message.deletable) message.delete().catch(() => { });
@@ -68,6 +115,8 @@ module.exports = async (player, client) => {
 
                 const message = await queue.metadata.channel.send({ embeds: [embed] });
 
+                await statusManager.updateStatusAndVoice(queue.guild.id);
+
                 setTimeout(() => {
                     if (message && message.deletable) message.delete().catch(() => { });
                 }, 10_000);
@@ -95,6 +144,8 @@ module.exports = async (player, client) => {
 
                 const message = await queue.metadata.channel.send({ embeds: [embed] });
 
+                await statusManager.onTrackEnd(queue.guild.id);
+
                 setTimeout(() => {
                     if (message && message.deletable) message.delete().catch(() => { });
                 }, 10_000);
@@ -121,6 +172,15 @@ module.exports = async (player, client) => {
                     .setColor("Greyple");
 
                 const message = await queue.metadata.channel.send({ embeds: [embed] });
+
+                await statusManager.onPlayerDisconnect(queue.guild.id);
+
+                const config = await BotConfig.findOne({ GuildID: queue.guild.id });
+                const serviceConfig = config?.services?.music;
+                if (config && serviceConfig?.enabled && serviceConfig?.EmbedChannelID && serviceConfig?.EmbedMessageID) {
+                    const embedHandler = new MusicEmbed(client);
+                    await embedHandler.updateMusicEmbed(queue.guild.id, null);
+                }
 
                 setTimeout(() => {
                     if (message && message.deletable) message.delete().catch(() => { });
@@ -150,6 +210,15 @@ module.exports = async (player, client) => {
 
                 const message = await queue.metadata.channel.send({ embeds: [embed] });
 
+                await statusManager.onPlayerDisconnect(queue.guild.id);
+
+                const config = await BotConfig.findOne({ GuildID: queue.guild.id });
+                const serviceConfig = config?.services?.music;
+                if (config && serviceConfig?.enabled && serviceConfig?.EmbedChannelID && serviceConfig?.EmbedMessageID) {
+                    const embedHandler = new MusicEmbed(client);
+                    await embedHandler.updateMusicEmbed(queue.guild.id, null);
+                }
+
                 setTimeout(() => {
                     if (message && message.deletable) message.delete().catch(() => { });
                 }, 10_000);
@@ -176,6 +245,8 @@ module.exports = async (player, client) => {
                     .setColor("Greyple");
 
                 const message = await queue.metadata.channel.send({ embeds: [embed] });
+
+                await statusManager.onTrackEnd(queue.guild.id);
 
                 setTimeout(() => {
                     if (message && message.deletable) message.delete().catch(() => { });

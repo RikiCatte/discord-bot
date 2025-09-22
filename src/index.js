@@ -46,15 +46,12 @@ async function main() {
     });
     await player.extractors.loadMulti(DefaultExtractors);
 
-    if (process.env.ytCookie) { // If you don't provide your youtube cookie, discord-player will use the default extractor (it should be SoundCloud)
-        await player.extractors.register(YoutubeiExtractor, {
-            cookie: process.env.ytCookie,
-            streamOptions: {
-                useClient: "WEB_EMBEDDED",
-            },
-            generateWithPoToken: true,
-        });
-    }
+    await player.extractors.register(YoutubeiExtractor, {
+        streamOptions: {
+            useClient: "WEB_EMBEDDED",
+        },
+        generateWithPoToken: true,
+    });
 
     // Custom client properties
     client.commands = new Collection();
@@ -101,7 +98,10 @@ async function main() {
     startBot();
 
     // Music event handlers
-    require('./events/musicEvents.js')(player, client);
+    const StatusManager = require('./utils/music/statusManager');
+    const statusManager = new StatusManager(client);
+
+    require('./events/musicEvents')(player, client, statusManager);
 
     // Suppress non-critical errors from youtubei.js library
     suppressYoutubeJSLibErrors();

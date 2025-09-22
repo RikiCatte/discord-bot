@@ -1,3 +1,4 @@
+const { VoiceChannel } = require('discord.js');
 const mongoose = require('mongoose');
 
 const botConfigSchema = new mongoose.Schema({
@@ -149,9 +150,10 @@ const botConfigSchema = new mongoose.Schema({
         },
         music: {
             enabled: { type: Boolean, default: false },
-            MusicCommandsChannelID: String,
-            MusicVoiceChannelID: String,
             DJRoleID: String,
+            VoiceChannelID: String,
+            EmbedChannelID: String,
+            EmbedMessageID: String,
         },
         nitroboost: {
             enabled: { type: Boolean, default: false },
