@@ -37,8 +37,11 @@ class MusicEmbedHandler {
             name: "`💥` Characteristics",
             value: [
                 "- `🕛` 24/7 - Continuous music playback",
-                "- `🎶` Multiple Providers - Supports YouTube, SoundCloud and Spotify",
-                "- `🤖` Autocomplete - Automatically complete song titles (SoundCloud/YouTube)",
+                "- `🎵` Multiple Providers - Supports YouTube, SoundCloud and Spotify",
+                "- `📱` Autocomplete - Automatically complete song titles (SoundCloud/YouTube)",
+                "- `🪛` FFMPEG Audio Filters - Apply various audio effects",
+                "- `🎛️` Equalizer - Fine-tune your audio experience",
+                "- `⚙️` Biquad Filters - Advanced audio filtering options",
                 "- `📜` Queue - Manage your song list",
                 "- `🔉` Volume - Control the playback volume",
                 "- `🔁` Loop/Shuffle - Loop and Shuffle your songs"
@@ -54,6 +57,8 @@ class MusicEmbedHandler {
                 "- In the rest of the server you have to use slash commands (`/play`, `/pause`, `/skip`, `...`).",
                 "- When using the `/play` command, let the autocomplete help you out choosing the right song",
                 "- Use buttons to control playback (You need the DJ role to use them)",
+                "- If you want you can manipulate filters, equalizer and biquad settings to your liking using (`/filter`, `/equalizer`, `/biquad`)",
+                "- Type `/help` to see all commands"
             ].join("\n"),
             inline: false
         }
@@ -176,10 +181,17 @@ class MusicEmbedHandler {
                     .setDescription([
                         `\`👤\` **Requested By:** <@${trackInfo.requester.id}>`,
                         `\`🎤\` **Artist:** ${trackInfo.author}`,
+                        `\`🔌\` **Source:** \`${trackInfo.source}\``,
                         "",
                         `\`⏱️\` **Duration:** ${this.formatDuration(trackInfo.duration)}`,
+                        `\`📊\` **Progress:** \`${this.formatDuration(trackInfo.currentDuration)} / ${this.formatDuration(trackInfo.duration)}\``,
+                        `${trackInfo.progressBar || ""}`,
                         `\`${loopEmoji}\` **Loop:** \`${trackInfo.loop || "Off"}\``,
                         `\`🔉\` **Volume:** \`${trackInfo.volume || 100}%\``,
+                        "",
+                        `\`🪛\` **Biquad Filter:** \`${trackInfo.biquad && trackInfo.biquad !== "off" ? trackInfo.biquad : "Off"}\``,
+                        `\`🎛️\` **Equalizer:** \`${trackInfo.equalizer ? trackInfo.equalizer : "Off"}\``,
+                        `\`⚙️\` **FFMPEG Filters:** \`${trackInfo.ffmpegFilters && trackInfo.ffmpegFilters.length > 0 ? trackInfo.ffmpegFilters.join(", ") : "Off"}\``,
                         "",
                         "`❓` Need help? Type `/help` to see all commands!",
                         "`🎉` Enjoy your music!"

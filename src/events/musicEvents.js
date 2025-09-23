@@ -1,4 +1,5 @@
 const { EmbedBuilder } = require('discord.js');
+const buildTrackInfo = require("../utils/music/buildTrackInfo.js");
 const MusicEmbed = require("../utils/music/musicEmbed.js");
 const BotConfig = require("../schemas/BotConfig");
 
@@ -71,18 +72,7 @@ module.exports = async (player, client, statusManager) => {
                 const config = await BotConfig.findOne({ GuildID: queue.guild.id });
                 const serviceConfig = config?.services?.music;
                 if (config && serviceConfig?.enabled && serviceConfig?.EmbedChannelID && serviceConfig?.EmbedMessageID) {
-                    const current = queue.currentTrack;
-                    const trackInfo = {
-                        title: current?.title,
-                        author: current?.author,
-                        duration: current?.durationMS || current?.duration,
-                        thumbnail: current?.thumbnail,
-                        requester: current?.requestedBy,
-                        paused: queue.node.isPaused(),
-                        volume: queue.node.volume,
-                        loop: queue.repeatMode === 1 ? "track" : queue.repeatMode === 2 ? "queue" : "off",
-                        queueLength: queue.tracks.size
-                    };
+                    const trackInfo = buildTrackInfo(queue);
 
                     const embedHandler = new MusicEmbed(client);
                     await embedHandler.updateMusicEmbed(queue.guild.id, trackInfo);
