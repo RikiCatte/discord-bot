@@ -1622,7 +1622,7 @@ module.exports = (client) => {
 
         await sendLog(embed, messageReaction.message.guildId);
 
-        const config = await BotConfig.findOne({ guildId: messageReaction.message.guildId });
+        const config = await BotConfig.findOne({ GuildID: messageReaction.message.guildId });
         const serviceConfig = config.services?.suggest;
         if (!config || !serviceConfig.enabled) return;
 
