@@ -46,11 +46,15 @@ async function main() {
     });
     await player.extractors.loadMulti(DefaultExtractors);
 
+    // FIX: https://github.com/LuanRT/YouTube.js/issues/1043
     await player.extractors.register(YoutubeiExtractor, {
         streamOptions: {
             useClient: "WEB_EMBEDDED",
         },
         generateWithPoToken: true,
+        innertubeConfigRaw: {
+            player_id: '0004de42',
+        }
     });
 
     // Custom client properties
