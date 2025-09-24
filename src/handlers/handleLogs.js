@@ -1729,13 +1729,13 @@ module.exports = (client) => {
      * It records only changes in text messages (embeds are not recorded for example)
      */
     client.on(Events.MessageUpdate, async (oldMessage, newMessage) => {
-        if (oldMessage.author.bot || newMessage.author.bot) return;
+        if (oldMessage?.author?.bot || newMessage.author.bot) return;
 
         if (!oldMessage || !newMessage) return;
 
-        const author = oldMessage.author;
+        const author = oldMessage.author || newMessage.author;
 
-        const oldContent = oldMessage.content;
+        const oldContent = oldMessage.content || "";
         const newContent = newMessage.content;
 
         if (oldContent === newContent) return;
