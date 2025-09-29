@@ -278,8 +278,8 @@ class MusicEmbedHandler {
                     .setStyle(ButtonStyle.Secondary),
 
                 new ButtonBuilder()
-                    .setCustomId("music_support")
-                    .setEmoji("🆘")
+                    .setCustomId("music_download")
+                    .setEmoji("💾")
                     .setStyle(ButtonStyle.Danger),
             );
 

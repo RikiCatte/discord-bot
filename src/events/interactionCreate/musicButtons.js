@@ -1,8 +1,10 @@
 const { MessageFlags } = require("discord.js");
 const ConditionChecker = require("../../utils/music/checkMusicCondition");
-const StatusManager = require("../../utils/music/statusManager");
 const MusicEmbed = require("../../utils/music/musicEmbed");
-const BotConfig = require("../../schemas/BotConfig");
+const { getInnertube } = require("../../utils/music/innertube");
+const { getMaxUploadSize } = require("../../utils/getMaxUploadSize");
+const { downloadTrackToMp3 } = require("../../utils/music/downloadTrack");
+const fs = require('fs');
 
 module.exports = async (client, interaction) => {
     if (!interaction || !interaction.isButton() || !interaction.inGuild() || !interaction.customId.includes("music")) return;
@@ -137,10 +139,24 @@ module.exports = async (client, interaction) => {
                 await interaction.reply({ content: `\`🔀\` Shuffled ${queue.tracks.size} tracks in the queue.`, flags: MessageFlags.Ephemeral });
                 await updateEmbed();
                 break;
-            case "support":
-                const config = await BotConfig.findOne({ botId: client.user.id });
-                if (config?.services?.ticket?.enabled === true && config?.services?.ticket?.Channel) return await interaction.reply({ content: `If you need the command list you can use \`/help\` command and navigate in the music section. If you encounter any bug or you have questions or suggestions, you can open a ticket in <#${config.services.ticket.Channel}>!`, flags: MessageFlags.Ephemeral });
-                else return await interaction.reply({ content: "If you need the command list you can use `/help` command and navigate in the music section. If you encounter any bug or you have questions or suggestions, please contact the server staff!", flags: MessageFlags.Ephemeral });
+            case "download":
+                if (!conditions.isPlaying) return interaction.reply({ content: "`⚠️` There's no music currently playing to download.", flags: MessageFlags.Ephemeral });
+
+                await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+
+                try {
+                    const outputPath = await downloadTrackToMp3({ track: queue.currentTrack, getInnertube });
+
+                    const stats = fs.statSync(outputPath);
+                    const maxSize = getMaxUploadSize(interaction.guild);
+
+                    if (stats.size > maxSize) await interaction.editReply({ content: `\`⚠️\` The downloaded file exceeds Discord's upload limit for this guild (${(maxSize / 1024 / 1024).toFixed(2)}MB).`, flags: MessageFlags.Ephemeral });
+                    else await interaction.editReply({ content: `\`💾\` **Disclaimer**: This feature is for personal/educational use only. Developers will not assume any responsibility for the content downloaded. \nDownload for **${queue.currentTrack.title}**:`, files: [outputPath] });
+
+                    fs.unlinkSync(outputPath);
+                } catch (err) {
+                    await interaction.editReply({ content: "`⚠️` An error occurred while processing the download.", flags: MessageFlags.Ephemeral });
+                }
                 break;
             default:
                 return await interaction.reply({ content: "`⚠️` Unknown music control action.", flags: MessageFlags.Ephemeral });
