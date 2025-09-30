@@ -1,6 +1,6 @@
 const { SlashCommandBuilder, MessageFlags, ChannelType } = require("discord.js");
 const { createAudioPlayer, createAudioResource, joinVoiceChannel } = require('@discordjs/voice');
-const gTTS = require('gtts');
+// const gTTS = require('gtts');
 const fs = require('fs');
 
 const CHARS_LIMIT = 80;
@@ -57,6 +57,9 @@ module.exports = {
                 )
         )
         .toJSON(),
+    userPermissions: [],
+    botPermissions: [],
+    disabled: true,
 
     run: async (client, interaction) => {
         await interaction.deferReply({ flags: MessageFlags.Ephemeral });
