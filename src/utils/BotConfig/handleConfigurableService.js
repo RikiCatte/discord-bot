@@ -13,11 +13,19 @@ module.exports = async function handleConfigurableService({
 }) {
     if (action === "disable") {
         if (!config.services[service]?.enabled) {
-            await replyServiceAlreadyEnabledOrDisabled(interaction, service, "disabled");
+            if (!interaction.replied && !interaction.deferred) {
+                await replyServiceAlreadyEnabledOrDisabled(interaction, service, "disabled");
+            } else {
+                await interaction.editReply({ content: "`ℹ️` Service already disabled.", flags: MessageFlags.Ephemeral });
+            }
             return;
         }
         await updateServiceConfig(config, service, { enabled: false });
-        await replySuccessfullyDisabledService(interaction, service);
+        if (!interaction.replied && !interaction.deferred) {
+            await replySuccessfullyDisabledService(interaction, service);
+        } else {
+            await interaction.editReply({ content: "`✅` Service disabled.", flags: MessageFlags.Ephemeral });
+        }
         return;
     }
 
@@ -30,12 +38,29 @@ module.exports = async function handleConfigurableService({
 
     if (isEnable && config.services[service]) {
         await updateServiceConfig(config, service, { enabled: true });
-
-        if (silentReEnable) return await interaction.reply({ content: replyStrings.setupSuccess(), flags: MessageFlags.Ephemeral });
-        else return await successfullyReEnabledService(interaction, service);
+        if (silentReEnable) {
+            if (!interaction.replied && !interaction.deferred) {
+                return await interaction.reply({ content: replyStrings.setupSuccess(), flags: MessageFlags.Ephemeral });
+            } else {
+                return await interaction.editReply({ content: replyStrings.setupSuccess(), flags: MessageFlags.Ephemeral });
+            }
+        } else {
+            if (!interaction.replied && !interaction.deferred) {
+                return await successfullyReEnabledService(interaction, service);
+            } else {
+                return await interaction.editReply({ content: "`✅` Service enabled.", flags: MessageFlags.Ephemeral });
+            }
+        }
     }
 
     if (action === "edit" && svc?.editNotSupported) return await interaction.reply({ content: `\`⚠️\` The \`${service}\` service does not support editing its configuration. You can only enable or disable it using the corresponding command.`, flags: MessageFlags.Ephemeral });
+    if (action === "edit" && svc?.editNotSupported) {
+        if (!interaction.replied && !interaction.deferred) {
+            return await interaction.reply({ content: `\`⚠️\` The \`${service}\` service does not support editing its configuration. You can only enable or disable it using the corresponding command.`, flags: MessageFlags.Ephemeral });
+        } else {
+            return await interaction.editReply({ content: `\`⚠️\` The \`${service}\` service does not support editing its configuration. You can only enable or disable it using the corresponding command.`, flags: MessageFlags.Ephemeral });
+        }
+    }
 
     // If selectMenu is present, handle the menu logic
     if (selectMenu) {
@@ -59,11 +84,19 @@ module.exports = async function handleConfigurableService({
         }
 
         const row = createSelectMenu(selectMenu);
-        await interaction.reply({
-            content: selectMenu.content,
-            components: [row],
-            flags: MessageFlags.Ephemeral
-        });
+        if (!interaction.replied && !interaction.deferred) {
+            await interaction.reply({
+                content: selectMenu.content,
+                components: [row],
+                flags: MessageFlags.Ephemeral
+            });
+        } else {
+            await interaction.editReply({
+                content: selectMenu.content,
+                components: [row],
+                flags: MessageFlags.Ephemeral
+            });
+        }
 
         const { success, select } = await handleSelectMenuInteraction(interaction, selectMenu.customId);
         if (!success) return;
@@ -75,10 +108,23 @@ module.exports = async function handleConfigurableService({
             : currentValue;
 
         if (newValue.toString() === (oldValue ?? "").toString()) {
-            await select.update({
-                content: `\`ℹ️\` No changes were made to the configuration for \`${service}\` service.`,
-                components: []
-            });
+            if (!select.replied && !select.deferred) {
+                await select.update({
+                    content: `\`ℹ️\` No changes were made to the configuration for \`${service}\` service.`,
+                    components: []
+                });
+            } else if (select.replied) {
+                await select.followUp({
+                    content: `\`ℹ️\` No changes were made to the configuration for \`${service}\` service.`,
+                    components: [],
+                    flags: MessageFlags.Ephemeral
+                });
+            } else {
+                await select.editReply({
+                    content: `\`ℹ️\` No changes were made to the configuration for \`${service}\` service.`,
+                    components: []
+                });
+            }
             return;
         }
 
@@ -106,7 +152,7 @@ module.exports = async function handleConfigurableService({
             // DRY validation logic for input (not all services require this check)
             if (svc?.validateInput) {
                 try {
-                    await svc.validateInput(interaction, updated);
+                    await svc.validateInput(interaction, updated, configType);
                 } catch (err) {
                     try {
                         if (!modalInteraction.replied && !modalInteraction.deferred) {
@@ -137,10 +183,22 @@ module.exports = async function handleConfigurableService({
             );
 
             if (isUnchanged) {
-                await modalInteraction.reply({
-                    content: `\`ℹ️\` No changes were made to the configuration for \`${service}\` service.`,
-                    flags: MessageFlags.Ephemeral
-                });
+                if (!modalInteraction.replied && !modalInteraction.deferred) {
+                    await modalInteraction.reply({
+                        content: `\`ℹ️\` No changes were made to the configuration for \`${service}\` service.`,
+                        flags: MessageFlags.Ephemeral
+                    });
+                } else if (modalInteraction.replied) {
+                    await modalInteraction.followUp({
+                        content: `\`ℹ️\` No changes were made to the configuration for \`${service}\` service.`,
+                        flags: MessageFlags.Ephemeral
+                    });
+                } else {
+                    await modalInteraction.editReply({
+                        content: `\`ℹ️\` No changes were made to the configuration for \`${service}\` service.`,
+                        flags: MessageFlags.Ephemeral
+                    });
+                }
                 return;
             }
 
@@ -151,28 +209,46 @@ module.exports = async function handleConfigurableService({
                 if (preview) {
                     // If the preview is an attachment, send it as a file
                     if (preview.files) {
-                        await modalInteraction.reply({
+                        const previewMsg = {
                             content: `${isEnable ? replyStrings.setupSuccess(updated) : replyStrings.editSuccess(updated)}\n${preview.content || ""}`,
                             files: preview.files,
-                            flags: MessageFlags.Ephemeral
-                        });
+                            flags: MessageFlags.Ephemeral,
+                            components: [] // Rimuovi bottoni
+                        };
+                        if (!modalInteraction.replied && !modalInteraction.deferred) {
+                            await modalInteraction.reply(previewMsg);
+                        } else {
+                            await modalInteraction.editReply(previewMsg);
+                        }
                         return;
                     }
 
                     // If the preview is an embed or an array of embeds, send it as an embed
                     if (Array.isArray(preview) || (preview && preview.data)) {
-                        await modalInteraction.reply({
+                        const previewMsg = {
                             content: isEnable ? replyStrings.setupSuccess(updated) : replyStrings.editSuccess(updated),
                             embeds: Array.isArray(preview) ? preview : [preview],
-                            flags: MessageFlags.Ephemeral
-                        });
+                            flags: MessageFlags.Ephemeral,
+                            components: [] // Rimuovi bottoni
+                        };
+                        if (!modalInteraction.replied && !modalInteraction.deferred) {
+                            await modalInteraction.reply(previewMsg);
+                        } else {
+                            await modalInteraction.editReply(previewMsg);
+                        }
                         return;
                     } else {
                         // If the preview is a string, send it as a content message
-                        await modalInteraction.reply({
+                        const previewMsg = {
                             content: `${isEnable ? replyStrings.setupSuccess(updated) : replyStrings.editSuccess(updated)}\n${preview}`,
-                            flags: MessageFlags.Ephemeral
-                        });
+                            flags: MessageFlags.Ephemeral,
+                            components: [] // Rimuovi bottoni
+                        };
+                        if (!modalInteraction.replied && !modalInteraction.deferred) {
+                            await modalInteraction.reply(previewMsg);
+                        } else {
+                            await modalInteraction.editReply(previewMsg);
+                        }
                         return;
                     }
                 }
@@ -180,24 +256,26 @@ module.exports = async function handleConfigurableService({
 
             // If no preview is provided, just send a success message
             try {
+                const replyContent = {
+                    content: isEnable ? replyStrings.setupSuccess(updated) : replyStrings.editSuccess(updated),
+                    flags: MessageFlags.Ephemeral
+                };
                 if (!modalInteraction.replied && !modalInteraction.deferred) {
-                    await modalInteraction.reply({
-                        content: isEnable ? replyStrings.setupSuccess(updated) : replyStrings.editSuccess(updated),
-                        flags: MessageFlags.Ephemeral
-                    });
+                    await modalInteraction.reply(replyContent);
                 } else {
-                    await modalInteraction.followUp({
-                        content: isEnable ? replyStrings.setupSuccess(updated) : replyStrings.editSuccess(updated),
-                        flags: MessageFlags.Ephemeral
-                    });
+                    await modalInteraction.editReply(replyContent);
                 }
             } catch (err) {
                 console.log("[handleConfigurableService.js] Error while following up:", err);
             }
         } catch (err) {
             const replyTarget = modalInteraction || interaction;
-            if (!replyTarget.replied && !replyTarget.deferred) await replyTarget.reply({ content: err.message || "An error occurred while updating the configuration.", flags: MessageFlags.Ephemeral });
-            else console.log("Interaction already replied or deferred:", err);
+
+            if (!replyTarget.replied && !replyTarget.deferred) {
+                await replyTarget.reply({ content: err.message || "An error occurred while updating the configuration.", flags: MessageFlags.Ephemeral });
+            } else {
+                await replyTarget.editReply({ content: err.message || "An error occurred while updating the configuration.", flags: MessageFlags.Ephemeral });
+            }
             return;
         }
     }

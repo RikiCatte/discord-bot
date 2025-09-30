@@ -930,8 +930,20 @@ module.exports = (client) => {
             if (!channel) return;
 
             let reasonLine = "Left";
-            const message = serviceConfig.Goodbye.Message.replace("<user>", member.user.username);
+            let title = serviceConfig.Goodbye.EmbedTitle || `\`👋\` Goodbye ${member.user.username}!`;
+            title = title.replace(/<user>/g, member.user.username);
 
+            let description = serviceConfig.Goodbye.EmbedDescription || "Sad to see you go!";
+            description = description
+                .replace(/<rules>\((\d{18,19})\)/g, '<#$1>')
+                .replace(/<help>\((\d{18,19})\)/g, '<#$1>')
+                .replace(/<social>\((\d{18,19})\)/g, '<#$1>')
+                .replace(/\\n/g, "\n")
+                .replace(/\n/g, "\n\n")
+                .replace(/<user>/g, member.user.username)
+                .replace(/<reason>/g, reasonLine);
+
+            const message = serviceConfig.Goodbye.Message.replace("<user>", member.user.username);
             const replyMessage = serviceConfig.Goodbye.ReplyMessage
                 ? serviceConfig.Goodbye.ReplyMessage
                     .replace("<user>", member.user.username)
@@ -941,15 +953,38 @@ module.exports = (client) => {
             let borderColor = serviceConfig.Goodbye.BorderColor || "#FFFFFF";
             if (borderColor.toLowerCase() === "random") borderColor = `#${Math.floor(Math.random() * 16777215).toString(16).padStart(6, '0')}`;
 
-            const image = await profileImage(member.user.id, {
-                presenceStatus: serviceConfig.Goodbye.PresenceStatus || "online",
-                borderColor: borderColor,
-                customTag: message || "Bye! <user>",
-                customDate: new Date().toLocaleDateString(),
-                customBackground: member.user.bannerURL({ forceStatic: true })
-            });
+            let sent = false;
+            try {
+                const image = await profileImage(member.user.id, {
+                    presenceStatus: serviceConfig.Goodbye.PresenceStatus || "online",
+                    borderColor: borderColor,
+                    customTag: message || "Bye! <user>",
+                    customDate: new Date().toLocaleDateString(),
+                    customBackground: member.user.bannerURL({ forceStatic: true })
+                });
+                await channel.send({ content: replyMessage + "\n\n" + description, files: [image] });
+                sent = true;
+            } catch (error) {
+                console.warn("[handleLogs.js] discord-arts failed, fallback to embed.", error);
+            }
+            if (!sent) {
+                try {
+                    const doubledDescription = description.replace(/\n/g, "\n\n");
 
-            await channel.send({ content: `${replyMessage}`, files: [image] });
+                    const embed = new EmbedBuilder()
+                        .setTitle(title)
+                        .setDescription(doubledDescription)
+                        .setThumbnail(member.displayAvatarURL())
+                        .setColor(borderColor || "#ebef00ff");
+
+                    await channel.send({
+                        content: replyMessage || null,
+                        embeds: [embed],
+                    });
+                } catch (fallbackError) {
+                    console.error("[handleLogs.js] Fallback embed failed:", fallbackError);
+                }
+            }
         } catch (error) {
             console.log("[handleLogs.js] Error while sending goodbye message: ", error);
         }

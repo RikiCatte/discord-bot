@@ -90,7 +90,7 @@ module.exports = async function pagedModal(interaction, { customId, title, field
                 });
 
                 currentTrigger = btnInteraction;
-            } else await modalSubmit.reply({ content: "`⏳` Configuration in progress, please wait...", flags: MessageFlags.Ephemeral }).catch(() => { });
+            } else await modalSubmit.reply({ content: "`✅` Modal completed, thank you!", flags: MessageFlags.Ephemeral }).catch(() => { });
         }
 
         return { success: true, values: allValues, modalInteraction: currentTrigger };

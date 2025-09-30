@@ -111,6 +111,8 @@ const botConfigSchema = new mongoose.Schema({
                 BorderColor: String,
                 Message: String,
                 ReplyMessage: String, // Message to reply to the user
+                EmbedTitle: String,
+                EmbedDescription: String,
             },
             Goodbye: {
                 Enabled: Boolean,
@@ -119,6 +121,8 @@ const botConfigSchema = new mongoose.Schema({
                 BorderColor: String,
                 Message: String,
                 ReplyMessage: String,
+                EmbedTitle: String,
+                EmbedDescription: String,
             }
         },
         jointocreate: {
