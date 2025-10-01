@@ -1,4 +1,3 @@
-const { VoiceChannel } = require('discord.js');
 const mongoose = require('mongoose');
 
 const botConfigSchema = new mongoose.Schema({
@@ -55,6 +54,10 @@ const botConfigSchema = new mongoose.Schema({
                 Bypassed: { type: Boolean, default: false },
                 BypassedBy: String,
             }]
+        },
+        usedCommandsLog: {
+            enabled: { type: Boolean, default: false },
+            ChannelID: String,
         },
         dinamic_activities: {
             enabled: { type: Boolean, default: false },

@@ -255,8 +255,9 @@ module.exports = async function handleConfigurableService({
             }
 
             // If no preview is provided, just send a success message
+            let replyContent = null;
             try {
-                const replyContent = {
+                replyContent = {
                     content: isEnable ? replyStrings.setupSuccess(updated) : replyStrings.editSuccess(updated),
                     flags: MessageFlags.Ephemeral
                 };
@@ -266,7 +267,7 @@ module.exports = async function handleConfigurableService({
                     await modalInteraction.editReply(replyContent);
                 }
             } catch (err) {
-                console.log("[handleConfigurableService.js] Error while following up:", err);
+                await interaction.followUp(replyContent);
             }
         } catch (err) {
             const replyTarget = modalInteraction || interaction;
