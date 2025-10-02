@@ -3,30 +3,42 @@ require("colors");
 const { useQueue } = require("discord-player");
 
 module.exports = async (client) => {
-    const guilds = client.guilds.cache.map(g => g.id);
+    const configs = await BotConfig.find({ "services.dinamic_activities.enabled": true });
+    if (configs.length === 0) return;
 
-    for (const guildId of guilds) {
-        const config = await BotConfig.findOne({ GuildID: guildId });
-        if (!config || !config.services?.dinamic_activities?.enabled) return;
+    const customActivities = [
+        '🧑‍💻 Developed by RikiCatte',
+        '💻 https://github.com/RikiCatte'
+    ];
 
-        const activities = config.services.dinamic_activities.activities || [
+    for (const config of configs) {
+        const guild = client.guilds.cache.get(config.GuildID);
+        if (!guild) continue;
+
+        const serviceConfig = config.services.dinamic_activities;
+        if (!serviceConfig?.enabled) continue;
+
+        const activities = (serviceConfig.activities || [
             'Watching the stars',
             'Listening to the wind',
             'Coding in the dark',
             'Playing with shadows',
             'Exploring the unknown',
             'Ping'
-        ];
+        ]);
 
-        activities.push(`\🧑‍💻\ Developed by RikiCatte`);
-        activities.push(`\💻\ https://github.com/RikiCatte`);
+        for (const custom of customActivities) {
+            if (!activities.includes(custom)) activities.push(custom);
+        }
 
-        const status = config.services.dinamic_activities.status || 'dnd';
-        const interval = config.services.dinamic_activities.interval || 10000;
+        const status = serviceConfig.status || 'dnd';
+        const interval = serviceConfig.interval || 10000;
 
         console.log(`[LOADED BOT ACTIVITIES] Dynamic activities enabled: ${activities.join(', ')}`.yellow);
         setInterval(() => {
-            const queue = useQueue(guildId);
+            if (!config.services.music?.enabled) return;
+            
+            const queue = useQueue(guild.id);
             if (queue && queue.currentTrack && !queue.node.isPaused()) return;
 
             let activity = activities[Math.floor(Math.random() * activities.length)];

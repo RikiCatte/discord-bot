@@ -2,11 +2,15 @@ const BotConfig = require("../../schemas/BotConfig");
 
 module.exports = async (client) => {
     async function updateStats() {
-        for (const [guildId, guild] of client.guilds.cache) {
-            const config = await BotConfig.findOne({ GuildID: guildId });
-            const statsConfig = config?.services?.serverstats;
+        const configs = await BotConfig.find({ "services.serverstats.enabled": true });
+        if (configs.length === 0) return;
 
-            if (!statsConfig || !statsConfig.enabled || !Array.isArray(statsConfig.channels)) continue;
+        for (const config of configs) {
+            const guild = client.guilds.cache.get(config.GuildID);
+            if (!guild) continue;
+
+            const statsConfig = config.services.serverstats;
+            if (!statsConfig || !Array.isArray(statsConfig.channels)) continue;
 
             for (const stat of statsConfig.channels) {
                 const channel = client.channels.cache.get(stat.ChannelID);
@@ -40,9 +44,9 @@ module.exports = async (client) => {
                 }
 
                 try {
-                    await channel.setName(name);
+                    if (channel.name !== name) await channel.setName(name);
                 } catch (err) {
-                    console.error(`Failed to update channel ${stat.ChannelID} in guild ${guildId}:`, err);
+                    console.error(`Failed to update channel ${stat.ChannelID} in guild ${config.GuildID}:`, err);
                 }
             }
         }

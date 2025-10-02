@@ -3,15 +3,16 @@ const checkGiveaways = require("../../utils/giveaways/checkGiveaways.js");
 const deleteExpiredGiveaways = require("../../utils/giveaways/deleteExpiredGiveaways.js");
 
 module.exports = async (client) => {
-    const guilds = client.guilds.cache.map(g => g.id);
+    const configs = await BotConfig.find({ "services.giveaway.enabled": true });
+    if (configs.length === 0) return;
 
-    for (const guildId of guilds) {
-        const config = await BotConfig.findOne({ GuildID: guildId });
-        if (!config || !config.services.giveaway?.enabled) continue;
+    for (const config of configs) {
+        const guild = client.guilds.cache.get(config.GuildID);
+        if (!guild || !config.services.giveaway?.enabled) continue;
 
         setInterval(async () => {
-            await checkGiveaways(client);
-            await deleteExpiredGiveaways(client);
+            await checkGiveaways(client, config);
+            await deleteExpiredGiveaways(client, config);
         }, 120_000); // The bot will check every 2 minutes for ending giveaways and expired giveaways ready to be deleted.
     }
 };
