@@ -1,4 +1,4 @@
-const getLocalCommands = require("../../utils/getLocalCommands");
+const { getLocalCommands } = require("../../utils/utils.js");
 
 module.exports = async (client, interaction) => {
     if (!interaction.isAutocomplete()) return;
@@ -11,7 +11,7 @@ module.exports = async (client, interaction) => {
         const timeout = setTimeout(() => {
             if (!responded) {
                 responded = true;
-                interaction.respond([]).catch(() => {});
+                interaction.respond([]).catch(() => { });
             }
         }, 2500);
 
@@ -27,10 +27,10 @@ module.exports = async (client, interaction) => {
                 if (!err.message?.includes("Unknown interaction")) {
                     console.log("[AUTOCOMPLETE ERROR]", err);
                 }
-                await interaction.respond([]).catch(() => {});
+                await interaction.respond([]).catch(() => { });
             }
         }
     } else {
-        await interaction.respond([]).catch(() => {});
+        await interaction.respond([]).catch(() => { });
     }
 };

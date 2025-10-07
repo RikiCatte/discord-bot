@@ -1,5 +1,5 @@
 const { EmbedBuilder, ModalSubmitInteraction, MessageFlags } = require("discord.js");
-const frmtDate = require("../../utils/formattedDate");
+const { formattedDate } = require("../../utils/utils.js");
 const BotConfig = require("../../schemas/BotConfig");
 const msgConfig = require("../../messageConfig.json")
 const updateServiceConfig = require("../../utils/BotConfig/updateServiceConfig");
@@ -17,8 +17,8 @@ module.exports = async (client, interaction) => {
     let config;
     let serviceConfig;
 
-    const allConfigs = await BotConfig.find({});
-    for (const conf of allConfigs) {
+    const configs = await BotConfig.find({ "services.captcha.Enabled": true });
+    for (const conf of configs) {
         const captchaService = conf.services?.captcha;
         if (!captchaService) continue;
         const found = captchaService.users?.find(u => u.UserID === interaction.user.id);
@@ -94,9 +94,9 @@ module.exports = async (client, interaction) => {
 
     let verifyMsg;
     if (userData.Bypassed)
-        verifyMsg = `You got verification bypassed by user id ${userData.BypassedBy} in **${member.guild.name}** on \`${await frmtDate()} UTC +1/2\``;
+        verifyMsg = `You got verification bypassed by user id ${userData.BypassedBy} in **${member.guild.name}** on \`${formattedDate()} UTC +1/2\``;
     else
-        verifyMsg = `You got verified in **${member.guild.name}** on \`${await frmtDate()} UTC +1/2\``;
+        verifyMsg = `You got verified in **${member.guild.name}** on \`${formattedDate()} UTC +1/2\``;
 
     await interaction.reply({ content: "\`✅\` " + verifyMsg });
 }

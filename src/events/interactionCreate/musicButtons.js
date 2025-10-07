@@ -2,7 +2,7 @@ const { MessageFlags } = require("discord.js");
 const ConditionChecker = require("../../utils/music/checkMusicCondition");
 const MusicEmbed = require("../../utils/music/musicEmbed");
 const { getInnertube } = require("../../utils/music/innertube");
-const { getMaxUploadSize } = require("../../utils/getMaxUploadSize");
+const { getMaxUploadSize } = require("../../utils/utils.js");
 const { downloadTrackToMp3 } = require("../../utils/music/downloadTrack");
 const fs = require('fs');
 

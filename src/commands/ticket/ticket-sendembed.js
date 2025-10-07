@@ -1,5 +1,5 @@
 const { SlashCommandBuilder, PermissionFlagsBits, MessageFlags } = require('discord.js');
-const { buildTicketEmbed } = require("../../utils/ticketEmbed");
+const { buildTicketEmbed } = require("../../utils/utils.js");
 const BotConfig = require("../../schemas/BotConfig");
 const replyNoConfigFound = require("../../utils/BotConfig/replyNoConfigFound");
 const replyServiceAlreadyEnabledOrDisabled = require("../../utils/BotConfig/replyServiceAlreadyEnabledOrDisabled");

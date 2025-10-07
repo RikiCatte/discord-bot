@@ -1,5 +1,5 @@
 const { SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder } = require("discord.js");
-const buttonPagination = require("../../utils/buttonPagination");
+const { buttonPagination } = require("../../utils/utils.js");
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -13,9 +13,8 @@ module.exports = {
         try {
             const embeds = [];
 
-            for (let i = 0; i < 4; i++) {
+            for (let i = 0; i < 4; i++)
                 embeds.push(new EmbedBuilder().setDescription(`This is page ${i + 1}`));
-            }
 
             await buttonPagination(interaction, embeds);
         } catch (err) {

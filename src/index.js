@@ -13,7 +13,7 @@ const { DefaultExtractors } = require('@discord-player/extractor');
 const eventHandler = require('./handlers/eventHandler');
 const handleLogs = require('./handlers/handleLogs');
 const BotConfig = require('./schemas/BotConfig.js');
-const suppressYoutubeJSLibErrors = require("./utils/suppressYoutubeJSLibErrors.js");
+const { suppressYoutubeJSLibErrors } = require("./utils/utils.js");
 const {
     getDefaultServicesFromSchema,
     ensureAllServicesInConfig,

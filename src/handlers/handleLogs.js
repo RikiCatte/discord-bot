@@ -1,10 +1,6 @@
 const { EmbedBuilder, Events, AuditLogEvent, ActionRowBuilder, ApplicationCommandPermissionsUpdateData, ButtonBuilder, ButtonStyle, DMChannel, GuildChannel, GuildMember, AutoModerationActionExecution, GuildAuditLogsEntry, PollAnswer, MessageReaction, ThreadChannel, ThreadMember, TextChannel, NewsChannel, VoiceChannel, StageChannel, ForumChannel, MediaChannel, Embed, ChannelType } = require("discord.js");
 const msgConfig = require("../messageConfig.json");
-const getColorName = require("../utils/getColorName.js");
-const getDifferences = require("../utils/getDifferences.js");
-const getPermissionDifferences = require("../utils/getPermissionDifferences.js");
-const formatPermissions = require("../utils/formatPermissions.js");
-const validateEmbedFields = require("../utils/validateEmbedFields.js");
+const { formatPermissions, getColorName, getDifferences, getPermissionDifferences, validateEmbedFields } = require("../utils/utils.js");
 const updateServiceConfig = require("../utils/BotConfig/updateServiceConfig");
 const BotConfig = require("../schemas/BotConfig.js");
 const { profileImage } = require("discord-arts");
@@ -46,7 +42,7 @@ module.exports = (client) => {
         }
 
         // Validate embed fields. (prevents crashes if fields are not strings)
-        embed = await validateEmbedFields(embed);
+        embed = validateEmbedFields(embed);
 
         embed.setFooter({ text: "Mod Logging System by RikiCatte", iconURL: msgConfig.footer_iconURL });
         embed.setTimestamp();
@@ -229,7 +225,7 @@ module.exports = (client) => {
      * On discord.js v 14.16.3 the event is not working properly, oldAutoModRule seems to be always null
      */
     client.on(Events.AutoModerationRuleUpdate, async (oldAutoModRule, newAutoModRule) => {
-        const differences = await getDifferences(oldAutoModRule, newAutoModRule);
+        const differences = getDifferences(oldAutoModRule, newAutoModRule);
 
         const embed = new EmbedBuilder()
             .setTitle(`\`🟡\` Automod Rule Modified`)
@@ -348,8 +344,8 @@ module.exports = (client) => {
                 const { executor } = audit.entries.first();
                 if (!executor || !oldChannel || !newChannel) return;
 
-                const differences = await getDifferences(oldChannel, newChannel);
-                const permissionDifferences = await getPermissionDifferences(
+                const differences = getDifferences(oldChannel, newChannel);
+                const permissionDifferences = getPermissionDifferences(
                     oldChannel.permissionOverwrites.cache.map(overwrite => overwrite),
                     newChannel.permissionOverwrites.cache.map(overwrite => overwrite)
                 );
@@ -767,7 +763,7 @@ module.exports = (client) => {
      * @param {GuildEmoji} newEmoji
      */
     client.on(Events.GuildEmojiUpdate, async (oldEmoji, newEmoji) => {
-        const differences = await getDifferences(oldEmoji, newEmoji);
+        const differences = getDifferences(oldEmoji, newEmoji);
 
         const embed = new EmbedBuilder()
             .setTitle(`\`🔵\` Serer Emoji modified`)
@@ -1017,7 +1013,7 @@ module.exports = (client) => {
             .setColor("Yellow")
             .setThumbnail(oldMember.displayAvatarURL());
 
-        const differences = await getDifferences(oldMember, newMember);
+        const differences = getDifferences(oldMember, newMember);
 
         // getDifferences() doesn't check roles, so we need to check them separately
         const oldRoles = oldMember.roles.cache;
@@ -1133,7 +1129,7 @@ module.exports = (client) => {
      * @param {Role} newRole
      */
     client.on(Events.GuildRoleUpdate, async (oldRole, newRole) => {
-        const differences = await getDifferences(oldRole, newRole);
+        const differences = getDifferences(oldRole, newRole);
 
         // getDifference() doesn't check permissions, so we need to check them separately
         const oldPermissions = oldRole.permissions;
@@ -1252,7 +1248,7 @@ module.exports = (client) => {
         const oldEvent = oldGuildScheduledEvent;
         const newEvent = newGuildScheduledEvent;
 
-        const differences = await getDifferences(oldEvent, newEvent);
+        const differences = getDifferences(oldEvent, newEvent);
 
         const embed = new EmbedBuilder()
             .setTitle(`\`🟢\` Scheduled Event Modified`)
@@ -1389,7 +1385,7 @@ module.exports = (client) => {
      * @param {Sticker} newSticker
      */
     client.on(Events.GuildStickerUpdate, async (oldSticker, newSticker) => {
-        const differences = await getDifferences(oldSticker, newSticker);
+        const differences = getDifferences(oldSticker, newSticker);
 
         const embed = new EmbedBuilder()
             .setTitle(`\`🔵\` Server sticker Modified`)
@@ -1426,7 +1422,7 @@ module.exports = (client) => {
      * @param {Guild} newGuild
      */
     client.on(Events.GuildUpdate, async (oldGuild, newGuild) => {
-        const differences = await getDifferences(oldGuild, newGuild);
+        const differences = getDifferences(oldGuild, newGuild);
 
         const embed = new EmbedBuilder()
             .setTitle(`\`🔴\` Server Modified`)
@@ -1859,7 +1855,7 @@ module.exports = (client) => {
      * @param {StageInstance} newStageInstance
      */
     client.on(Events.StageInstanceUpdate, async (oldStageInstance, newStageInstance) => {
-        const differences = await getDifferences(oldStageInstance, newStageInstance);
+        const differences = getDifferences(oldStageInstance, newStageInstance);
 
         const embed = new EmbedBuilder()
             .setTitle(`\`🔵\` Conference Modified`)
@@ -1956,7 +1952,7 @@ module.exports = (client) => {
      * @param {ThreadMember} newMember
      */
     // client.on(Events.ThreadMemberUpdate, async (oldMember, newMember) => {
-    //     const differences = await getDifferences(oldMember, newMember);
+    //     const differences = getDifferences(oldMember, newMember);
 
     //     const embed = new EmbedBuilder()
     //         .setTitle(`\`🟢\` Thread Member Update`)
@@ -1979,7 +1975,7 @@ module.exports = (client) => {
      * @param {ThreadChannel} newThread
      */
     client.on(Events.ThreadUpdate, async (oldThread, newThread) => {
-        const differences = await getDifferences(oldThread, newThread);
+        const differences = getDifferences(oldThread, newThread);
 
         const embed = new EmbedBuilder()
             .setTitle(`\`🟢\` Thread has been modified`)

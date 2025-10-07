@@ -1,7 +1,7 @@
 const fs = require('fs');
 const ffmpeg = require('fluent-ffmpeg');
 const { webStreamToNodeReadable } = require('./webStreamToNodeReadable');
-const { sanitizeFilename } = require('../sanitizeFilename');
+const { sanitizeFilename } = require('../utils.js');
 const { downloadToMp3ViaYtDlp } = require('./downloadToMp3ViaYtDlp');
 
 async function downloadTrackToMp3({ track, getInnertube }) {

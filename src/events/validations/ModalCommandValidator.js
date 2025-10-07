@@ -3,7 +3,7 @@ require("colors");
 const { EmbedBuilder, MessageFlags } = require("discord.js");
 const { developersId } = require("../../config.json");
 const mConfig = require("../../messageConfig.json");
-const getModals = require("../../utils/getModals");
+const { getModals } = require("../../utils/utils.js");
 
 module.exports = async (client, interaction) => {
 	if (!interaction.isModalSubmit()) return;

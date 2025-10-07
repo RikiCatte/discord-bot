@@ -3,8 +3,8 @@ const { AttachmentBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ModalB
 const BotConfig = require("../../schemas/BotConfig");
 const msgConfig = require("../../messageConfig.json");
 const updateServiceConfig = require("../../utils/BotConfig/updateServiceConfig");
-const frmtDate = require("../../utils/formattedDate");
-const rndStr = require("../../utils/randomString");
+const { formattedDate } = require("../../utils/utils.js");
+const { generateRandomString } = require("../../utils/utils.js");
 
 /**
  * 
@@ -28,14 +28,14 @@ module.exports = async (client, member) => {
         let captchaText = "";
         if (serviceConfig.Captcha && serviceConfig.Captcha.toLowerCase() === "random") {
             const length = Math.floor(Math.random() * 8) + 5;
-            captchaText = await rndStr(length);
+            captchaText = generateRandomString(length);
         } else captchaText = serviceConfig.Captcha;
 
         userData = {
             UserID: member.id,
             GuildID: member.guild.id, // Redundant but necessary because we can't access guildId from DMs!
             Username: member.user.username,
-            JoinedAt: await frmtDate(),
+            JoinedAt: formattedDate(),
             ReJoinedTimes: 0,
             Captcha: captchaText,
             CaptchaStatus: "Pending",
@@ -65,7 +65,7 @@ module.exports = async (client, member) => {
         let text = "";
         if (serviceConfig.Captcha && serviceConfig.Captcha.toLowerCase() === "random") {
             length = Math.floor(Math.random() * 8) + 5;
-            text = await rndStr(length);
+            text = generateRandomString(length);
         } else text = serviceConfig.Captcha;
 
         userData.Captcha = text;

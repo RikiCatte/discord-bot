@@ -1,8 +1,8 @@
 const { SlashCommandBuilder, EmbedBuilder, MessageFlags } = require("discord.js");
+const { buttonPagination } = require("../../utils/utils.js");
+const msgConfig = require("../../messageConfig.json");
 const fs = require("fs");
 const path = require("path");
-const buttonPagination = require("../../utils/buttonPagination");
-const msgConfig = require("../../messageConfig.json");
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -30,7 +30,7 @@ module.exports = {
                     try {
                         command = require(filePath);
                     } catch (err) {
-                        continue; 
+                        continue;
                     }
 
                     if (command.disabled || command.deleted) continue;
@@ -38,11 +38,8 @@ module.exports = {
                     const cmdName = command.data?.name ? `/${command.data.name}` : "Unknown";
                     const cmdDescription = command.data?.description || "No description provided";
 
-                    if (command.data?.type === "SUB_COMMAND" || command.data?.type === "SUB_COMMAND_GROUP") {
-                        subcommands.push(command);
-                    } else if (command.data?.name) {
-                        description += `- \`${cmdName}\` - ${cmdDescription}\n`;
-                    }
+                    if (command.data?.type === "SUB_COMMAND" || command.data?.type === "SUB_COMMAND_GROUP") subcommands.push(command);
+                    else if (command.data?.name) description += `- \`${cmdName}\` - ${cmdDescription}\n`;
                 }
 
                 if (subcommands.length > 0) {
@@ -67,9 +64,7 @@ module.exports = {
                 }
             }
 
-            if (helpEmbeds.length === 0) {
-                return interaction.reply({ content: "No commands have been found.", flags: MessageFlags.Ephemeral });
-            }
+            if (helpEmbeds.length === 0) return interaction.reply({ content: "No commands have been found.", flags: MessageFlags.Ephemeral });
 
             await buttonPagination(interaction, helpEmbeds);
         } catch (err) {

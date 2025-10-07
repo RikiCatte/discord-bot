@@ -1,12 +1,11 @@
 require("colors");
 
-const getApplicationContextMenus = require("../../utils/getApplicationCommands");
-const getLocalContextMenus = require("../../utils/getLocalContextMenus");
+const { getApplicationCommands, getLocalContextMenus } = require("../../utils/utils.js");
 
 module.exports = async (client) => {
 	try {
 		const localContextMenus = getLocalContextMenus();
-		const applicationContextMenus = await getApplicationContextMenus(client);
+		const applicationContextMenus = await getApplicationCommands(client);
 
 		for (const localContextMenu of localContextMenus) {
 			const { data } = localContextMenu;

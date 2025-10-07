@@ -1,8 +1,6 @@
 require("colors");
 
-const commandComparing = require("../../utils/commandComparing");
-const getApplicationCommands = require("../../utils/getApplicationCommands");
-const getLocalCommands = require("../../utils/getLocalCommands");
+const { commandComparing, getApplicationCommands, getLocalCommands } = require("../../utils/utils.js");
 var commandName;
 
 const DEBUG = false;

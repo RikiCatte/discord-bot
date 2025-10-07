@@ -1,7 +1,7 @@
 const { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits, Client, ChatInputCommandInteraction, MessageFlags } = require("discord.js");
 const BotConfig = require("../../schemas/BotConfig");
 const updateServiceConfig = require("../../utils/BotConfig/updateServiceConfig");
-const buttonPagination = require("../../utils/buttonPagination");
+const { buttonPagination } = require("../../utils/utils.js");
 const replyNoConfigFound = require("../../utils/BotConfig/replyNoConfigFound");
 const replyServiceAlreadyEnabledOrDisabled = require("../../utils/BotConfig/replyServiceAlreadyEnabledOrDisabled");
 

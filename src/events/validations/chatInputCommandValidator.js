@@ -3,7 +3,7 @@ require("colors");
 const { EmbedBuilder, ButtonBuilder, ButtonStyle, ActionRowBuilder, ComponentType, ChatInputCommandInteraction, MessageFlags } = require("discord.js");
 const { developersId } = require("../../config.json");
 const mConfig = require("../../messageConfig.json");
-const getLocalCommands = require("../../utils/getLocalCommands");
+const { getLocalCommands } = require("../../utils/utils.js");
 const BotConfig = require("../../schemas/BotConfig");
 
 /**

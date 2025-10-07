@@ -3,7 +3,7 @@ require("colors");
 const { EmbedBuilder, MessageFlags } = require("discord.js");
 const { developersId } = require("../../config.json");
 const mConfig = require("../../messageConfig.json");
-const getLocalContextMenus = require("../../utils/getLocalContextMenus");
+const {getLocalContextMenus} = require("../../utils/utils.js");
 
 module.exports = async (client, interaction) => {
 	if (!interaction.isContextMenuCommand()) return;

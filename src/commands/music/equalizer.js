@@ -4,7 +4,7 @@ const BotConfig = require("../../schemas/BotConfig");
 const { replyNoConfigFound, replyServiceNotEnabled } = require("../../utils/BotConfig");
 const { useQueue } = require("discord-player");
 const { EqualizerConfigurationPreset } = require("discord-player");
-const titleCase = require("../../utils/titleCase");
+const { titleCase } = require("../../utils/utils.js");
 const buildTrackInfo = require("../../utils/music/buildTrackInfo");
 const MusicEmbed = require("../../utils/music/musicEmbed");
 

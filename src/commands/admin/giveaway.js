@@ -2,7 +2,7 @@ const { SlashCommandBuilder, EmbedBuilder, ButtonBuilder, ButtonStyle, ActionRow
 
 const BotConfig = require("../../schemas/BotConfig");
 const { replyNoConfigFound, replyServiceNotEnabled } = require("../../utils/BotConfig");
-const { formattedMsToSecs } = require("../../utils/timeUtils")
+const { formattedMsToSecs } = require("../../utils/utils.js");
 const updateServiceConfig = require("../../utils/BotConfig/updateServiceConfig");
 const shuffleParticipants = require("../../utils/giveaways/shuffleParticipants");
 

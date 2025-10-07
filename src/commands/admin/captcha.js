@@ -1,9 +1,7 @@
 const { CaptchaGenerator } = require("captcha-canvas");
 const { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits, ChatInputCommandInteraction, ButtonStyle, TextInputStyle, AttachmentBuilder, ActionRowBuilder, ButtonBuilder, ModalBuilder, TextInputBuilder, MessageFlags } = require("discord.js");
 const msgConfig = require("../../messageConfig.json");
-const rndStr = require("../../utils/randomString");
-const frmtDate = require("../../utils/formattedDate");
-const { msToSecs } = require("../../utils/timeUtils");
+const { formattedDate, msToSecs, randomString } = require("../../utils/utils.js");
 const BotConfig = require("../../schemas/BotConfig");
 const updateServiceConfig = require("../../utils/BotConfig/updateServiceConfig");
 const replyNoConfigFound = require("../../utils/BotConfig/replyNoConfigFound");
@@ -123,7 +121,7 @@ module.exports = {
                     let text = "";
                     if (serviceConfig.Captcha && serviceConfig.Captcha.toLowerCase() === "random") {
                         const length = Math.floor(Math.random() * 8) + 5;
-                        text = await rndStr(length);
+                        text = randomString(length);
                     } else {
                         text = serviceConfig.Captcha;
                     }
@@ -251,7 +249,7 @@ module.exports = {
                     bypassUserData = {
                         UserID: guildMember.id,
                         Username: guildMember.user.username,
-                        JoinedAt: await frmtDate(),
+                        JoinedAt: formattedDate(),
                         ReJoinedTimes: 0,
                         Captcha: null,
                         CaptchaStatus: "Submitted",
@@ -281,7 +279,7 @@ module.exports = {
                     .addFields({ name: "Status", value: serviceConfig.enabled ? "Enabled" : "Disabled", inline: true })
                     .addFields({ name: "Verified Role", value: `<@&${serviceConfig.RoleID}>`, inline: true })
                     .addFields({ name: "Rejoin Limit per User", value: `${serviceConfig.ReJoinLimit}`, inline: false })
-                    .addFields({ name: "CAPTCHA Expire Time (in seconds)", value: `${await msToSecs(serviceConfig.ExpireInMS)}`, inline: true })
+                    .addFields({ name: "CAPTCHA Expire Time (in seconds)", value: `${msToSecs(serviceConfig.ExpireInMS)}`, inline: true })
                     .addFields({ name: "CAPTCHA Solution", value: `||${serviceConfig.Captcha}||`, inline: false })
                     .setFooter({ text: "Captcha System by RikiCatte", iconURL: msgConfig.footer_iconURL })
 
