@@ -1,13 +1,17 @@
 const BotConfig = require("../../schemas/BotConfig");
 
-module.exports = async function updateServiceConfig(config, service, updates) {
+module.exports = async function updateServiceConfig(configOrGuildId, service, updates) {
+    const guildId = typeof configOrGuildId === "string" ? configOrGuildId : configOrGuildId.GuildID;
+
+    if (!guildId) throw new Error("[updateServiceConfig.js] GuildID is required");
+
     await BotConfig.findOneAndUpdate(
-        { GuildID: config.GuildID },
+        { GuildID: guildId },
         {
             $set: Object.fromEntries(
                 Object.entries(updates).map(([key, value]) => [`services.${service}.${key}`, value])
             )
         },
-        { upsert: true }
+        { upsert: true, new: true }
     );
 }

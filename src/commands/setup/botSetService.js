@@ -1,6 +1,7 @@
-const { SlashCommandBuilder, PermissionFlagsBits, MessageFlags, TextInputStyle } = require("discord.js");
-const BotConfig = require("../../schemas/BotConfig");
+const { SlashCommandBuilder, PermissionFlagsBits, MessageFlags } = require("discord.js");
 const { handleConfigurableService, promptConfigType } = require("../../utils/BotConfig");
+const { invalidate } = require("../../utils/BotConfig/configCache");
+const BotConfig = require("../../schemas/BotConfig");
 
 const path = require("path");
 const fs = require("fs");
@@ -91,7 +92,9 @@ module.exports = {
                 ...(svc.silentReEnable && { silentReEnable: svc.silentReEnable }),
                 svc
             });
-            return;
+
+            console.log(`[bot-set-service] DB UPDATED for guild=${guild.id} service=${service} action=${action}`);
+            return invalidate(guild.id);
         }
 
         // Management of non-modularized yet/legacy services

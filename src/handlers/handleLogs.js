@@ -1,8 +1,8 @@
 const { EmbedBuilder, Events, AuditLogEvent, ActionRowBuilder, ApplicationCommandPermissionsUpdateData, ButtonBuilder, ButtonStyle, DMChannel, GuildChannel, GuildMember, AutoModerationActionExecution, GuildAuditLogsEntry, PollAnswer, MessageReaction, ThreadChannel, ThreadMember, TextChannel, NewsChannel, VoiceChannel, StageChannel, ForumChannel, MediaChannel, Embed, ChannelType } = require("discord.js");
 const msgConfig = require("../messageConfig.json");
-const { formatPermissions, getColorName, getDifferences, getPermissionDifferences, validateEmbedFields } = require("../utils/utils.js");
-const updateServiceConfig = require("../utils/BotConfig/updateServiceConfig");
-const BotConfig = require("../schemas/BotConfig.js");
+const { formatPermissions, getColorName, getDifferences, getPermissionDifferences, validateEmbedFields, formattedDate } = require("../utils/utils.js");
+const { getConfig, invalidateCache } = require("../utils/BotConfig/configCache");
+const { pushToServiceArray, pullFromServiceArray } = require("../utils/BotConfig/updateServiceArrays");
 const { profileImage } = require("discord-arts");
 
 module.exports = (client) => {
@@ -16,9 +16,8 @@ module.exports = (client) => {
     async function sendLog(embed, guildId, raidRisk = false, channelId = null, logTitle = null) {
         if (guildId === null) return console.log("[LOGGING SYSTEM][ERROR] Guild ID is null for event with embed: ", embed.toJSON());
 
-        const config = await BotConfig.findOne({ GuildID: guildId });
-        const logsService = config?.services?.logs;
-        if (!config || !logsService.enabled) return;
+        const logsService = await getConfig(guildId, "logs");
+        if (!logsService || !logsService.enabled) return;
 
         const logChannel = client.channels.cache.get(logsService.LogChannelID);
         const staffChannel = client.channels.cache.get(logsService.StaffChannelID);
@@ -61,19 +60,18 @@ module.exports = (client) => {
 
                 let msg = await staffChannel.send({ content: `@here Please pay attention!`, embeds: [embed], components: [button] });
 
-                const date = new Date();
-                const formattedDate = `${date.getDate()}/${date.getMonth() + 1}/${date.getFullYear()} - ${date.getHours()}:${date.getMinutes()}`;
+                const frmtDate = formattedDate(new Date());
 
                 logsService.RiskyLogs.push({
                     RiskyLogID: msg.id,
                     ChannelID: channelId,
                     Guild: msg.guildId,
                     Title: logTitle,
-                    Date: formattedDate,
+                    Date: frmtDate,
                     Solved: false,
                 })
 
-                await updateServiceConfig(config, "logs", { RiskyLogs: logsService.RiskyLogs });
+                await pushToServiceArray(guildId, "logs", "RiskyLogs", riskyLogEntry);
             }
 
             return;
@@ -333,8 +331,10 @@ module.exports = (client) => {
     client.on(Events.ChannelUpdate, async (oldChannel, newChannel) => {
         if (oldChannel.type === ChannelType.DM || newChannel.type === ChannelType.DM) return;
 
-        const config = await BotConfig.findOne({ GuildID: newChannel.guild.id });
-        const serverStatsChannels = config?.services?.serverstats?.channels?.map(c => c.ChannelID) || [];
+        const statsService = await getConfig(newChannel.guild.id, "serverstats");
+        if (!statsService || !statsService.enabled) return;
+
+        const serverStatsChannels = statsService.channels?.map(c => c.ChannelID) || [];
 
         if (serverStatsChannels.includes(newChannel.id)) return;
 
@@ -432,8 +432,8 @@ module.exports = (client) => {
 
                 await sendLog(embed, guild.id);
 
-                const config = await BotConfig.findOne({ GuildID: guild.id });
-                const serviceConfig = config?.services?.greeting;
+                const greetingService = await getConfig(guild.id, "greeting");
+                serviceConfig = greetingService;
 
                 if (!serviceConfig || !serviceConfig.enabled || serviceConfig.Goodbye.Enabled !== true) return;
 
@@ -445,11 +445,7 @@ module.exports = (client) => {
                         KickedAt: new Date(),
                     };
 
-                    if (!config.services.kick)
-                        config.services.kick = { Kicks: [] };
-
-                    config.services.kick.Kicks.push(kickEntry);
-                    await updateServiceConfig(config, "kick", { Kicks: config.services.kick.Kicks });
+                    await pushToServiceArray(guild.id, "kick", "Kicks", kickEntry);
                 } catch (error) {
                     console.log("[handleLogs.js] Error while adding kick to DB: ", error);
                 }
@@ -524,43 +520,35 @@ module.exports = (client) => {
      * Emitted whenever a member is banned from a guild.
      * @param {GuildBan} guildBan
      */
-    client.on(Events.GuildBanAdd, async (guildBan) => {
-        const audit = await guildBan.guild.fetchAuditLogs({ type: AuditLogEvent.GuildBanAdd, limit: 5 }).catch(() => null);
-        let bannedBy = "Unknown", reason = "None";
+    module.exports = (client) => {
+        client.on(Events.GuildBanAdd, async (guildBan) => {
+            const audit = await guildBan.guild.fetchAuditLogs({ type: AuditLogEvent.GuildBanAdd, limit: 5 }).catch(() => null);
+            let bannedBy = "Unknown", reason = "None";
 
-        let auditEntry = null;
-        if (audit) {
-            auditEntry = audit.entries.find(entry =>
-                entry.target.id === guildBan.user.id &&
-                Date.now() - entry.createdTimestamp < 10000
-            );
-        }
-
-        if (auditEntry) {
-            bannedBy = `<@${auditEntry.executor.id}> (${auditEntry.executor.tag})`;
-            reason = auditEntry.reason || "No reason";
-        }
-
-        const BotConfig = require("../schemas/BotConfig");
-        const config = await BotConfig.findOne({ GuildID: guildBan.guild.id });
-
-        if (config && config.services?.ban) {
-            // Check in the DB if there is an unban for this user, if so we remove it before banning
-            if (config?.services?.unban?.Unbans) {
-                config.services.unban.Unbans = config.services.unban.Unbans.filter(u => u.UserID !== guildBan.user.id);
-                await updateServiceConfig(config, "unban", { Unbans: config.services.unban.Unbans });
+            let auditEntry = null;
+            if (audit) {
+                auditEntry = audit.entries.find(entry =>
+                    entry.target.id === guildBan.user.id &&
+                    Date.now() - entry.createdTimestamp < 10000
+                );
             }
 
-            // Find the ban entry in the database, if it exists get the BannedBy field
-            const banDbEntry = config.services.ban.Bans?.find(b => b.UserID === guildBan.user.id);
+            if (auditEntry) {
+                bannedBy = `<@${auditEntry.executor.id}> (${auditEntry.executor.tag})`;
+                reason = auditEntry.reason || "No reason";
+            }
 
-            if (banDbEntry && banDbEntry.Reason)
-                reason = banDbEntry.Reason;
-            if (banDbEntry && banDbEntry.BannedBy && banDbEntry.BannedBy !== "Unknown")
-                bannedBy = `<@${banDbEntry.BannedBy}>`;
+            const banService = await getConfig(guildBan.guild.id, "ban");
+            if (!banService || !banService.enabled) return;
 
-            // If it doesn't exist, add the ban as manual/external
-            if (!banDbEntry) {
+            const banDbEntry = banService?.Bans?.find(b => b.UserID === guildBan.user.id);
+            if (banDbEntry?.Reason) reason = banDbEntry.Reason;
+            if (banDbEntry?.BannedBy && banDbEntry.BannedBy !== "Unknown") bannedBy = `<@${banDbEntry.BannedBy}>`;
+
+            try {
+                await pullFromServiceArray(guildBan.guild.id, "unban", "Unbans", { UserID: guildBan.user.id });
+                await pullFromServiceArray(guildBan.guild.id, "ban", "Bans", { UserID: guildBan.user.id });
+
                 const banEntry = {
                     UserID: guildBan.user.id,
                     BannedBy: auditEntry?.executor?.id || "Unknown",
@@ -568,110 +556,110 @@ module.exports = (client) => {
                     BannedAt: new Date()
                 };
 
-                config.services.ban.Bans = config.services.ban.Bans || [];
-                config.services.ban.Bans.push(banEntry);
-                await updateServiceConfig(config, "ban", { Bans: config.services.ban.Bans });
+                await pushToServiceArray(guildBan.guild.id, "ban", "Bans", banEntry);
+            } catch (err) {
+                console.log("[handleLogs.js] Error while updating ban arrays: ", err);
             }
-        }
 
-        const embed = new EmbedBuilder()
-            .setColor("Red")
-            .setTitle("\`🔴\` Member Banned")
-            .addFields({ name: "Member - Member Username", value: `${guildBan.user} - ${guildBan.user.username}`, inline: false })
-            .addFields({ name: "Member ID", value: `${guildBan.user.id}`, inline: true })
-            .addFields({ name: "Banned By", value: bannedBy, inline: false })
-            .addFields({ name: "Reason", value: reason || "None", inline: false })
-            .addFields({ name: "Risk", value: msgConfig.highRisk });
+            const embed = new EmbedBuilder()
+                .setColor("Red")
+                .setTitle("`🔴` Member Banned")
+                .addFields({ name: "Member - Member Username", value: `${guildBan.user} - ${guildBan.user.username}`, inline: false })
+                .addFields({ name: "Member ID", value: `${guildBan.user.id}`, inline: true })
+                .addFields({ name: "Banned By", value: bannedBy, inline: false })
+                .addFields({ name: "Reason", value: reason || "None", inline: false })
+                .addFields({ name: "Risk", value: msgConfig.highRisk });
 
-        await sendLog(embed, guild.id);
+            await sendLog(embed, guildBan.guild.id);
 
-        try {
-            const config = await BotConfig.findOne({ GuildID: guildBan.guild.id });
-            const serviceConfig = config?.services?.greeting;
+            try {
+                const greetingService = await getConfig(guildBan.guild.id, "greeting");
 
-            if (!serviceConfig || !serviceConfig.enabled || serviceConfig.Goodbye.Enabled !== true) return;
+                if (!greetingService || !greetingService.enabled || greetingService.Goodbye.Enabled !== true) return;
 
-            const channel = guildBan.guild.channels.cache.get(serviceConfig.Goodbye.ChannelID);
-            if (!channel) return;
+                const channel = guildBan.guild.channels.cache.get(greetingService.Goodbye.ChannelID);
+                if (!channel) return;
 
-            const reasonLine = "Ban";
-            const message = serviceConfig.Goodbye.Message.replace("<user>", guildBan.user.username);
+                const reasonLine = "Ban";
+                const message = greetingService.Goodbye.Message.replace("<user>", guildBan.user.username);
+                const replyMessage = greetingService.Goodbye.ReplyMessage
+                    ? greetingService.Goodbye.ReplyMessage
+                        .replace("<user>", guildBan.user.username)
+                        .replace("<reason>", reasonLine)
+                    : "";
 
-            const replyMessage = serviceConfig.Goodbye.ReplyMessage
-                ? serviceConfig.Goodbye.ReplyMessage
-                    .replace("<user>", guildBan.user.username)
-                    .replace("<reason>", reasonLine)
-                : "";
+                let borderColor = greetingService.Goodbye.BorderColor || "#FFFFFF";
+                if (borderColor.toLowerCase() === "random") {
+                    borderColor = `#${Math.floor(Math.random() * 16777215).toString(16).padStart(6, '0')}`;
+                }
 
-            let borderColor = serviceConfig.Goodbye.BorderColor || "#FFFFFF";
-            if (borderColor.toLowerCase() === "random") borderColor = `#${Math.floor(Math.random() * 16777215).toString(16).padStart(6, '0')}`;
+                const image = await profileImage(guildBan.user.id, {
+                    presenceStatus: serviceConfig.Goodbye.PresenceStatus || "online",
+                    borderColor,
+                    customTag: message || "Bye! <user>",
+                    customDate: new Date().toLocaleDateString(),
+                    customBackground: guildBan.user.bannerURL?.({ forceStatic: true })
+                });
 
-            const image = await profileImage(guildBan.user.id, {
-                presenceStatus: serviceConfig.Goodbye.PresenceStatus || "online",
-                borderColor: borderColor,
-                customTag: message || "Bye! <user>",
-                customDate: new Date().toLocaleDateString(),
-                customBackground: guildBan.user.bannerURL?.({ forceStatic: true })
-            });
-
-            await channel.send({ content: `${replyMessage}\n${reasonLine}`, files: [image] });
-        } catch (error) {
-            console.log("[handleLogs.js] Error while sending goodbye message for ban: ", error);
-        }
-    });
+                await channel.send({ content: `${replyMessage}\n${reasonLine}`, files: [image] });
+            } catch (error) {
+                console.log("[handleLogs.js] Error while sending goodbye message for ban: ", error);
+            }
+        });
+    };
 
     /**
      * Emitted whenever a member is unbanned from a guild.
      * @param {GuildBan} guildBan
      */
     client.on(Events.GuildBanRemove, async (guildBan) => {
-        guildBan.guild
-            .fetchAuditLogs({ type: AuditLogEvent.GuildBanRemove })
-            .then(async (audit) => {
-                const BotConfig = require("../schemas/BotConfig");
-                const config = await BotConfig.findOne({ GuildID: guildBan.guild.id });
-                let unbannedBy = "Unknown", reason = "None";
+        try {
+            const audit = await guildBan.guild.fetchAuditLogs({ type: AuditLogEvent.GuildBanRemove, limit: 5 }).catch(() => null);
+            let unbannedBy = "Unknown", reason = "None";
 
-                if (config && config.services?.unban) {
-                    if (config?.services?.ban?.Bans) {
-                        config.services.ban.Bans = config.services.ban.Bans.filter(b => b.UserID !== guildBan.user.id);
-                        await updateServiceConfig(config, "ban", { Bans: config.services.ban.Bans });
-                    }
+            const unbanService = await getConfig(guildBan.guild.id, "unban");
 
-                    const unbanDbEntry = config.services.unban.Unbans?.find(u => u.UserID === guildBan.user.id);
+            await pullFromServiceArray(guildBan.guild.id, "ban", "Bans", { UserID: guildBan.user.id });
 
-                    if (unbanDbEntry && unbanDbEntry.Reason)
-                        reason = unbanDbEntry.Reason;
-                    else
-                        reason = guildBan.reason || "No reason";
+            const unbanDbEntry = unbanService?.Unbans?.find(u => u.UserID === guildBan.user.id);
 
-                    if (unbanDbEntry && unbanDbEntry.UnbannedBy && unbanDbEntry.UnbannedBy !== "Unknown") unbannedBy = `<@${unbanDbEntry.UnbannedBy}>`;
+            if (unbanDbEntry?.Reason) reason = unbanDbEntry.Reason;
+            else reason = guildBan.reason || "No reason";
 
-                    if (!unbanDbEntry) {
-                        const unbanEntry = {
-                            UserID: guildBan.user.id,
-                            UnbannedBy: "Unknown",
-                            Reason: guildBan.reason || "No reason",
-                            UnbannedAt: new Date()
-                        };
+            if (unbanDbEntry?.UnbannedBy && unbanDbEntry.UnbannedBy !== "Unknown") unbannedBy = `<@${unbanDbEntry.UnbannedBy}>`;
+            else if (audit) {
+                const recent = audit.entries.find(e =>
+                    e.target.id === guildBan.user.id &&
+                    Date.now() - e.createdTimestamp < 10000
+                );
+                if (recent?.executor?.id) unbannedBy = `<@${recent.executor.id}>`;
+            }
 
-                        config.services.unban.Unbans = config.services.unban.Unbans || [];
-                        config.services.unban.Unbans.push(unbanEntry);
-                        await updateServiceConfig(config, "unban", { Unbans: config.services.unban.Unbans });
-                    }
-                }
+            if (!unbanDbEntry) {
+                const unbanEntry = {
+                    UserID: guildBan.user.id,
+                    UnbannedBy: unbannedBy.startsWith("<@") ? unbannedBy.slice(2, -1) : "Unknown",
+                    Reason: reason,
+                    UnbannedAt: new Date()
+                };
 
-                const embed = new EmbedBuilder()
-                    .setColor("Red")
-                    .setTitle("\`🔴\` Member Unbanned")
-                    .addFields({ name: "Member - Member Username", value: `${guildBan.user} - ${guildBan.user.username}`, inline: false })
-                    .addFields({ name: "Member ID", value: `${guildBan.user.id}`, inline: true })
-                    .addFields({ name: "Unbanned By", value: unbannedBy, inline: false })
-                    .addFields({ name: "Reason", value: reason || "None", inline: false })
-                    .addFields({ name: "Risk", value: msgConfig.highRisk });
+                await pullFromServiceArray(guildBan.guild.id, "unban", "Unbans", { UserID: guildBan.user.id });
+                await pushToServiceArray(guildBan.guild.id, "unban", "Unbans", unbanEntry);
+            }
 
-                return sendLog(embed, guildBan.guild.id);
-            });
+            const embed = new EmbedBuilder()
+                .setColor("Red")
+                .setTitle("`🔴` Member Unbanned")
+                .addFields({ name: "Member - Member Username", value: `${guildBan.user} - ${guildBan.user.username}`, inline: false })
+                .addFields({ name: "Member ID", value: `${guildBan.user.id}`, inline: true })
+                .addFields({ name: "Unbanned By", value: unbannedBy, inline: false })
+                .addFields({ name: "Reason", value: reason || "None", inline: false })
+                .addFields({ name: "Risk", value: msgConfig.highRisk });
+
+            return sendLog(embed, guildBan.guild.id);
+        } catch (err) {
+            console.log("[handleLogs.js] Error in GuildBanRemove: ", err);
+        }
     });
 
     /**
@@ -843,16 +831,19 @@ module.exports = (client) => {
 
             const row = new ActionRowBuilder().addComponents(kickBtn, banBtn, cancelBtn);
 
-            const config = await BotConfig.findOne({ GuildID: member.guild.id });
-            const serviceConfig = config?.services?.suspicioususerjoin;
+            const services = await getConfig(member.guild.id);
 
-            if (!serviceConfig || !serviceConfig.enabled) return;
+            const susUserJoinServiceConfig = services?.suspicioususerjoin;
 
-            const logsConfig = config?.services?.logs;
-            if (!logsConfig || !logsConfig.enabled || !logsConfig.StaffChannelID) return;
-            const staffChannel = client.channels.cache.get(logsConfig.StaffChannelID);
+            if (!susUserJoinServiceConfig || !susUserJoinServiceConfig.enabled) return;
 
-            const suspiciousUsers = serviceConfig.SusUsers || [];
+            const logsServiceConfig = services?.logs;
+
+            if (!logsServiceConfig || !logsServiceConfig.enabled || !logsServiceConfig.StaffChannelID) return;
+
+            const staffChannel = client.channels.cache.get(logsServiceConfig.StaffChannelID);
+
+            const suspiciousUsers = susUserJoinServiceConfig.SusUsers || [];
 
             let result = suspiciousUsers.find(u => u.SusUserID === member.id);
             if (result) await staffChannel.send({ content: `@here User ${member} (${member.id}) left and rejoined the server multiple times!` });
@@ -860,17 +851,16 @@ module.exports = (client) => {
             if (staffChannel) {
                 let msg = await staffChannel.send({ content: `@here ⚠️ **Alert!** ${member}'s (${member.id}) account was created less than a month ago.`, embeds: [embed], components: [row] });
 
-                const date = new Date();
-                const formattedDate = `${date.getDate()}/${date.getMonth() + 1}/${date.getFullYear()} - ${date.getHours()}:${date.getMinutes()}`;
+                const frmtDate = formattedDate(new Date());
 
-                suspiciousUsers.push({
+                const suspiciousUsersEntry = {
                     SusUserID: member.id,
                     MessageID: `${msg.id}`,
-                    JoinDate: formattedDate,
+                    JoinDate: frmtDate,
                     TakenAction: false,
-                });
+                }
 
-                await updateServiceConfig(config, "suspicioususerjoin", { SusUsers: suspiciousUsers });
+                await pushToServiceArray(member.guild.id, "suspicioususerjoin", "SusUsers", suspiciousUsersEntry);
                 return;
             } else {
                 console.error("[handleLogs.js] No configuration values were found, check your Bot Config!");
@@ -917,19 +907,18 @@ module.exports = (client) => {
         await sendLog(embed, member.guild.id);
 
         try {
-            const config = await BotConfig.findOne({ GuildID: member.guild.id });
-            const serviceConfig = config?.services?.greeting;
+            const greetingServiceConfig = await getConfig(member.guild.id, "greeting");
 
-            if (!serviceConfig || !serviceConfig.enabled || serviceConfig.Goodbye.Enabled !== true) return;
+            if (!greetingServiceConfig || !greetingServiceConfig.enabled || greetingServiceConfig.Goodbye.Enabled !== true) return;
 
-            const channel = member.guild.channels.cache.get(serviceConfig.Goodbye.ChannelID);
+            const channel = member.guild.channels.cache.get(greetingServiceConfig.Goodbye.ChannelID);
             if (!channel) return;
 
             let reasonLine = "Left";
-            let title = serviceConfig.Goodbye.EmbedTitle || `\`👋\` Goodbye ${member.user.username}!`;
+            let title = greetingServiceConfig.Goodbye.EmbedTitle || `\`👋\` Goodbye ${member.user.username}!`;
             title = title.replace(/<user>/g, member.user.username);
 
-            let description = serviceConfig.Goodbye.EmbedDescription || "Sad to see you go!";
+            let description = greetingServiceConfig.Goodbye.EmbedDescription || "Sad to see you go!";
             description = description
                 .replace(/<rules>\((\d{18,19})\)/g, '<#$1>')
                 .replace(/<help>\((\d{18,19})\)/g, '<#$1>')
@@ -939,20 +928,20 @@ module.exports = (client) => {
                 .replace(/<user>/g, member.user.username)
                 .replace(/<reason>/g, reasonLine);
 
-            const message = serviceConfig.Goodbye.Message.replace("<user>", member.user.username);
-            const replyMessage = serviceConfig.Goodbye.ReplyMessage
-                ? serviceConfig.Goodbye.ReplyMessage
+            const message = greetingServiceConfig.Goodbye.Message.replace("<user>", member.user.username);
+            const replyMessage = greetingServiceConfig.Goodbye.ReplyMessage
+                ? greetingServiceConfig.Goodbye.ReplyMessage
                     .replace("<user>", member.user.username)
                     .replace("<reason>", reasonLine)
                 : "";
 
-            let borderColor = serviceConfig.Goodbye.BorderColor || "#FFFFFF";
+            let borderColor = greetingServiceConfig.Goodbye.BorderColor || "#FFFFFF";
             if (borderColor.toLowerCase() === "random") borderColor = `#${Math.floor(Math.random() * 16777215).toString(16).padStart(6, '0')}`;
 
             let sent = false;
             try {
                 const image = await profileImage(member.user.id, {
-                    presenceStatus: serviceConfig.Goodbye.PresenceStatus || "online",
+                    presenceStatus: greetingServiceConfig.Goodbye.PresenceStatus || "online",
                     borderColor: borderColor,
                     customTag: message || "Bye! <user>",
                     customDate: new Date().toLocaleDateString(),
@@ -960,9 +949,7 @@ module.exports = (client) => {
                 });
                 await channel.send({ content: replyMessage + "\n\n" + description, files: [image] });
                 sent = true;
-            } catch (error) {
-                console.warn("[handleLogs.js] discord-arts failed, fallback to embed.", error);
-            }
+            } catch (error) { /*discord-arts failed*/ }
             if (!sent) {
                 try {
                     const doubledDescription = description.replace(/\n/g, "\n\n");
@@ -1653,31 +1640,49 @@ module.exports = (client) => {
 
         await sendLog(embed, messageReaction.message.guildId);
 
-        const config = await BotConfig.findOne({ GuildID: messageReaction.message.guildId });
-        const serviceConfig = config.services?.suggest;
-        if (!config || !serviceConfig.enabled) return;
+        const suggestServiceConfig = await getConfig(messageReaction.message.guildId, "suggest");
+        if (!suggestServiceConfig || !suggestServiceConfig.enabled) return;
 
-        const DBSuggestion = serviceConfig.Suggestions.find(s => s.SuggestionMessageID === messageReaction.message.id);
-        if (!DBSuggestion) return;
+        const dbSuggestion = suggestServiceConfig.Suggestions?.find(s => s.SuggestionMessageID === messageReaction.message.id);
+        if (!dbSuggestion) return;
 
-        if (messageReaction.emoji.name === '✅') {
-            if (!DBSuggestion.Upvotes.includes(user.id)) DBSuggestion.Upvotes.push(user.id);
-            DBSuggestion.Downvotes = DBSuggestion.Downvotes.filter(id => id !== user.id);
-        } else if (messageReaction.emoji.name === '❌') {
-            if (!DBSuggestion.Downvotes.includes(user.id)) DBSuggestion.Downvotes.push(user.id);
-            DBSuggestion.Upvotes = DBSuggestion.Upvotes.filter(id => id !== user.id);
+        // remove opposite reaction if present
+        if (messageReaction.emoji.name === "✅") {
+            const xReaction = messageReaction.message.reactions.cache.find(r => r.emoji.name === "❌");
+            if (xReaction && xReaction.users.cache.has(user.id)) await xReaction.users.remove(user.id);
+            await updateSuggestionVote(messageReaction.message.guildId, messageReaction.message.id, "up", user.id);
+        } else if (messageReaction.emoji.name === "❌") {
+            const checkReaction = messageReaction.message.reactions.cache.find(r => r.emoji.name === "✅");
+            if (checkReaction && checkReaction.users.cache.has(user.id)) await checkReaction.users.remove(user.id);
+            await updateSuggestionVote(messageReaction.message.guildId, messageReaction.message.id, "down", user.id);
         }
-
-        if (messageReaction.emoji.name === '✅') {
-            const noReaction = messageReaction.message.reactions.resolve('❌');
-            if (noReaction) await noReaction.users.remove(user.id).catch(() => { });
-        } else if (messageReaction.emoji.name === '❌') {
-            const yesReaction = messageReaction.message.reactions.resolve('✅');
-            if (yesReaction) await yesReaction.users.remove(user.id).catch(() => { });
-        }
-
-        return await updateServiceConfig(config, "suggest", { Suggestions: serviceConfig.Suggestions });
     })
+
+    /**
+     * Helper function to update suggestion votes in the database.
+     * @param {String} messageId 
+     * @param {String} voteType 
+     * @param {String} userId 
+     * @param {String} guildId 
+     */
+    const BotConfig = require("../schemas/BotConfig.js");
+    async function updateSuggestionVote(guildId, messageId, voteType, userId) {
+        const filter = {
+            GuildID: guildId,
+            "services.suggest.Suggestions.SuggestionMessageID": messageId
+        };
+        const update = voteType === "up"
+            ? {
+                $addToSet: { "services.suggest.Suggestions.$.Upvotes": userId },
+                $pull: { "services.suggest.Suggestions.$.Downvotes": userId }
+            }
+            : {
+                $addToSet: { "services.suggest.Suggestions.$.Downvotes": userId },
+                $pull: { "services.suggest.Suggestions.$.Upvotes": userId }
+            };
+
+        await BotConfig.findOneAndUpdate(filter, update, { upsert: true });
+    }
 
     /**
      * Emitted whenever a reaction is removed from a cached message.
@@ -1704,17 +1709,14 @@ module.exports = (client) => {
 
         await sendLog(embed, messageReaction.message.guildId);
 
-        const config = await BotConfig.findOne({ GuildID: messageReaction.message.guildId });
-        const serviceConfig = config?.services?.suggest;
-        if (!config || !serviceConfig?.enabled) return;
+        const suggestServiceConfig = await getConfig(messageReaction.message.guildId, "suggest");
+        if (!suggestServiceConfig || !suggestServiceConfig.enabled) return;
 
-        const DBSuggestion = serviceConfig.Suggestions.find(s => s.SuggestionMessageID === messageReaction.message.id);
-        if (!DBSuggestion) return;
+        const dbSuggestion = suggestServiceConfig.Suggestions?.find(s => s.SuggestionMessageID === messageReaction.message.id);
+        if (!dbSuggestion) return;
 
-        if (messageReaction.emoji.name === '✅') DBSuggestion.Upvotes = DBSuggestion.Upvotes.filter(id => id !== user.id);
-        else if (messageReaction.emoji.name === '❌') DBSuggestion.Downvotes = DBSuggestion.Downvotes.filter(id => id !== user.id);
-
-        return await updateServiceConfig(config, "suggest", { Suggestions: serviceConfig.Suggestions });
+        if (messageReaction.emoji.name === "✅") await updateSuggestionVote(messageReaction.message.guildId, messageReaction.message.id, "up", user.id);
+        else if (messageReaction.emoji.name === "❌") await updateSuggestionVote(messageReaction.message.guildId, messageReaction.message.id, "down", user.id);
     })
 
     /**
