@@ -1,5 +1,4 @@
 const crypto = require("crypto");
-const BotConfig = require("../../schemas/BotConfig.js");
 const updateServiceConfig = require("../../utils/BotConfig/updateServiceConfig.js");
 
 /**
@@ -17,8 +16,7 @@ function generateGameID(game) {
  * @param {Object} game
  * @returns {Promise<boolean>} - True if the game has been saved successfully, false if the game is already stored
  */
-module.exports = async function saveSentGame(guildId, game) {
-    const config = await BotConfig.findOne({ GuildID: guildId });
+module.exports = async function saveSentGame(config, game) {
     const serviceConfig = config?.services?.freegames;
     if (!config || !serviceConfig?.enabled) return false;
 

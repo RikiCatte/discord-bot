@@ -1,8 +1,6 @@
-const { EmbedBuilder } = require("discord.js");
-
+const { EmbedBuilder, ChannelType } = require("discord.js");
 const schedule = require('node-schedule');
 const pushNewGames = require("../../utils/freeGames/pushNewGames.js");
-const msgConfig = require("../../messageConfig.json");
 const BotConfig = require("../../schemas/BotConfig.js");
 
 /**
@@ -15,19 +13,23 @@ module.exports = async function dailyGameNotification(client) {
             // Fetch new games and process them
             const allGames = await pushNewGames(client);
 
-            for (const [guildId, guild] of client.guilds.cache) {
-                const config = await BotConfig.findOne({ GuildID: guildId });
-                const serviceConfig = config?.services?.freegames;
-                if (!config || !serviceConfig?.enabled) continue;
+            const configs = await BotConfig.find({ "services.freegames.enabled": true });
+            if (allGames.length === 0 || configs.length === 0) return;
 
+            // Loop through each guild configuration
+            for (const config of configs) {
+                const guild = client.guilds.cache.get(config.GuildID);
+                if (!guild) continue;
+
+                const serviceConfig = config.services.freegames;
                 const channelId = serviceConfig.ChannelID;
                 if (!channelId) continue;
 
                 const channel = guild.channels.cache.get(channelId);
-                if (!channel) continue;
+                if (!channel || channel.type !== ChannelType.GuildText) continue; // Only text channels
 
-                // Loop through each game to send an embed for it
-                for (const game of allGames) {
+                // Parallelize sending embeds for all games
+                await Promise.all(allGames.map(async (game) => {
                     const embed = new EmbedBuilder()
                         .setAuthor({ name: `${client.user.username}`, iconURL: client.user.displayAvatarURL() })
                         .setTitle(`${game.title} is now free!`)
@@ -44,10 +46,10 @@ module.exports = async function dailyGameNotification(client) {
                     if (game.image) embed.setImage(game.image);
 
                     await channel.send({ embeds: [embed] });
-                }
+                }));
 
-                // Delete messages of expired games for that guild
-                await deleteExpiredGameMessages(channel);
+                // Delete messages of expired games for that guild (limited to max 20 deletes per cycle to avoid Discord rate limits)
+                await deleteExpiredGameMessages(channel, 20);
             }
         } catch (error) {
             console.error(`ERROR [dailyGameNotification.js]: `, error);
@@ -61,6 +63,7 @@ module.exports = async function dailyGameNotification(client) {
 async function deleteExpiredGameMessages(channel) {
     let lastMessageId;
     const now = new Date();
+    let deletedCount = 0;
 
     while (true) {
         const options = { limit: 100 };
@@ -78,7 +81,11 @@ async function deleteExpiredGameMessages(channel) {
                     const endDateTimestamp = parseInt(endDateField.value.match(/<t:(\d+):R>/)[1]) * 1000;
                     const endDate = new Date(endDateTimestamp);
 
-                    if (endDate < now) await message.delete();
+                    if (endDate < now) {
+                        await message.delete();
+                        deletedCount++;
+                        if (deletedCount >= (arguments[1] || 20)) return;
+                    }
                 }
             }
         }
